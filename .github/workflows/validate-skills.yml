@@ -1,0 +1,47 @@
+name: Validate skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the Agent Skills reference validator
+        run: pip install skills-ref==0.1.1
+      - name: Validate every skill against the Agent Skills spec
+        run: |
+          status=0
+          for dir in skills/*/; do
+            agentskills validate "$dir" || status=1
+          done
+          exit $status
+      - name: Check bundled files and skill references resolve
+        run: bash scripts/check-refs.sh
+      - name: Check scripts parse
+        run: bash -n scripts/*.sh
+      - name: Check tracked files for private patterns
+        run: bash scripts/check-private.sh --all
+
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan full history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
