@@ -66,7 +66,7 @@ Skills follow the open Agent Skills format (https://github.com/agentskills/agent
 
 Re-run it after adding, renaming or deleting a skill. It links new skills and removes links into this catalog that no longer resolve; it never touches a real directory or a link to somewhere else. The dotfiles repo runs it on a fresh machine (`run_onchange_after_install-skills.sh.tmpl`).
 
-**Change skills in a worktree, not on `main`.** The installed links point at this checkout's `main`, so an edit there changes every running session on its next skill load, mid-task included. Work in `.worktrees/<change>` on a branch, test a changed skill by pointing the session at the worktree copy's path, and merge to `main` to release it.
+**Change skills in a worktree, not on `main`.** The installed links point at this checkout's `main`, so an edit there changes every running session on its next skill load, mid-task included. Create one with `wt switch --create <type>/<change> --no-cd` (worktrunk), test a changed skill by pointing the session at the worktree copy's path, and merge to `main` to release it.
 
 Don't use `npx skills add` for this catalog: installing for a single agent copies the folders instead of linking them, so edits stop reaching the installed copy.
 

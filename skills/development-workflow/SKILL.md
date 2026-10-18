@@ -57,22 +57,23 @@ Read `references/scope-brief.md` before Phase 0. It defines the brief, its field
 
 ## Worktrees
 
-**One change, one worktree, for its whole life.** It lives at `.worktrees/<feat-name>` (flat: the change name, not the branch name) and is created before Phase 0 writes anything. Every phase, subagent and command for that change runs from it. The main checkout stays on the default branch and clean, so other changes can start beside it.
+**One change, one worktree, for its whole life,** managed with worktrunk (`wt`; current commands from `wt <command> --help` and https://worktrunk.dev/llms.txt). `wt switch --create <branch> --no-cd` creates it where the user's worktrunk config puts worktrees, before Phase 0 writes anything; find its path with `wt list --format=json | jq -r '.items[] | select(.branch=="<branch>") | .worktree.path'`. Every phase, subagent and command for that change runs from that path. The main checkout stays on the default branch and clean, so other changes can start beside it.
 
 - **Parallel work** is one coordinator session per change, each started in its own worktree. A single session juggling several changes runs out of context.
-- **Status** comes from `bash scripts/worktree-status.sh <repo>`. Run it at the start of every invocation and after every merge, and act on its states: `CLEANUP`, run the Phase 6 cleanup; `BEHIND`, merge the default branch in and push; `STALE`, report it to the user and never delete it; `DIRTY`, leave it alone.
+- **Status** comes from `wt list --format=json` (per item: `branch`, `worktree.path`, `worktree.changes`, `default_branch.ahead/behind`, `head.committed_at`) plus the PR state from the github skill. Check it at the start of every invocation and after every merge: a merged PR, run the Phase 6 cleanup; an open PR behind the default branch, merge it in and push; no PR and no commit for two weeks, report it as stale and never delete it; uncommitted changes, leave it alone.
 - **Shared resources** that only one run can use at a time (an emulator, a device, a fixed local port) are taken with `flock`, on a lock file in the repository's common git dir, which every worktree shares: `mkdir -p "$(git rev-parse --path-format=absolute --git-common-dir)/locks"`, then `flock "$(git rev-parse --path-format=absolute --git-common-dir)/locks/<resource>" <command>`. Hold it for the whole check that needs the resource, and pass the same rule to evaluators.
 - **Builds** in separate worktrees have separate outputs and can run side by side; the lock is only for what they truly share.
 
 ## Entry detection
 
-First find the change. Look for `.worktrees/<feat-name>` in `git worktree list`, then a branch or open PR for it, then `openspec/changes/archive/<feat-name>/` on the default branch. Read the change folder from wherever it is found and continue there; if the worktree is gone but the branch exists, recreate the worktree from the branch. Only when it is found nowhere is it a new change.
+First find the change: its branch in `wt list --format=json`, then an open PR for it, then `openspec/changes/archive/<feat-name>/` on the default branch. Read the change folder from wherever it is found and continue there; if the worktree is gone but the branch exists, `wt switch <branch> --no-cd` recreates it. Only when it is found nowhere is it a new change.
 
 Then, checked in order, first match wins. Work proceeds one layer at a time, in `tasks.md` order; "the layer" below is the first layer whose sub-issue in `issues.md` is still open. When several layers map to the **same** issue (a small fix tracked by one issue), treat them as one unit: one branch, one test author/implementer/evaluator pass covering all of them, one PR.
 
 | Existing state | Entry point |
 |---|---|
 | No `openspec/changes/<feat-name>/` folder | Phase 0: Scope Brief and OpenSpec setup |
+| Worktree, branch or PR exists, but no change folder | Reconstruct the change folder there from its commits (brief, proposal, stories, design note, tasks), commit it, then re-run detection |
 | Change folder exists, no `scope-brief.md` | Reconstruct the brief (see `references/scope-brief.md`), then re-run detection |
 | Change folder exists, no `issues.md` | Phase 1: Issue creation |
 | `issues.md` exists, no branch for the layer | Phase 2: Implementation |
@@ -85,7 +86,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 ## Phases
 
 **Phase 0 — Scope Brief and OpenSpec setup**
-0. Create the worktree from the default branch: `git worktree add .worktrees/<feat-name> -b <type>/<feat-name-without-prefix> origin/<default>`, and work from it from here on. Phase 2 renames the branch once the issue number exists.
+0. Create the worktree: `wt switch --create <type>/<short-description> --no-cd` (the `pr-workflow` branch name; no issue number is needed), and work from its path from here on.
 1. Build the Scope Brief from the user's own words. Grep for every file the change will touch to fill **Also update**.
 2. Classify the **Path** (`references/scope-brief.md`). A `spike` leaves the lifecycle here: answer it and stop. Otherwise invoke the `openspec` skill, passing the brief: a `bounded` change gets a short design note, an `architectural` one a full `architecture-review`, and the user approves an architectural design before Phase 1.
 3. Save the brief as `openspec/changes/<feat-name>/scope-brief.md`.
@@ -100,7 +101,7 @@ Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `
 If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `development-workflow` again for `<feat-name>`", and stop.
 
 Otherwise, for the layer:
-1. In the change's worktree, rename the branch to the `pr-workflow` name now that the issue exists (`git branch -m <type>/<issue-number>-<short-description>`) and commit the change folder first (`docs(openspec): …`). A later layer of the same change gets its own branch and worktree (`.worktrees/<feat-name>-<layer>`), branched after the previous layer merges.
+1. In the change's worktree, commit the change folder first (`docs(openspec): …`). A later layer of the same change gets its own branch and worktree, created after the previous layer merges.
 2. Spawn the **test author**, unless checks that fail for this exact bug already exist (a broken build, an existing test that fails today). Then skip it, name those checks in the implementer's prompt and in `sprint-contract.md`, and say why.
    Otherwise spawn it. Check its report: every story has a test or a named manual check, and every test fails for the stated reason. Commit the tests (`test(<scope>): …`).
 3. Spawn the **implementer** with the test author's report. Check its report: tests and build clean, every **Also update** item accounted for, nothing outside the brief. Commit (`feat(<scope>): …`). If it reports a wrong test, surface its evidence to the user and stop.
@@ -138,7 +139,7 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 2. Check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`.
 3. If any issue is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop. Don't archive.
 4. If all are closed, confirm the change folder is under `openspec/changes/archive/` (Phase 4 moved it in the PR). Only a change merged before that rule needs a separate archive commit; batch those into one chore PR.
-5. Clean up the worktree `worktree-status.sh` marks `CLEANUP`, each step as its own command: `git worktree remove <absolute worktree path>`, then `git -C <absolute repo path> branch -D <branch>`, then `git push origin --delete <branch>`. The force-delete is needed because a squash merge leaves the branch unmerged in git's eyes; `CLEANUP` already confirmed its PR merged at this exact tip. If a guard hook refuses the delete, report its reason instead of working around it. Re-run `worktree-status.sh` and handle anything now `BEHIND`.
+5. Clean up from the main checkout: `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps the branch, report why instead of forcing it. Then `git push origin --delete <branch>`, and re-check status for anything now behind.
 
 ## Constraints
 
@@ -174,7 +175,7 @@ Entry detection: no change folder → Phase 0. The brief quotes the request verb
 
 Phase 1: `linear` → parent APP-12, sub-issues APP-13 (`:shared`), APP-14 (`:android`).
 
-Phase 2 (`:shared`): branch `feat/13-onboarding-empty-state`; test author writes two failing repository tests; implementer makes them pass and wires DI; both commits made.
+Phase 2 (`:shared`): branch `feat/onboarding-empty-state`; test author writes two failing repository tests; implementer makes them pass and wires DI; both commits made.
 
 Phase 3: a fresh evaluator derives four contract items from `specs/stories.md`, runs the tests, reports `VERDICT: PASS`. `sprint-contract.md` gets a `:shared` section, all checked.
 
