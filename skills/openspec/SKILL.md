@@ -35,7 +35,7 @@ metadata:
 |---|---|---|
 | `proposal.md` | `one-pager.md` or `lean-canvas.md` + story group | Derived — no questions needed |
 | `specs/stories.md` | Story group from `job-stories.md` | Pulled verbatim; acceptance criteria derived from story outcomes |
-| `design.md` | `architecture-review` skill output; for a `narrow` change, a short design note | Written verbatim from inline `architecture-review` invocation output — do not reformat or summarize. A `narrow` change (size signal in the Scope Brief) skips `architecture-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
+| `design.md` | `architecture-review` skill output; for a `bounded` change, a short design note | Written verbatim from inline `architecture-review` invocation output — do not reformat or summarize. A `bounded` change (the Path in the Scope Brief) skips `architecture-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
 | `tasks.md` | Derived from `design.md` + story scope | `:shared` first, then `:android`, then `:backend`; omit empty layers |
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `development-workflow` from the evaluator's report at Phase 3 — do not create during Phase 0 |
 | `issues.md` | Written by `linear` | Do not create — leave absent at this stage |
@@ -43,7 +43,7 @@ metadata:
 **Conversation flow:**
 1. Confirm which story group this change covers
 2. Derive `proposal.md` and `specs/stories.md` from discovery artifacts — no questions needed
-3. Invoke `architecture-review` to produce `design.md`, or for a `narrow` change write the short design note yourself
+3. Invoke `architecture-review` to produce `design.md`, or for a `bounded` change write the short design note yourself
 4. Write `tasks.md` with ordered implementation steps broken by layer
 5. Output the change folder path
 
@@ -121,7 +121,7 @@ Layer names are taken from `tasks.md` headings — not hardcoded to `:shared/:an
 ## Constraints
 
 - When invoked with a Scope Brief (from `development-workflow`), keep `proposal.md` and `tasks.md` inside it: its **Explicitly out of scope** items go in the proposal as non-goals, and its **Also update** items become tasks
-- `design.md` is written verbatim from `architecture-review` output — never reformatted or summarized (a `narrow` change's short design note is the exception)
+- `design.md` is written verbatim from `architecture-review` output — never reformatted or summarized (a `bounded` change's short design note is the exception)
 - Checkboxes in `tasks.md` and `specs/stories.md` stay unticked: they are the plan, and `sprint-contract.md` is the record of what was verified. Reviewers shouldn't flag unticked boxes
 - The archive move happens in the change's own PR, as its last commit (see `development-workflow` Phase 4), so merging archives it
 - `issues.md` is written by `linear`, not `openspec` — do not create it here
