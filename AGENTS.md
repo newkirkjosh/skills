@@ -78,6 +78,9 @@ scripts/check-refs.sh   # bundled files and skill references resolve
 scripts/check-private.sh   # no private terms in tracked files
 grep -rn '<renamed-skill>' skills/
 bash -n scripts/*.sh skills/*/scripts/*.sh 2>/dev/null
+for t in skills/*/scripts/test-*.sh; do bash "$t"; done   # bundled script tests
 ```
+
+A skill that bundles shell scripts with any logic (secret handling, guards, argument checks) ships a `scripts/test-<name>.sh` beside them: stub external commands on `PATH`, need no network, exit non-zero on failure. CI runs every `skills/*/scripts/test-*.sh`.
 
 Then invoke the changed skill in a real session and check that it does what the diff claims.

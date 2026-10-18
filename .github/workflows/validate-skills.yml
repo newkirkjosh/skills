@@ -29,6 +29,15 @@ jobs:
         run: bash scripts/check-refs.sh
       - name: Check scripts parse
         run: bash -n scripts/*.sh
+      - name: Run bundled script tests
+        run: |
+          status=0
+          for t in skills/*/scripts/test-*.sh; do
+            [ -e "$t" ] || continue
+            echo "== $t"
+            bash "$t" || status=1
+          done
+          exit $status
       - name: Check tracked files for private patterns
         run: bash scripts/check-private.sh --all
 
