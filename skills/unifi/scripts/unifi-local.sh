@@ -13,8 +13,14 @@ set -euo pipefail
 dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/unifi-local-$(id -u)"
 mkdir -p "$dir" && chmod 700 "$dir"
 jar=$dir/cookies token=$dir/csrf.cfg
-# Consoles use a self-signed certificate on the LAN.
-curl_base=(curl -sS -k --max-time 30)
+curl_base=(curl -sS --max-time 30)
+# Verify TLS except for a private-network IP literal, where a console serves a
+# self-signed certificate. Credentials are never sent unverified elsewhere.
+case "$UNIFI_HOST" in https://*) ;; *) echo "UNIFI_HOST must be https://" >&2; exit 2 ;; esac
+host=${UNIFI_HOST#https://}; host=${host%%[/:]*}
+if [[ $host =~ ^(10\.[0-9]+|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]+\.[0-9]+$ ]]; then
+  curl_base+=(-k)
+fi
 
 case "${1:-}" in
 login)
@@ -30,16 +36,20 @@ login)
   rm -f "$dir/headers"
   [ -s "$token" ] || { echo "login failed: no CSRF token returned" >&2; exit 1; } ;;
 get|query)
+  # A path is appended to UNIFI_HOST: keep it a plain absolute path.
+  case "${2:-}" in /*) ;; *) echo "path must start with /" >&2; exit 2 ;; esac
+  case "$2" in *..*|*'?'*|*'#'*|*%*|*@*|*' '*) echo "refusing path with .. ? # % @ or space: $2" >&2; exit 2 ;; esac
   [ -s "$jar" ] && [ -s "$token" ] || { echo "no session: run 'unifi-local.sh login' first" >&2; exit 1; } ;;&
 get)
   [ $# -eq 2 ] || { echo "usage: unifi-local.sh get <path>" >&2; exit 2; }
   "${curl_base[@]}" -b "$jar" -w '\nHTTP %{http_code}\n' "$UNIFI_HOST$2" ;;
 query)
   [ $# -eq 3 ] || { echo "usage: unifi-local.sh query <path> <json>" >&2; exit 2; }
-  case "$2" in
-    */system-log/*|*/stat/report/*) ;;
-    *) echo "refusing POST to $2: query mode is for log and report reads only" >&2; exit 2 ;;
-  esac
+  site='[A-Za-z0-9_-]+'
+  if ! [[ $2 =~ ^/proxy/network/v2/api/site/$site/system-log/[a-z-]+$ \
+       || $2 =~ ^/proxy/network/api/s/$site/stat/report/[a-z0-9]+\.[a-z]+$ ]]; then
+    echo "refusing POST to $2: query mode is for log and report reads only" >&2; exit 2
+  fi
   printf '%s' "$3" | "${curl_base[@]}" -b "$jar" -K "$token" \
     -H 'Content-Type: application/json' --data @- -w '\nHTTP %{http_code}\n' "$UNIFI_HOST$2" ;;
 *)

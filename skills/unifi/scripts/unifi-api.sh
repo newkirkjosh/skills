@@ -14,8 +14,13 @@ set -euo pipefail
 method=$1 url=$2 body=${3:-}
 
 args=(-sS --max-time 30 -X "$method" -w '\nHTTP %{http_code}\n')
-# Local consoles use a self-signed certificate.
-case "$url" in https://api.ui.com/*) ;; *) args+=(-k) ;; esac
+# Verify TLS everywhere except a private-network IP literal, where a console
+# serves a self-signed certificate. The key is never sent unverified elsewhere.
+host=${url#https://}; host=${host%%[/:]*}
+case "$url" in https://*) ;; *) echo "refusing non-https URL" >&2; exit 2 ;; esac
+if [[ $host =~ ^(10\.[0-9]+|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]+\.[0-9]+$ ]]; then
+  args+=(-k)
+fi
 if [ -n "$body" ]; then
   [ -f "$body" ] || { echo "no such body file: $body" >&2; exit 2; }
   args+=(-H 'Content-Type: application/json' --data "@$body")

@@ -26,7 +26,7 @@ cat > "$log/curl.$n.stdin"
 prev=
 for a in "$@"; do
   [ "$prev" = -D ] && printf 'HTTP/2 200\r\n%s\r\n\r\n' "${STUB_HEADER-x-csrf-token: tok-123}" > "$a"
-  [ "$prev" = -c ] && printf '192.0.2.1\tFALSE\t/\tTRUE\t0\tTOKEN\tsession\n' > "$a"
+  [ "$prev" = -c ] && printf '10.0.0.2\tFALSE\t/\tTRUE\t0\tTOKEN\tsession\n' > "$a"
   prev=$a
 done
 echo '{"meta":{"rc":"ok"},"data":[]}'
@@ -44,7 +44,7 @@ reset() {
   rm -rf "$STUB_LOG" "$XDG_RUNTIME_DIR"; mkdir -p "$STUB_LOG" "$XDG_RUNTIME_DIR"
   unset STUB_HEADER
 }
-run() { PATH="$work/bin:$PATH" bash "$@" > "$work/out" 2> "$work/err"; echo $? > "$work/rc"; }
+run() { PATH="$work/bin:$PATH" bash "$@" < /dev/null > "$work/out" 2> "$work/err"; echo $? > "$work/rc"; }
 rc()  { cat "$work/rc"; }
 argv() { cat "$STUB_LOG/curl.${1:-1}.argv" 2>/dev/null; }
 stdin() { cat "$STUB_LOG/curl.${1:-1}.stdin" 2>/dev/null; }
@@ -67,8 +67,21 @@ check "api: key sent as header on stdin" 'stdin | grep -q "X-API-Key: $key"'
 check "api: cloud URL keeps TLS verification" '! argv | grep -qx -- -k'
 check "api: method passed through" 'argv | grep -qx GET'
 
-reset; UNIFI_API_KEY=$key run "$api" GET https://192.0.2.1/proxy/network/integration/v1/sites
-check "api: local URL skips verification for self-signed cert" 'argv | grep -qx -- -k'
+reset; UNIFI_API_KEY=$key run "$api" GET https://10.0.0.2/proxy/network/integration/v1/sites
+check "api: private console IP skips verification for self-signed cert" 'argv | grep -qx -- -k'
+reset; UNIFI_API_KEY=$key run "$api" GET https://10.0.0.2@example.com/x
+check "api: userinfo trick does not disable verification" '! argv | grep -qx -- -k'
+
+for u in https://example.com/x https://203.0.113.5/x https://192.168.1.1.example.com/x; do
+  reset; UNIFI_API_KEY=$key run "$api" GET "$u"
+  check "api: verifies TLS for $u" '! argv | grep -qx -- -k'
+done
+for u in https://10.0.0.1/x https://172.16.5.4:8443/x; do
+  reset; UNIFI_API_KEY=$key run "$api" GET "$u"
+  check "api: skips verification for private IP $u" 'argv | grep -qx -- -k'
+done
+reset; UNIFI_API_KEY=$key run "$api" GET http://192.0.2.1/x
+check "api: refuses non-https URL before curl" '[ "$(rc)" = 2 ] && ! called'
 
 reset; echo '{"name":"x"}' > "$work/body.json"
 UNIFI_API_KEY=$key run "$api" POST https://api.ui.com/x "$work/body.json"
@@ -78,10 +91,17 @@ reset; UNIFI_API_KEY=$key run "$api" POST https://api.ui.com/x "$work/missing.js
 check "api: missing body file exits 2 before curl" '[ "$(rc)" = 2 ] && ! called'
 
 # --- unifi-local.sh ----------------------------------------------------------
-export UNIFI_HOST=https://192.0.2.1
+export UNIFI_HOST=https://10.0.0.2
 
 reset; env -u UNIFI_HOST PATH="$work/bin:$PATH" bash "$local" get /x > /dev/null 2>&1
 check "local: missing UNIFI_HOST fails before curl" '[ $? -ne 0 ] && ! called'
+
+reset; UNIFI_HOST=https://unifi.example.com UNIFI_USER=viewer UNIFI_PASS=$pw run "$local" login
+check "local: hostname console keeps TLS verification" '! argv | grep -qx -- -k'
+reset; UNIFI_USER=viewer UNIFI_PASS=$pw run "$local" login
+check "local: private console IP skips verification" 'argv | grep -qx -- -k'
+reset; UNIFI_HOST=http://10.0.0.2 run "$local" login
+check "local: refuses non-https UNIFI_HOST" '[ "$(rc)" = 2 ] && ! called'
 
 reset; run "$local" bogus
 check "local: unknown mode exits 2" '[ "$(rc)" = 2 ] && ! called'
@@ -128,6 +148,21 @@ check "local: query body sent on stdin" '[ "$(stdin 2)" = "{\"pageSize\":1}" ]'
 
 run "$local" query /proxy/network/api/s/default/stat/report/5minutes.user '{}'
 check "local: query allows stat/report" '[ "$(rc)" = 0 ]'
+
+rm "$STUB_LOG/curl.count"
+for p in '/proxy/network/v2/api/site/default/system-log/../../../rest/wlanconf' \
+         '/proxy/network/api/s/default/rest/wlanconf?x=/system-log/' \
+         '/proxy/network/api/s/default/rest/wlanconf#/stat/report/' \
+         '/proxy/network/v2/api/site/default/system-log/%2e%2e/x' \
+         '/proxy/network/api/s/default/stat/report/5minutes.user/../../../rest/x' \
+         '/proxy/network/api/s/default/cmd/devmgr/stat/report/x.y'; do
+  run "$local" query "$p" '{}'
+  check "local: query refuses $p" '[ "$(rc)" = 2 ] && ! called'
+done
+run "$local" get '@example.com/x'
+check "local: get refuses path not starting with /" '[ "$(rc)" = 2 ] && ! called'
+run "$local" get '/proxy/../api/x'
+check "local: get refuses .. in path" '[ "$(rc)" = 2 ] && ! called'
 
 echo
 echo "$pass passed, $fail failed"
