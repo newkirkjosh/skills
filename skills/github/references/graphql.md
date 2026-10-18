@@ -59,4 +59,4 @@ Connections take `first`/`after` and return `pageInfo { hasNextPage endCursor }`
 
 ## Projects (v2)
 
-Projects need the `project` scope (`gh auth refresh -s project`). Prefer `gh project item-list`, `item-add` and `item-edit` (see `--help`). Drop to GraphQL (`ProjectV2`, `updateProjectV2ItemFieldValue`) for single-select field IDs, which `gh project field-list <n> --owner <owner> --format json` also returns.
+Use `projects.md` and the `gh project` commands first; drop to GraphQL (`ProjectV2`, `updateProjectV2ItemFieldValue`) only for what they don't cover.

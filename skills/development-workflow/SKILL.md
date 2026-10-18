@@ -94,7 +94,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 **Phase 1 — Issue creation**
 Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `issues.md` with the parent identifier and one sub-issue per layer. If the work already has an issue (the user named one, or it was filed earlier), don't create new ones: write `issues.md` mapping each layer to that issue, add it to the board, and comment there if the diagnosis changed.
 
-*GitHub alternate:* for a GitHub-tracked project, invoke `github-issue` then `github-project` instead. They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
+*GitHub alternate:* for a GitHub-tracked project, invoke `github-issue` instead, and place the issues on the board the repository's `AGENTS.md` names (the github skill's projects reference). They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
 
 **Phase 2 — Implementation**
 If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `development-workflow` again for `<feat-name>`", and stop.
@@ -118,7 +118,7 @@ Otherwise, for the layer:
 
 **Phase 4 — PR creation**
 Once `sprint-contract.md` is final and review is done, make the archive move the PR's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
-Invoke `pr-workflow`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves to In Review via `github-project`. Output: PR URL.
+Invoke `pr-workflow`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves as the repository's `AGENTS.md` says (the github skill's projects reference). Output: PR URL.
 
 **Phase 5 — Review**
 `pr-workflow` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge.
