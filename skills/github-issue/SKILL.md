@@ -7,6 +7,8 @@ metadata:
 
 # GitHub Issue
 
+**REQUIRED:** load the github skill for how to run each `gh` step (head-commit scoping, bounded CI waits, bodies from files, verifying writes). This skill owns the conventions; github owns the mechanics.
+
 ## When to Use
 
 **Invoke for:**
