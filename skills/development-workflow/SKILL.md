@@ -61,7 +61,7 @@ Read `references/scope-brief.md` before Phase 0. It defines the brief, its field
 
 - **Parallel work** is one coordinator session per change, each started in its own worktree. A single session juggling several changes runs out of context.
 - **Status** comes from `bash scripts/worktree-status.sh <repo>`. Run it at the start of every invocation and after every merge, and act on its states: `CLEANUP`, run the Phase 6 cleanup; `BEHIND`, merge the default branch in and push; `STALE`, report it to the user and never delete it; `DIRTY`, leave it alone.
-- **Shared resources** that only one run can use at a time (an emulator, a device, a fixed local port) are taken with `flock`, on a lock file in the repository's common git dir, which every worktree shares: `mkdir -p "$(git rev-parse --git-common-dir)/locks"`, then `flock "$(git rev-parse --git-common-dir)/locks/<resource>" <command>`. Hold it for the whole check that needs the resource, and pass the same rule to evaluators.
+- **Shared resources** that only one run can use at a time (an emulator, a device, a fixed local port) are taken with `flock`, on a lock file in the repository's common git dir, which every worktree shares: `mkdir -p "$(git rev-parse --path-format=absolute --git-common-dir)/locks"`, then `flock "$(git rev-parse --path-format=absolute --git-common-dir)/locks/<resource>" <command>`. Hold it for the whole check that needs the resource, and pass the same rule to evaluators.
 - **Builds** in separate worktrees have separate outputs and can run side by side; the lock is only for what they truly share.
 
 ## Entry detection
