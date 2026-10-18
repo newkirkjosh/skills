@@ -1,6 +1,6 @@
 ---
 name: development-workflow
-description: "Orchestrates the full development arc from approved job stories to merged PR and archived change folder. Detects existing state and enters at the right phase — no repeated ceremony. Sequences scope brief → openspec → linear-issue → test author and implementer subagents → isolated evaluator → pr-workflow → review → archive. Triggers: \"start work on feat-X\", \"what's next for feat-X\", \"open a PR for feat-X\"."
+description: "Orchestrates the full development arc from approved job stories to merged PR and archived change folder. Detects existing state and enters at the right phase — no repeated ceremony. Sequences scope brief → openspec → linear → test author and implementer subagents → isolated evaluator → pr-workflow → review → archive. Triggers: \"start work on feat-X\", \"what's next for feat-X\", \"open a PR for feat-X\"."
 license: MIT (Scope Brief adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -75,12 +75,12 @@ Checked in order, first match wins. Work proceeds one layer at a time, in `tasks
 
 **Phase 0 — Scope Brief and OpenSpec setup**
 1. Build the Scope Brief from the user's own words. Grep for every file the change will touch to fill **Also update**.
-2. Invoke the `openspec` skill, passing the brief.
+2. Invoke the `openspec` skill, passing the brief and its size signal. A `narrow` change gets a short design note instead of a full `architecture-review` (see `openspec`).
 3. Save the brief as `openspec/changes/<feat-name>/scope-brief.md`.
 4. Show the user the **Interpreted scope**, **Also update** and **Explicitly out of scope** fields in a few lines, so a wrong reading is caught now.
 
 **Phase 1 — Issue creation**
-Invoke `linear-issue` (default tracker). Output: `issues.md` with the parent identifier and one sub-issue per layer. If the work already has an issue (the user named one, or it was filed earlier), don't create new ones: write `issues.md` mapping each layer to that issue, add it to the board, and comment there if the diagnosis changed.
+Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `issues.md` with the parent identifier and one sub-issue per layer. If the work already has an issue (the user named one, or it was filed earlier), don't create new ones: write `issues.md` mapping each layer to that issue, add it to the board, and comment there if the diagnosis changed.
 
 *GitHub alternate:* for a GitHub-tracked project, invoke `github-issue` then `github-project` instead. They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
 
@@ -105,14 +105,24 @@ Otherwise, for the layer:
 
 **Phase 4 — PR creation**
 Once `sprint-contract.md` is final and review is done, make the archive move the PR's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
-Invoke `pr-workflow`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL via `mcp__plugin_linear_linear__save_comment` (use `issueId`); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves to In Review via `github-project`. Output: PR URL.
+Invoke `pr-workflow`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves to In Review via `github-project`. Output: PR URL.
 
 **Phase 5 — Review**
-`pr-workflow` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge. Merging is the user's call.
+`pr-workflow` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge.
+
+**Merging** is the user's call unless the project's `AGENTS.md` has a **Merge policy** that grants it. With that grant, merge yourself only when every gate holds on the PR's current head, re-checked right before merging (the github skill's `head-status.sh`):
+
+1. CI green on the head commit.
+2. The layer's `sprint-contract.md` section is all checked from an evaluator `VERDICT: PASS`.
+3. Every review finding is fixed or dismissed with a reason in the PR comment; none is open or blocking.
+4. Zero unresolved review threads.
+5. Nothing the policy excludes (it may exclude, for example, migrations, auth or release PRs).
+
+Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, then move the tracker issues to done and run Phase 6. Any gate failing hands the merge back to the user with the reason. Without a policy, stop at the merge-ready report.
 
 **Phase 6 — Archive**
 1. Read `issues.md`.
-2. Check each identifier's state: Linear via `mcp__plugin_linear_linear__get_issue` (`statusType`), GitHub via `gh issue view <n> --json state`.
+2. Check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`.
 3. If any issue is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop. Don't archive.
 4. If all are closed, confirm the change folder is under `openspec/changes/archive/` (Phase 4 moved it in the PR). Only a change merged before that rule needs a separate archive commit; batch those into one chore PR.
 
@@ -147,7 +157,7 @@ User says: "start work on feat-onboarding, just the empty state for now"
 
 Entry detection: no change folder → Phase 0. The brief quotes the request verbatim, size signal `narrow`, out of scope "populated list and add-habit flow: later story group". `openspec` creates the folder; the brief is saved and its scope shown to the user.
 
-Phase 1: `linear-issue` → parent APP-12, sub-issues APP-13 (`:shared`), APP-14 (`:android`).
+Phase 1: `linear` → parent APP-12, sub-issues APP-13 (`:shared`), APP-14 (`:android`).
 
 Phase 2 (`:shared`): branch `feat/13-onboarding-empty-state`; test author writes two failing repository tests; implementer makes them pass and wires DI; both commits made.
 

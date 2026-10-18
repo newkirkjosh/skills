@@ -7,6 +7,8 @@ metadata:
 
 # PR Workflow
 
+**REQUIRED:** load the github skill for how to run each `gh` step (head-commit scoping, bounded CI waits, bodies from files, verifying writes). This skill owns the conventions; github owns the mechanics.
+
 ## When to Use
 
 **Invoke for:**
@@ -25,11 +27,13 @@ e.g., `feat/14-habit-list-screen`
 
 Verify branch name on invocation. If it doesn't match, rename the branch and re-push before creating the PR.
 
-**PR title (becomes the squash merge commit message):**
-`<type>(<layer>): <description> (#<issue-number>)`
-e.g., `feat(android): add habit list screen (#14)`
+**PR title (becomes the squash merge commit subject):**
+`<type>(<layer>): <description>`, imperative, lowercase after the colon, no trailing period
+e.g., `feat(android): add habit list screen`
 
-**PR body:**
+No `#<number>` in the title. On squash merge GitHub appends `(#<PR number>)` itself, and a hand-written `#N` permanently links the commit to whatever issue or PR `N` is. The issue reference goes in the body as `Closes #N`.
+
+**PR body** (one line per paragraph; GitHub reflows markdown, so check it with the github skill's `check-body-wrap.sh`):
 ```markdown
 ## What
 <1-2 sentences from proposal.md scope>
@@ -37,11 +41,13 @@ e.g., `feat(android): add habit list screen (#14)`
 ## Why
 <1 sentence: which job story this closes>
 
-## Changes
-- [ ] <one line per meaningful change>
+## Test plan
+- [ ] <specific, observable check: "open Settings and see the Notifications tab", never "works correctly">
 
 Closes #<sub-issue-number>
 ```
+
+No list of changed files, line counts or commits: GitHub already shows them.
 
 **Review set — scaled to the change** (read the size signal from `scope-brief.md`):
 
@@ -88,7 +94,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 
 Branch: `feat/14-habit-list-screen`
 
-PR title: `feat(android): add habit list and add habit screens (#14)`
+PR title: `feat(android): add habit list and add habit screens`
 
 PR body:
 ```markdown
@@ -98,10 +104,10 @@ Adds the Habit List screen showing all habits and the Add Habit screen.
 ## Why
 Closes the onboarding story: when a user opens the app for the first time, they can add a habit and see it immediately.
 
-## Changes
-- [ ] HabitListScreen composable with empty state
-- [ ] AddHabitScreen composable with a name field
-- [ ] Navigation wired between the two screens
+## Test plan
+- [ ] Fresh install shows the empty state on the Habit List screen
+- [ ] Adding a habit named "Read" returns to the list and shows "Read"
+- [ ] Back from Add Habit returns to the list without adding anything
 
 Closes #14
 ```
