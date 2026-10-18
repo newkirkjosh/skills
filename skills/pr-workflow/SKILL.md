@@ -22,8 +22,8 @@ metadata:
 ## Principles
 
 **Branch naming convention:**
-`<type>/<issue-number>-<short-description>`
-e.g., `feat/14-habit-list-screen`
+`<type>/<short-description>`
+e.g., `feat/habit-list-screen`. The issue is linked from the PR body, not the branch name.
 
 Verify branch name on invocation. If it doesn't match, rename the branch and re-push before creating the PR.
 
@@ -92,7 +92,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 `issues.md` contains `android: 14`.
 `proposal.md` scope: "Adds the Habit List screen and the Add Habit screen."
 
-Branch: `feat/14-habit-list-screen`
+Branch: `feat/habit-list-screen`
 
 PR title: `feat(android): add habit list and add habit screens`
 
