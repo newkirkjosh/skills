@@ -22,7 +22,8 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `architecture-review` | Module boundaries, layer responsibilities and dependency direction |
 | `devils-advocate` | Tiered challenge for high-stakes recommendations |
 | `openspec` | Per-feature OpenSpec change folders (proposal, specs, design, tasks) |
-| `linear-issue` | OpenSpec change → Linear parent issue and layer sub-issues |
+| `linear` | Linear through its MCP server: resolving teams, labels and states, sub-issues, lifecycle moves; OpenSpec change → Linear issues |
+| `github` | GitHub through `gh` and its APIs: head-commit scoping, bounded CI waits, pagination, tokens, visibility. Adapted from [fx/skills](https://github.com/fx/skills) (MIT) |
 | `github-issue` | OpenSpec change → GitHub epic and layer sub-issues |
 | `github-project` | GitHub Projects board setup and issue status |
 | `pr-workflow` | PR creation, review sequence and merge conventions |

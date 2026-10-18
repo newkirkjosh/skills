@@ -35,15 +35,15 @@ metadata:
 |---|---|---|
 | `proposal.md` | `one-pager.md` or `lean-canvas.md` + story group | Derived — no questions needed |
 | `specs/stories.md` | Story group from `job-stories.md` | Pulled verbatim; acceptance criteria derived from story outcomes |
-| `design.md` | `architecture-review` skill output | Written verbatim from inline `architecture-review` invocation output — do not reformat or summarize |
+| `design.md` | `architecture-review` skill output; for a `narrow` change, a short design note | Written verbatim from inline `architecture-review` invocation output — do not reformat or summarize. A `narrow` change (size signal in the Scope Brief) skips `architecture-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
 | `tasks.md` | Derived from `design.md` + story scope | `:shared` first, then `:android`, then `:backend`; omit empty layers |
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `development-workflow` from the evaluator's report at Phase 3 — do not create during Phase 0 |
-| `issues.md` | Written by `linear-issue` | Do not create — leave absent at this stage |
+| `issues.md` | Written by `linear` | Do not create — leave absent at this stage |
 
 **Conversation flow:**
 1. Confirm which story group this change covers
 2. Derive `proposal.md` and `specs/stories.md` from discovery artifacts — no questions needed
-3. Invoke `architecture-review` to produce `design.md`
+3. Invoke `architecture-review` to produce `design.md`, or for a `narrow` change write the short design note yourself
 4. Write `tasks.md` with ordered implementation steps broken by layer
 5. Output the change folder path
 
@@ -121,10 +121,10 @@ Layer names are taken from `tasks.md` headings — not hardcoded to `:shared/:an
 ## Constraints
 
 - When invoked with a Scope Brief (from `development-workflow`), keep `proposal.md` and `tasks.md` inside it: its **Explicitly out of scope** items go in the proposal as non-goals, and its **Also update** items become tasks
-- `design.md` is written verbatim from `architecture-review` output — never reformatted or summarized
+- `design.md` is written verbatim from `architecture-review` output — never reformatted or summarized (a `narrow` change's short design note is the exception)
 - Checkboxes in `tasks.md` and `specs/stories.md` stay unticked: they are the plan, and `sprint-contract.md` is the record of what was verified. Reviewers shouldn't flag unticked boxes
 - The archive move happens in the change's own PR, as its last commit (see `development-workflow` Phase 4), so merging archives it
-- `issues.md` is written by `linear-issue`, not `openspec` — do not create it here
+- `issues.md` is written by `linear`, not `openspec` — do not create it here
 - Archive action is only invoked by `development-workflow` — never self-triggered
 - Change name is kebab-cased with a type prefix: `feat-` (story groups), `fix-` (bugs), `chore-` (non-feature work)
 - Omit empty layer sections from `tasks.md`
@@ -144,7 +144,7 @@ specs/
   stories.md      ← 3 onboarding stories, each with acceptance criteria below
 design.md         ← architecture-review output (verbatim): HabitRepository in :shared, HabitListScreen in :android
 tasks.md          ← :shared tasks + :android tasks (no :backend — this group has no backend work)
-issues.md         ← absent at creation time; written later by linear-issue
+issues.md         ← absent at creation time; written later by linear
 sprint-contract.md  ← absent at creation time; written at Phase 3 from the evaluator's report
 ```
 

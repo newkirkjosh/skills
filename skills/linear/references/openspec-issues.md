@@ -1,13 +1,9 @@
----
-name: linear-issue
-description: "Translates an OpenSpec change folder into a Linear parent issue plus layer-specific sub-issues. Reads proposal.md, specs/stories.md, and tasks.md. Writes issues.md anchor file with created issue identifiers. Idempotent — skips if issues.md already exists. Invoke when a change folder exists but no Linear issues have been created yet. Triggers: \"create issues for feat-X\", \"open issues for feat-X\"."
-metadata:
-  type: flexible
----
+# OpenSpec change → Linear issues
 
-# Linear Issue
+The workflow `development-workflow` runs in its Phase 1 when Linear is the tracker. Read the main `SKILL.md` first for access and rules.
 
-## When to Use
+
+## When to use
 
 **Invoke for:**
 - Translating an OpenSpec change into Linear issues — "create issues for feat-X", "open issues for feat-X"
@@ -22,13 +18,15 @@ metadata:
 
 **Output:** One parent issue + one sub-issue per layer present in `tasks.md`. Only layers with tasks are created — no empty placeholder tickets.
 
-**Issue creation tool:** Use `mcp__plugin_linear_linear__save_issue` for all issue creation.
+**Single layer:** when `tasks.md` has only one layer, create **one** issue, no parent: the layer label plus the type label, the stories and acceptance criteria in its body, and `issues.md` holds just that layer's line. A parent with a single child is bookkeeping with no information in it.
+
+**Tools:** the Linear MCP `save_issue` for issues, `list_issue_labels` and `save_issue_label` for labels.
 
 **Conversation flow:**
 1. Check for `issues.md` in the change folder — if present, output existing identifiers and stop
 2. Read `proposal.md`, `specs/stories.md`, and `tasks.md`
-3. Confirm team and project name with the user (one question, upfront)
-4. Check existing labels via `mcp__plugin_linear_linear__list_issue_labels` — create missing ones via `mcp__plugin_linear_linear__create_issue_label`
+3. Take team and project from the project's `AGENTS.md`. If it names none, ask the user once, then record the answer there so the next run doesn't ask
+4. Check existing labels with `list_issue_labels` for the team; create missing ones with `save_issue_label` (team-scoped, `teamId` = the team UUID)
 5. Create parent issue, then sub-issues referencing it via `parentId`
 6. Write `issues.md` anchor file immediately
 7. Output: parent identifier + sub-issue identifiers per layer
@@ -69,7 +67,7 @@ backend: <identifier>
 ```
 Include only layers that have sub-issues. Written immediately after all issues are created.
 
-**Label creation:** Check with `mcp__plugin_linear_linear__list_issue_labels` first. Create missing labels via `mcp__plugin_linear_linear__create_issue_label`. Do not override labels that already exist.
+**Label creation:** check with `list_issue_labels` first, create missing ones with `save_issue_label`. Do not override labels that already exist.
 
 | Label | Purpose | Suggested color |
 |---|---|---|
