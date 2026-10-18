@@ -55,9 +55,20 @@ Never hand a subagent the whole lifecycle, and never do a delegated job yourself
 
 Read `references/scope-brief.md` before Phase 0. It defines the brief, its fields, and how it travels. Every subagent prompt and every review request in this lifecycle carries the brief verbatim; that is how "just", "only" and the implied neighbouring updates survive past the first handoff.
 
+## Worktrees
+
+**One change, one worktree, for its whole life.** It lives at `.worktrees/<feat-name>` (flat: the change name, not the branch name) and is created before Phase 0 writes anything. Every phase, subagent and command for that change runs from it. The main checkout stays on the default branch and clean, so other changes can start beside it.
+
+- **Parallel work** is one coordinator session per change, each started in its own worktree. A single session juggling several changes runs out of context.
+- **Status** comes from `bash scripts/worktree-status.sh <repo>`. Run it at the start of every invocation and after every merge, and act on its states: `CLEANUP`, run the Phase 6 cleanup; `BEHIND`, merge the default branch in and push; `STALE`, report it to the user and never delete it; `DIRTY`, leave it alone.
+- **Shared resources** that only one run can use at a time (an emulator, a device, a fixed local port) are taken with `flock`, on a lock file in the repository's common git dir, which every worktree shares: `mkdir -p "$(git rev-parse --git-common-dir)/locks"`, then `flock "$(git rev-parse --git-common-dir)/locks/<resource>" <command>`. Hold it for the whole check that needs the resource, and pass the same rule to evaluators.
+- **Builds** in separate worktrees have separate outputs and can run side by side; the lock is only for what they truly share.
+
 ## Entry detection
 
-Checked in order, first match wins. Work proceeds one layer at a time, in `tasks.md` order; "the layer" below is the first layer whose sub-issue in `issues.md` is still open. When several layers map to the **same** issue (a small fix tracked by one issue), treat them as one unit: one branch, one test author/implementer/evaluator pass covering all of them, one PR.
+First find the change. Look for `.worktrees/<feat-name>` in `git worktree list`, then a branch or open PR for it, then `openspec/changes/archive/<feat-name>/` on the default branch. Read the change folder from wherever it is found and continue there; if the worktree is gone but the branch exists, recreate the worktree from the branch. Only when it is found nowhere is it a new change.
+
+Then, checked in order, first match wins. Work proceeds one layer at a time, in `tasks.md` order; "the layer" below is the first layer whose sub-issue in `issues.md` is still open. When several layers map to the **same** issue (a small fix tracked by one issue), treat them as one unit: one branch, one test author/implementer/evaluator pass covering all of them, one PR.
 
 | Existing state | Entry point |
 |---|---|
@@ -74,10 +85,11 @@ Checked in order, first match wins. Work proceeds one layer at a time, in `tasks
 ## Phases
 
 **Phase 0 — Scope Brief and OpenSpec setup**
+0. Create the worktree from the default branch: `git worktree add .worktrees/<feat-name> -b <type>/<feat-name-without-prefix> origin/<default>`, and work from it from here on. Phase 2 renames the branch once the issue number exists.
 1. Build the Scope Brief from the user's own words. Grep for every file the change will touch to fill **Also update**.
-2. Invoke the `openspec` skill, passing the brief and its size signal. A `narrow` change gets a short design note instead of a full `architecture-review` (see `openspec`).
+2. Classify the **Path** (`references/scope-brief.md`). A `spike` leaves the lifecycle here: answer it and stop. Otherwise invoke the `openspec` skill, passing the brief: a `bounded` change gets a short design note, an `architectural` one a full `architecture-review`, and the user approves an architectural design before Phase 1.
 3. Save the brief as `openspec/changes/<feat-name>/scope-brief.md`.
-4. Show the user the **Interpreted scope**, **Also update** and **Explicitly out of scope** fields in a few lines, so a wrong reading is caught now.
+4. Show the user the **Path** with its reason, and the **Interpreted scope**, **Also update** and **Explicitly out of scope** fields, in a few lines, so a wrong reading is caught now.
 
 **Phase 1 — Issue creation**
 Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `issues.md` with the parent identifier and one sub-issue per layer. If the work already has an issue (the user named one, or it was filed earlier), don't create new ones: write `issues.md` mapping each layer to that issue, add it to the board, and comment there if the diagnosis changed.
@@ -88,7 +100,7 @@ Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `
 If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `development-workflow` again for `<feat-name>`", and stop.
 
 Otherwise, for the layer:
-1. Create the branch from the default branch, named per `pr-workflow`: `<type>/<issue-number>-<short-description>`. If the project's `AGENTS.md` has a worktree convention (e.g. `.worktrees/<branch>`), create it as a worktree there and run everything for this layer from it. Move the uncommitted change folder onto the branch and commit it first (`docs(openspec): …`), so the default branch stays clean.
+1. In the change's worktree, rename the branch to the `pr-workflow` name now that the issue exists (`git branch -m <type>/<issue-number>-<short-description>`) and commit the change folder first (`docs(openspec): …`). A later layer of the same change gets its own branch and worktree (`.worktrees/<feat-name>-<layer>`), branched after the previous layer merges.
 2. Spawn the **test author**, unless checks that fail for this exact bug already exist (a broken build, an existing test that fails today). Then skip it, name those checks in the implementer's prompt and in `sprint-contract.md`, and say why.
    Otherwise spawn it. Check its report: every story has a test or a named manual check, and every test fails for the stated reason. Commit the tests (`test(<scope>): …`).
 3. Spawn the **implementer** with the test author's report. Check its report: tests and build clean, every **Also update** item accounted for, nothing outside the brief. Commit (`feat(<scope>): …`). If it reports a wrong test, surface its evidence to the user and stop.
@@ -96,7 +108,8 @@ Otherwise, for the layer:
 
 **Phase 3 — Evaluation**
 1. If the change's evidence only exists on a PR (a CI workflow that triggers on `pull_request`), push and open the PR as a **draft** first, wait for its run, and give the evaluator the PR number as environment. Phase 4 then marks it ready instead of creating it.
-2. Spawn the **evaluator** with only the brief, the change-folder path and the layer. Never pass implementation context: no diff, no summary, no "should pass because".
+2. Export what it evaluates, without history: `bash scripts/eval-export.sh <worktree> HEAD "$(git merge-base origin/<default> HEAD)" <scratch>/eval-<feat-name>-<short-sha>`, to a scratch directory **outside** the repository. It writes `head/` (the change) and `base/` (the default branch it started from), with no `.git`, so commit messages and the diff can't leak.
+   Spawn the **evaluator** with only the brief, the layer, the two export paths and the change folder's path inside `head/`. Never pass implementation context: no diff, no summary, no "should pass because". Delete the export after writing the contract.
 3. Write the layer's section of `sprint-contract.md` from its report (template in the `openspec` skill), checking only PASS items. Commit it with the change folder (`docs(openspec): …`).
 4. On `VERDICT: PASS`, go to Phase 4.
 5. On `VERDICT: FAIL`, run **one** fix pass: GAP items to a fresh test author, then FAIL items (and the new tests) to a fresh implementer, each given only those items. Commit, then spawn a **fresh** evaluator and rewrite the section from its report.
@@ -125,11 +138,13 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 2. Check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`.
 3. If any issue is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop. Don't archive.
 4. If all are closed, confirm the change folder is under `openspec/changes/archive/` (Phase 4 moved it in the PR). Only a change merged before that rule needs a separate archive commit; batch those into one chore PR.
+5. Clean up the worktree `worktree-status.sh` marks `CLEANUP`, each step as its own command: `git worktree remove <absolute worktree path>`, then `git -C <absolute repo path> branch -D <branch>`, then `git push origin --delete <branch>`. The force-delete is needed because a squash merge leaves the branch unmerged in git's eyes; `CLEANUP` already confirmed its PR merged at this exact tip. If a guard hook refuses the delete, report its reason instead of working around it. Re-run `worktree-status.sh` and handle anything now `BEHIND`.
 
 ## Constraints
 
 - All three trigger phrases run entry detection; never jump to a phase based on wording.
-- Entry detection reads the filesystem; never ask the user what phase they're in.
+- Entry detection reads worktrees, branches, PRs and the change folder; never ask the user what phase they're in.
+- One worktree per change. Never start Phase 0 for a change that already has a worktree, branch or PR, and never run a change's phases from the main checkout or another change's worktree.
 - `<feat-name>` is the change folder name exactly: kebab-case with a type prefix (`feat-`, `fix-`, `chore-`; see `openspec`).
 - Every subagent prompt starts with the Scope Brief verbatim. A subagent that reports a brief/job conflict gets an answer from the user, not from you.
 - Test author, implementer and evaluator are separate spawns with no shared context. The evaluator never sees implementation narrative, and a fix pass always ends with a **fresh** evaluator.

@@ -20,6 +20,7 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 - **Deliverable type:** <code | spec | docs | config | mixed>
 - **Explicitly out of scope:** <what must NOT be touched, changed or flagged, each with its reason>
 - **Size signal:** <narrow | normal | open-ended>
+- **Path:** <spike | bounded | architectural>, with one line of why
 - **Known-and-accepted:** <deliberate states a reviewer would otherwise flag>
 ```
 
@@ -40,6 +41,18 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 | `narrow` | "just", "real quick", "only", "small", "quick fix", "one-liner", "don't overthink", "minimal" |
 | `open-ended` | "thoroughly", "comprehensive", "audit", "deep dive", "properly", "refactor", "whatever it takes" |
 | `normal` | anything else |
+
+**Path** is how deep the lifecycle goes, read from the repository rather than the wording. It uses the classification in the `superpowers:brainstorming` skill:
+
+| Path | When | Depth |
+|------|------|-------|
+| `spike` | A feasibility question; the output is an answer, not code you keep | Leave the lifecycle: no change folder, no issues. Answer it, label anything built as throwaway |
+| `bounded` | A well-scoped change to a flow that already exists in the repo: a flag, a small endpoint, a one-file fix | Short design note, one issue, a narrow review set, cheaper models where the role allows |
+| `architectural` | A new project or subsystem, or a change to how components fit together or to interfaces others depend on | `architecture-review` for the design, the user approves it before Phase 1, issues per layer, the full review set |
+
+Say the path out loud with its reason so the user can override it. When in doubt take the heavier path. The path only moves up: complexity found mid-change (a second module, a changed interface, a migration) upgrades it, and you stop and say so. Nothing downgrades mid-change.
+
+Size signal and path are independent. "Just add an endpoint" is `narrow` (no cleanup beyond it) and still `bounded`; "just" never makes a new subsystem `bounded`.
 
 A `narrow` change gets no opportunistic cleanup. Work you notice but were not asked for goes in the final report as a suggestion, never in the diff.
 
