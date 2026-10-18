@@ -8,7 +8,7 @@ metadata:
 
 # GitHub
 
-The mechanics of operating GitHub. Conventions for titles, bodies, branches, labels and merge strategy belong to the workflow skill in charge (pr-workflow, github-issue, github-project) and the project's `AGENTS.md`; this skill says how to carry them out correctly.
+The mechanics of operating GitHub. Conventions for titles, bodies, branches, labels and merge strategy belong to the workflow skill in charge (pr-workflow, github-issue) and the repository's `AGENTS.md`, which also says how its project board is organized; this skill says how to carry them out correctly.
 
 ## Docs first, never a pinned version
 
@@ -46,7 +46,8 @@ Don't write a `gh` or API version into notes, scripts or answers. When a flag is
 ## References
 
 - `references/known-issues.md`: commands that fail in non-obvious ways, with the working form. Read before an unfamiliar operation, and add to it whenever a `gh` call needs correcting.
-- `references/graphql.md`: review threads, PR status, projects, pagination. Read when REST or `gh` subcommands don't cover the data.
+- `references/graphql.md`: review threads, PR status, pagination. Read when REST or `gh` subcommands don't cover the data.
+- `references/projects.md`: adding items to a project board and moving them between columns. Read when a repository's `AGENTS.md` names a project, or the user asks about a board.
 
 ## Gotchas
 

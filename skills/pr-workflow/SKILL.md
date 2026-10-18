@@ -73,7 +73,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 4. Create PR with formatted title and body
 5. Run the review set for this change (table above), in parallel; post each reviewer's findings with `gh pr comment`, then surface them in conversation
 6. Consolidate all findings and present before merge
-7. On merge: invoke `github-project` to move the sub-issue to `Done`
+7. On merge: move the sub-issue on the repository's board as its `AGENTS.md` says (the github skill's projects reference)
 
 ## Constraints
 

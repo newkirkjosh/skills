@@ -25,7 +25,6 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `linear` | Linear through its MCP server: resolving teams, labels and states, sub-issues, lifecycle moves; OpenSpec change → Linear issues |
 | `github` | GitHub through `gh` and its APIs: head-commit scoping, bounded CI waits, pagination, tokens, visibility. Adapted from [fx/skills](https://github.com/fx/skills) (MIT) |
 | `github-issue` | OpenSpec change → GitHub epic and layer sub-issues |
-| `github-project` | GitHub Projects board setup and issue status |
 | `pr-workflow` | PR creation, review sequence and merge conventions |
 | `development-workflow` | Orchestrates approved stories → merged PR → archived change |
 | `shell` | Rules for agent-run shell commands: stop and wait by PID, bounded polls, no prompts, no secrets. Adapted from [fx/skills](https://github.com/fx/skills) (MIT) |
