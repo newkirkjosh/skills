@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for head-status.sh, wait-for-ci.sh and check-body-wrap.sh, against a
+# Tests for head-status.sh and wait-for-ci.sh, against a
 # stub gh that replays canned responses. No network.
 # usage: bash test-scripts.sh   (needs bash and jq)
 set -uo pipefail
@@ -42,7 +42,7 @@ out() { cat "$work/out"; }
 field() { jq -r "$1" "$work/out"; }
 calls() { cat "$STUB/count" 2>/dev/null || echo 0; }
 
-hs="$here/head-status.sh" wfc="$here/wait-for-ci.sh" wrap="$here/check-body-wrap.sh"
+hs="$here/head-status.sh" wfc="$here/wait-for-ci.sh"
 HEAD=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa OLD=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
 gql() {  # $1 rollup-commit-oid $2 rollup-state $3 threads-total
@@ -129,20 +129,6 @@ check "wait: gh errors are reported, not treated as pass" '[ "$(rc)" = 4 ] && gr
 reset; runs 1 "$done_ok"; run "$wfc" "$HEAD" 1 other/repo
 check "wait: passes -R for an explicit repo" 'grep -qx -- -R "$STUB/argv.1" && grep -qx other/repo "$STUB/argv.1"'
 
-# --- check-body-wrap.sh ----------------------------------------------------------
-w() { printf '%b' "$1" | bash "$wrap" > "$work/out" 2>&1; echo $? > "$work/rc"; }
-long=$(printf 'word %.0s' {1..40})
-wrapped='This paragraph was wrapped by hand at about seventy-two columns so\nthat it looks tidy in a terminal but renders ragged once GitHub has\nreflowed it for a narrow window, which is the failure being caught.\n'
-
-w "## Summary\n\n$long\n\n$long\n";            check "wrap: one line per paragraph passes" '[ "$(rc)" = 0 ]'
-w "$wrapped";                                   check "wrap: hard-wrapped prose fails" '[ "$(rc)" = 1 ] && grep -q HARD-WRAPPED "$work/out"'
-w "\`\`\`\n${wrapped}\`\`\`\n$long\n";          check "wrap: fenced code is skipped" '[ "$(rc)" = 0 ]'
-w "\`\`\`\`\n\`\`\`\n${wrapped}\`\`\`\`\n$long\n"; check "wrap: shorter fence inside a longer one stays code" '[ "$(rc)" = 0 ]'
-w "- item one that is long enough to land inside the sixty column band\n  and its continuation line, also long enough to land in the band ok\n$long\n"
-check "wrap: list items and continuations are skipped" '[ "$(rc)" = 0 ]'
-w "| a column that is long enough to land in the sixty column band | b |\n| another row that is long enough to land in the sixty col band | c |\n$long\n"
-check "wrap: table rows are skipped" '[ "$(rc)" = 0 ]'
-w "";                                           check "wrap: empty body passes" '[ "$(rc)" = 0 ] && grep -q "no prose" "$work/out"'
 
 echo
 echo "$pass passed, $fail failed"
