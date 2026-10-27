@@ -90,7 +90,7 @@ Re-run it after adding, renaming or deleting a skill. It links new skills and re
 
 **Change skills in a worktree, not on `main`.** The installed links point at this checkout's `main`, so an edit there changes every running session on its next skill load, mid-task included. Create one with `wt switch --create <type>/<change> --no-cd` (worktrunk), test a changed skill by pointing the session at the worktree copy's path, and merge to `main` to release it.
 
-Don't use `npx skills add` for this catalog: from a local checkout it copies each skill into `~/.agents/skills` and links agents to that copy, so edits in the checkout never reach the installed skills.
+Don't use `npx skills add` for this catalog: it installs copies, not links to the checkout. With `-g` it copies each skill into `~/.agents/skills` and links agents to that copy; without it, it installs into the current project instead. Either way, edits in the checkout never reach the installed skills.
 
 ## Review
 
