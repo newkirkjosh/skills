@@ -1,6 +1,6 @@
 ---
 name: metro-kmp
-description: Process for wiring dependency injection with Metro (dev.zacsweers.metro compiler plugin) in a KMP project. Use when setting up Metro for the first time, declaring a dependency graph, contributing a binding, injecting a ViewModel in Compose, or when the project's CLAUDE.md names Metro as its DI framework.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Reference for wiring dependency injection with Metro (the dev.zacsweers.metro compiler plugin) in a KMP project: first-time setup, declaring a dependency graph, contributing bindings, and injecting ViewModels in Compose."
 metadata:
   type: rigid
 ---

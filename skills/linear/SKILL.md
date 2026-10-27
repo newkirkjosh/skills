@@ -1,6 +1,6 @@
 ---
 name: linear
-description: "Working in Linear through its official MCP server: connecting it, finding current tools and fields from Linear's own docs, resolving teams, projects, labels and workflow states before writing, sub-issues, linking GitHub work, moving issues through the lifecycle, and getting approval before workspace-visible changes. Use for any Linear task — creating or updating issues, projects, labels, comments, cycles or statuses, mirroring a GitHub issue, turning an OpenSpec change into Linear issues, or checking whether work is done — even when the user only says \"file a ticket\", \"track this\" or \"what's on the board\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Reference guidance for working in Linear through its official MCP server: connecting it, finding current tools and fields from Linear's own docs, resolving teams, projects, labels and workflow states before writing, sub-issues, linking GitHub work, moving issues through the lifecycle, and getting approval before workspace-visible changes."
 license: MIT
 ---
 

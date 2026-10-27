@@ -1,6 +1,6 @@
 ---
 name: github-issue
-description: "Translates an OpenSpec change folder into a GitHub parent epic issue plus layer-specific sub-issues. Reads specs/stories.md and tasks.md. Writes issues.md anchor file with created issue numbers. Idempotent — skips if issues.md already exists. Invoke when a change folder exists but no GitHub issues have been created yet. Triggers: \"create issues for feat-X\", \"open issues for feat-X\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Translates an OpenSpec change folder into a GitHub parent epic plus one sub-issue per layer, from specs/stories.md and tasks.md, and writes the issues.md anchor file. Idempotent: skips when issues.md already exists."
 metadata:
   type: flexible
 ---
@@ -11,8 +11,8 @@ metadata:
 
 ## When to Use
 
-**Invoke for:**
-- Translating an OpenSpec change into GitHub issues — "create issues for feat-X", "open issues for feat-X"
+**Explicit use only:** the user names this skill, or `development-workflow` calls it.
+- Translating an OpenSpec change into GitHub issues
 
 **Entry detection:**
 - `issues.md` exists in the change folder → issues already created; output existing numbers and stop

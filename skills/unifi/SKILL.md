@@ -1,6 +1,6 @@
 ---
 name: unifi
-description: "Reading and changing a UniFi network through its APIs: choosing between the official Network API (cloud connector or local key) and the console's own web-UI API, logging in with a view-only local account, keeping credentials off the command line, and getting approval before any change. Use for any task on a UniFi network: listing devices or clients, checking an access point, switch or gateway, Wi-Fi, VLANs, firewall, DNS or vouchers, and diagnosing slow Wi-Fi, video-call lag, dropouts, roaming or a device shown offline — even when the user only says \"the Wi-Fi is slow\" or \"check my network\" and never names UniFi."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Reference guidance for reading and changing a UniFi network through its APIs: choosing between the official Network API (cloud connector or local key) and the console's web-UI API, logging in with a view-only local account, keeping credentials off the command line, diagnosing Wi-Fi and client problems, and getting approval before any change."
 license: MIT
 ---
 

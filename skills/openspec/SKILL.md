@@ -1,6 +1,6 @@
 ---
 name: openspec
-description: "Creates and manages per-feature OpenSpec change folders. Produces proposal, specs/stories, design, and tasks artifacts from product discovery artifacts. Archives completed changes on explicit instruction from development-workflow. Invoke when starting work on a story group or archiving a completed feature. Triggers: \"set up openspec for X\", \"create change folder for X\", \"archive feat-X\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates and manages per-feature OpenSpec change folders: proposal, specs/stories, design and tasks artifacts from product discovery artifacts, and archives a completed change when development-workflow says to."
 metadata:
   type: flexible
 ---
@@ -13,7 +13,7 @@ metadata:
 - Starting work on a story group — "set up openspec for X", "create change folder for X"
 - Archiving a completed feature — "archive feat-X" (only when explicitly instructed by `development-workflow` after all sub-issues are confirmed closed)
 
-**Not auto-triggered** — always an explicit act, never fired without a specific request.
+**Explicit use only** — always an explicit act: the user names this skill, or `development-workflow` calls it.
 
 **Entry detection** — before creating, check `openspec/changes/<feat-name>/` in the project repo:
 

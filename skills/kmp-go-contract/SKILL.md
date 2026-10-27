@@ -1,6 +1,6 @@
 ---
 name: kmp-go-contract
-description: Governs the API contract between a KMP client and a Go backend service. Use when defining new endpoints, changing existing ones, or deciding on transport/serialization conventions between the two stacks.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Governs the API contract between a KMP client and a Go backend: defining or changing endpoints and choosing transport and serialization conventions between the two stacks."
 metadata:
   type: flexible
 ---

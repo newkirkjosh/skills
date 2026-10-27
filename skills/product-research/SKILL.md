@@ -1,6 +1,6 @@
 ---
 name: product-research
-description: Research consumer products and produce a shareable, source-linked comparison page — for a specific product ask ("research the best running shoe from Brooks") or for matching a style/aesthetic from a description, pasted images, or a reference URL ("build an old money look, here's an Instagram page for reference"). Covers apparel, footwear, and gear (running shoes, pants, shirts, polos, snowboarding gear, weight lifting gear, etc.). Use when the user wants product options researched and compared, not when they've already decided what to buy. Not for code, docs, or technical topics — see the "research" skill for that.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Researches consumer products (apparel, footwear, gear) and produces a shareable, source-linked comparison page, either for a specific product ask or for matching a style from a description, images or a reference URL. Not for code, docs or technical topics."
 ---
 
 # Product Research

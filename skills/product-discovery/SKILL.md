@@ -1,6 +1,6 @@
 ---
 name: product-discovery
-description: "Adaptive product discovery pipeline covering viability assessment, lean one-pager, job stories, and user flows. Detects which artifacts already exist and enters at the right phase. Invoke when starting a new project idea, validating whether something is worth building, or structuring a committed idea into buildable form. Triggers: \"start discovery for X\", \"is X worth building\", \"let's do product discovery\", \"define the MVP for X\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Adaptive product discovery pipeline: viability assessment, lean one-pager, job stories and user flows. Detects which artifacts already exist and enters at the right phase."
 metadata:
   type: flexible
 ---
@@ -9,14 +9,14 @@ metadata:
 
 ## When to Use
 
-**Explicit triggers (user invokes):**
+**Invocation.** The user names this skill, for example:
 - "start discovery for X"
 - "let's do product discovery"
 - "is X worth building"
 - "define the MVP for X"
 - "I have an idea for X"
 
-**Not auto-triggered** — discovery is always an intentional act, never fired by Claude without an explicit request.
+**Explicit use only** — discovery is always an intentional act, never started without the user naming it.
 
 **Entry point detection** — Claude checks `~/Developer/docs/plans/<project-name>/` (or the plans directory the global CLAUDE.md names) for existing artifacts before starting:
 
@@ -32,7 +32,7 @@ metadata:
 
 If the project folder does not exist, create it at `~/Developer/docs/plans/<project-name>/` (or the plans directory the global CLAUDE.md names) before Phase 0 begins. Project name is derived from the idea name, kebab-cased (e.g., "Habit Tracker" → `habit-tracker/`).
 
-**Non-triggers:**
+**Not this skill:**
 - Implementing a feature (use `development-workflow`)
 - Reviewing architecture of an existing project (use `architecture-review`)
 - Mid-project scope change (start at the relevant phase directly)
@@ -59,7 +59,7 @@ Research findings are presented as 2-3 bullets per area — no essays.
 **Conversation flow:**
 1. Present research findings
 2. Ask one question at a time to fill gaps Claude couldn't research
-3. Run `devils-advocate` light mode on the go/no-go decision (auto-triggers as a go/no-go call — always, no exceptions)
+3. Run `devils-advocate` light mode on the go/no-go decision (a go/no-go call — always, no exceptions)
 4. State verdict: **Go** / **Go with constraints** / **No-go**
 
 **`viability.md` template:**
@@ -268,7 +268,7 @@ Appended at the end of `user-flows.md` — a flat list of every screen with a on
 
 | Downstream skill | Input from discovery |
 |---|---|
-| `devils-advocate` | Light mode auto-triggers at Phase 0 go/no-go; also auto-triggers in Phases 1–2 if an assumption surfaces that, if wrong, would change the MVP scope or verdict |
+| `devils-advocate` | Light mode runs at Phase 0 go/no-go; also runs in Phases 1–2 if an assumption surfaces that, if wrong, would change the MVP scope or verdict |
 | `architecture-review` | Constraints from `viability.md` + MVP scope from one-pager inform structure decisions |
 | `kmp-go-contract` | Job stories requiring backend calls → contract defined before implementation |
 | `development-workflow` | Story groups from `job-stories.md` → OpenSpec changes → GitHub issues |
@@ -284,7 +284,7 @@ product-discovery
 
 ## Constraints
 
-- `devils-advocate` light mode auto-triggers at go/no-go — always, no exceptions
+- `devils-advocate` light mode runs at go/no-go — always, no exceptions
 - One-pager fields are 1-3 sentences maximum — never exceed this
 - Job stories format is default; traditional user stories only for projects with distinct roles and different permission flows
 - Mermaid diagrams only for branching/multi-entry flows — linear flows always use numbered text

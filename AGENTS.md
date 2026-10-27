@@ -1,6 +1,6 @@
 # newkirkjosh/skills
 
-Conventions for writing and changing skills in this catalog. `CLAUDE.md` only imports this file; never add content there.
+Conventions for writing and changing skills in this catalog. `CLAUDE.md` only imports this file; never add content there. Review rules live in `REVIEW.md`: a rule about writing skills goes here, a rule about reviewing them there.
 
 > **This repository is public.** Read Security and privacy below before every commit.
 
@@ -49,13 +49,33 @@ Flat only. Skills install into one shared directory, and the installed name is t
 - No references to skills or agents that don't exist. Refer to another skill by its bare name.
 - A skill adapted from another catalog keeps that catalog's license notice in the skill folder (`LICENSE.txt`), says so in `license:`, and records the upstream commit under `metadata.upstream` so it can be diffed later.
 
+## Explicit invocation
+
+**Every skill here is explicit-use only.** Its description opens with exactly:
+
+```
+Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it.
+```
+
+A skill may run only when the user names or invokes it (`/development-workflow`, "use the github skill"), or when an already-active, explicitly invoked workflow calls it by name. Never write a description that auto-triggers on task semantics ("GitHub", "the Wi-Fi is slow", "open a PR"): no trigger-phrase lists, no "even when the user only says", no "auto-triggers", `MUST BE USED` or "automatically invoked". Loose descriptions once turned a status question into a full lifecycle run. `scripts/check-descriptions.sh` enforces this in CI.
+
+**A workflow ends at its handoff.** Its rules apply to the request that invoked it and stop at its documented handoff (a merge-ready report, a stop for the user). A later standalone request (a status query, a branch sync, a PR tweak) is handled directly unless the user invokes the workflow again. Say so in the workflow skill itself, since this file isn't loaded at runtime.
+
+Internal delegation stays valid: `development-workflow` calling `openspec`, `linear` or `pr-workflow` is part of its active run, and doesn't authorize those skills to load themselves for unrelated requests.
+
+## Host portability
+
+- **Model tiers, never model names.** Request `small`, `medium` or `large` and let the host resolve it; names change, tiers don't.
+- **Concrete tool syntax is illustrative.** A Claude Code `Agent tool:` block is fine; say once near its first use that it is an example.
+- **No `.claude/` paths** outside prose that is explicitly about Claude Code. Locate the catalog by resolving the skill's own symlink, and machine paths through the global CLAUDE.md.
+
 ## Skill Authoring
 
 Skills follow the open Agent Skills format (https://github.com/agentskills/agentskills, spec at https://agentskills.io/specification, guidance under https://agentskills.io/skill-creation/). Before adding or changing a skill:
 
 - **Earn the skill.** It must carry a decision or niche knowledge an agent would get wrong without it. Ask of every line: "would the agent get this wrong without it?" If not, cut it. Project conventions belong in that project's own instructions, not here.
 - **Start from real work.** Extract the skill from a task that was actually done: the steps that worked, the corrections made, the facts the agent lacked. Do not generate one from general knowledge.
-- **Description.** At most 1024 characters. Says what the skill does and when to use it, phrased as an instruction ("Use when...") about the user's intent, including cases where the user does not name the domain.
+- **Description.** At most 1024 characters. Opens with the explicit-use sentence (see Explicit invocation), then says what the skill does in one or two sentences. No trigger-phrase lists.
 - **Body.** Under 500 lines and about 5,000 tokens. Move reference material into `references/`, scripts into `scripts/`, templates into `assets/`, one level deep, and say when to load each file.
 - **Content.** Give one default, not a menu of options. Be exact where the task is fragile and explain why where it is not. Keep a gotchas section in `SKILL.md` and add to it whenever an agent has to be corrected.
 - **Check it.** Run the validator, then run the skill on a real task and revise once from what happened.
@@ -76,6 +96,7 @@ Before committing:
 
 ```bash
 for d in skills/*/; do agentskills validate "$d"; done
+scripts/check-descriptions.sh   # explicit-use descriptions
 scripts/check-refs.sh   # bundled files and skill references resolve
 scripts/check-private.sh   # no private terms in tracked files
 grep -rn '<renamed-skill>' skills/
