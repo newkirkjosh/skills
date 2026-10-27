@@ -1,6 +1,6 @@
 ---
 name: devils-advocate
-description: Tiered challenge skill that stress-tests recommendations before finalizing them. Auto-triggers on high-stakes decisions (architectural, irreversible, significant investment, go/no-go). Manual heavy mode on explicit phrases like "devil's advocate this" or "challenge this". Runs steel-man → assumption audit → failure scan → verdict.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Tiered challenge that stress-tests a recommendation before it is finalized: a light mode for high-stakes calls (architectural, irreversible, significant investment, go/no-go) and a heavy mode on request, each running steel-man, assumption audit, failure scan and a verdict."
 metadata:
   type: flexible
 ---
@@ -9,14 +9,14 @@ metadata:
 
 ## When to Use
 
-**Auto-trigger (light mode)** before finalizing any recommendation involving:
+**Light mode** runs when the user's instructions (the global CLAUDE.md) or an active workflow call for it, before finalizing any recommendation involving:
 - Architectural decision — module boundaries, tech stack choice, service design
 - Irreversible or hard-to-reverse decision — breaking API change, data model change, dropping a dependency
 - Significant investment — user-stated or estimated >1 day of work; err toward triggering when unknown
 - Go/no-go on an idea — "should I build this", "is this worth it", "which approach"
 - Recommendation grounded in unverified assumptions
 
-**Manual trigger (heavy mode)** on any of these phrases:
+**Heavy mode** runs when the user explicitly asks for it, for example:
 - "devil's advocate this"
 - "challenge this"
 - "stress test this"
@@ -93,7 +93,7 @@ Situation: recommending Ktor be placed in `:shared` module
 
 **Heavy mode — go/no-go decision:**
 
-Trigger phrase: "devil's advocate this — should we build authentication ourselves or use a managed service?"
+Request: "devil's advocate this — should we build authentication ourselves or use a managed service?"
 
 Context snapshot to agent:
 - Decision: build custom JWT auth vs. use a managed auth provider

@@ -1,6 +1,6 @@
 ---
 name: srd-import
-description: Import one monster stat block or spell from the free D&D SRD 5.2.1 PDF into an Obsidian vault as a single linked note, using the bundled extraction script instead of transcribing by hand. Use when a campaign needs a creature or spell that has no note yet, or the user says "import the owlbear", "add Fireball to the reference", "pull the SRD stat block for X", "do we have a note for X", or "/srd-import". Covers Fantasy Statblocks formatting, basename clashes, where shared versus campaign notes go, and what to do when the entry is not in the SRD.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Imports one monster stat block or spell from the free D&D SRD 5.2.1 PDF into an Obsidian vault as a single linked note with the bundled extraction script: Fantasy Statblocks formatting, basename clashes, shared versus campaign placement, and entries missing from the SRD."
 ---
 
 # SRD Import

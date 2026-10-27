@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Stack-agnostic skill for system design decisions, module boundaries, layer responsibilities, dependency direction, and architectural trade-off analysis. Use when the request involves how to structure something, not just what to build.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Stack-agnostic review of system design decisions: module boundaries, layer responsibilities, dependency direction and architectural trade-offs, for questions about how to structure something rather than what to build."
 metadata:
   type: flexible
 ---

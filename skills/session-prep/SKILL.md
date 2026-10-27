@@ -1,6 +1,6 @@
 ---
 name: session-prep
-description: Prepare the next D&D / TTRPG session by filling the Prep half of the session file from the last session log, active threads, the party and (for a DM) the module's chapter notes. Use before a session when the user says "prep the next session", "prep for Wednesday", "what do I need for next session", "build the run sheet", or "/session-prep". Works for campaigns the user runs and campaigns the user plays in, and keeps the two apart so DM knowledge never leaks into player-side notes. Counterpart to session-log.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Prepares the next D&D / TTRPG session by filling the Prep half of the session file from the last session log, active threads, the party and (for a DM) the module's chapter notes, keeping DM knowledge out of player-side notes. Counterpart to session-log."
 ---
 
 # D&D Session Prep

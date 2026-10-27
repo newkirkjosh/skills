@@ -1,6 +1,6 @@
 ---
 name: koin-kmp
-description: "Wiring dependency injection with Koin 4 in a Kotlin Multiplatform project: where definitions and ViewModels live, registering modules at every platform entry point, ViewModels with runtime parameters, and the verify() + resolve tests that catch missing definitions before a screen crashes. Use when adding a Koin module, repository, ViewModel or platform binding, setting Koin up in a KMP app, or debugging NoDefinitionFoundException — and when the project's AGENTS.md names Koin (for Metro projects use metro-kmp)."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Reference for wiring dependency injection with Koin 4 in a Kotlin Multiplatform project: where definitions and ViewModels live, registering modules at every platform entry point, ViewModels with runtime parameters, and the verify() and resolve tests that catch missing definitions before a screen crashes. For Metro projects use metro-kmp."
 metadata:
   type: rigid
 ---

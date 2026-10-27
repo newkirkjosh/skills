@@ -1,6 +1,6 @@
 ---
 name: session-log
-description: "Process raw D&D / TTRPG session notes into structured session files and update campaign supporting documents. Works with any campaign using the standard directory layout (sessions/, npcs/, world/, characters/). Invoke after a session with raw notes in any form — bullets, voice-to-text, chaos — and Claude will clean them into canonical form and update campaign files. Triggers: \"log last session\", \"clean up my session notes\", \"/session-log\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Processes raw D&D / TTRPG session notes in any form into a structured session file and updates the campaign's supporting documents, for campaigns using the standard layout (sessions/, npcs/, world/, characters/)."
 metadata:
   type: flexible
 ---

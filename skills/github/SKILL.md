@@ -1,6 +1,6 @@
 ---
 name: github
-description: "How to drive GitHub through the gh CLI and the REST and GraphQL APIs without the mistakes agents make: finding current commands and fields from the docs instead of memory, scoping CI and reviews to the PR's head commit, bounded CI waits, paginating correctly, keeping tokens off the command line, and checking visibility before anything goes public. Use for any GitHub operation — PRs, checks, workflow runs, reviews and threads, issues, projects, labels, releases, repo settings, tokens — and before another skill's GitHub step, even when the user only says \"is CI green\", \"open a PR\" or \"make the repo public\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Reference guidance for driving GitHub through the gh CLI and the REST and GraphQL APIs without the mistakes agents make: finding current commands and fields from the docs instead of memory, scoping CI and reviews to the PR's head commit, bounded CI waits, correct pagination, keeping tokens off the command line, project boards, and checking visibility before anything goes public."
 license: MIT (adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   upstream: "https://github.com/fx/skills/tree/4b1010d/skills/github"

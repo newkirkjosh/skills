@@ -1,6 +1,6 @@
 ---
 name: pr-workflow
-description: "Creates well-formed PRs with conventional commit titles, structured body, and Closes reference. Enforces branch naming convention and squash merge. Runs a pr-review-toolkit review set scaled to the change's size, in parallel, after PR creation. Reads issues.md for sub-issue numbers — never asks the user. Triggers: \"open a PR for feat-X\", \"create PR for issue #N\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates well-formed PRs: conventional commit title, structured body and Closes reference, branch naming and squash merge, sub-issue numbers read from issues.md, then a pr-review-toolkit review set scaled to the change's size."
 metadata:
   type: flexible
 ---
@@ -11,8 +11,8 @@ metadata:
 
 ## When to Use
 
-**Invoke for:**
-- Opening a PR after implementation is complete — "open a PR for feat-X", "create PR for issue #N"
+**Explicit use only:** the user names this skill, or `development-workflow` calls it.
+- Opening a PR after implementation is complete
 
 **Pre-conditions:**
 - A branch exists for this layer's work

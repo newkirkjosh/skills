@@ -1,6 +1,6 @@
 ---
 name: development-workflow
-description: "Orchestrates the full development arc from approved job stories to merged PR and archived change folder. Detects existing state and enters at the right phase — no repeated ceremony. Sequences scope brief → openspec → linear → test author and implementer subagents → isolated evaluator → pr-workflow → review → archive. Triggers: \"start work on feat-X\", \"what's next for feat-X\", \"open a PR for feat-X\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, openspec, the tracker, test author and implementer subagents, an isolated evaluator, pr-workflow, review and archive."
 license: MIT (Scope Brief adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -11,31 +11,33 @@ metadata:
 
 ## When to Use
 
-**Trigger phrases (all three re-run entry detection from scratch):**
+**Invocation.** The user names this skill with a feat-name, in any wording. These three are equivalent, and all re-run entry detection from scratch:
 - "start work on `<feat-name>`"
 - "what's next for `<feat-name>`"
 - "open a PR for `<feat-name>`"
 
 All three behave identically: entry detection runs first and decides the phase, whatever the wording. "Open a PR for feat-X" does not skip to Phase 4; it may enter Phase 3 if `sprint-contract.md` is absent or has unchecked items.
 
-**Not auto-triggered**: always an explicit invocation with a feat-name.
+**Explicit use only.** Never load this skill for a request that doesn't name it: a status question, a branch sync or a PR tweak on a change is handled directly.
+
+**The workflow ends at its handoff.** Its rules apply to the invocation that started it and stop at the merge-ready report (or the merge, under a Merge policy), or when it stops for the user. A later request in the same session doesn't inherit its orchestration unless the user invokes it again.
 
 ## Roles
 
 You are the **coordinator**. You own the Scope Brief, branches, commits, `sprint-contract.md`, the PR and every handoff to the user. You delegate exactly three jobs, each to its own general-purpose subagent that reads a role file from this skill's `references/` directory:
 
-| Role | File | Writes | Model |
+| Role | File | Writes | Tier |
 |---|---|---|---|
-| Test author | `references/test-author.md` | Failing tests and fakes only | `sonnet` |
-| Implementer | `references/implementer.md` | Production code only | `sonnet` |
-| Evaluator | `references/evaluator.md` | Nothing; reports the contract | `sonnet` |
+| Test author | `references/test-author.md` | Failing tests and fakes only | `medium` |
+| Implementer | `references/implementer.md` | Production code only | `medium` |
+| Evaluator | `references/evaluator.md` | Nothing; reports the contract | `medium` |
 
-Spawn each one like this (Claude Code syntax; `<skill-dir>` is the base directory shown when this skill loaded):
+Spawn each one like this. The syntax is Claude Code's and only illustrative; `<skill-dir>` is the base directory shown when this skill loaded, and `<tier model>` is the host's model for that tier (`small`, `medium` or `large`; on Claude Code currently `haiku`, `sonnet`, `opus`). Never hardcode a model name elsewhere: names change, tiers don't.
 
 ```
 Agent tool:
   subagent_type: "general-purpose"
-  model: "sonnet"
+  model: "<tier model>"
   description: "<role>: <feat-name> <layer>"
   prompt: "Read <skill-dir>/references/<role>.md and act in that role.
 
@@ -49,7 +51,7 @@ Agent tool:
 
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
 
-**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the model to the job: `haiku` for narrow or mechanical evaluations and doc fixes, `sonnet` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Scale the review set to the change (see `pr-workflow`).
+**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Scale the review set to the change (see `pr-workflow`).
 
 ## Scope Brief
 
@@ -143,7 +145,7 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 
 ## Constraints
 
-- All three trigger phrases run entry detection; never jump to a phase based on wording.
+- Every invocation runs entry detection; never jump to a phase based on wording.
 - Entry detection reads worktrees, branches, PRs and the change folder; never ask the user what phase they're in.
 - One worktree per change. Never start Phase 0 for a change that already has a worktree, branch or PR, and never run a change's phases from the main checkout or another change's worktree.
 - `<feat-name>` is the change folder name exactly: kebab-case with a type prefix (`feat-`, `fix-`, `chore-`; see `openspec`).

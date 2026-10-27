@@ -25,6 +25,8 @@ jobs:
             agentskills validate "$dir" || status=1
           done
           exit $status
+      - name: Check descriptions are explicit-use
+        run: bash scripts/check-descriptions.sh
       - name: Check bundled files and skill references resolve
         run: bash scripts/check-refs.sh
       - name: Check scripts parse

@@ -1,63 +1,55 @@
 # skills
 
-Personal agent-skill catalog: development workflow, KMP, research tools, and D&D campaign management. Every skill follows the open [Agent Skills](https://agentskills.io) format, so it installs into Claude Code, Codex and other agents through the [`skills`](https://github.com/vercel-labs/skills) CLI.
+A personal agent-skill catalog: a development lifecycle (discovery → spec → issues → implement → evaluate → PR → merge), the reference skills it leans on, plus KMP, research and D&D tools.
+
+Every skill follows the open [Agent Skills](https://agentskills.io) format.
 
 ## Install
 
 ```bash
-git clone git@github.com:newkirkjosh/skills.git ~/Developer/skills
-~/Developer/skills/scripts/install.sh            # links into ~/.claude/skills
-~/Developer/skills/scripts/install.sh ~/.agents/skills   # optional: Codex and other agents
+git clone https://github.com/newkirkjosh/skills.git
+skills/scripts/install.sh                    # links into ~/.claude/skills
+skills/scripts/install.sh ~/.agents/skills   # Codex and other agents
 ```
 
-Installs are symlinks into the checkout, so `git pull` updates every skill at once. Re-run `install.sh` after a skill is added, renamed or deleted.
+Installs are symlinks into the checkout, so `git pull` updates every skill at once. Re-run `install.sh` after a skill is added, renamed or removed.
 
 ## Skills
 
-### Development workflow
-
 | Skill | Purpose |
 |---|---|
-| `product-discovery` | Viability → one-pager → job stories → user flows |
-| `architecture-review` | Module boundaries, layer responsibilities and dependency direction |
-| `devils-advocate` | Tiered challenge for high-stakes recommendations |
-| `openspec` | Per-feature OpenSpec change folders (proposal, specs, design, tasks) |
-| `linear` | Linear through its MCP server: resolving teams, labels and states, sub-issues, lifecycle moves; OpenSpec change → Linear issues |
-| `github` | GitHub through `gh` and its APIs: head-commit scoping, bounded CI waits, pagination, tokens, visibility. Adapted from [fx/skills](https://github.com/fx/skills) (MIT) |
-| `github-issue` | OpenSpec change → GitHub epic and layer sub-issues |
-| `pr-workflow` | PR creation, review sequence and merge conventions |
-| `development-workflow` | Orchestrates approved stories → merged PR → archived change |
-| `shell` | Rules for agent-run shell commands: stop and wait by PID, bounded polls, no prompts, no secrets. Adapted from [fx/skills](https://github.com/fx/skills) (MIT) |
-| `learn` | Turns a correction into a fix in the file that caused it: skill, project rules, global CLAUDE.md or memory. Adapted from fx/skills (MIT) |
+| `development-workflow` | Runs one change from approved stories to a merged PR and archived change folder. |
+| `product-discovery` | Viability, one-pager, job stories and user flows for a new idea. |
+| `openspec` | Per-feature change folders: proposal, stories, design, tasks. |
+| `architecture-review` | Module boundaries, layer responsibilities and dependency direction. |
+| `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
+| `pr-workflow` | PR title, body, issue link and a review set scaled to the change. |
+| `github-issue` | Turns a change folder into a GitHub epic and sub-issues. |
+| `github` | Reference for `gh` and the GitHub APIs. |
+| `linear` | Reference for Linear through its MCP server. |
+| `shell` | Rules for agent-run shell commands. |
+| `learn` | Turns a correction into a fix in the file that caused it. |
+| `koin-kmp` | Dependency injection with Koin in Kotlin Multiplatform. |
+| `metro-kmp` | Dependency injection with Metro in Kotlin Multiplatform. |
+| `kmp-go-contract` | The API contract between a KMP client and a Go backend. |
+| `unifi` | Reading and changing a UniFi network through its APIs. |
+| `product-research` | A source-linked consumer product comparison page. |
+| `extract-design` | A website's design language as tokens and previews. |
+| `find-skills` | Discover and install agent skills. |
+| `session-log` | Raw TTRPG session notes into a session file and campaign updates. |
+| `session-prep` | Prep for the next TTRPG session. |
+| `srd-import` | One SRD 5.2.1 monster or spell as an Obsidian note. |
 
-### KMP
+## Explicit invocation
 
-| Skill | Purpose |
-|---|---|
-| `metro-kmp` | Dependency injection with Metro |
-| `koin-kmp` | Dependency injection with Koin |
-| `kmp-go-contract` | API contract between a KMP client and a Go backend |
+**Every skill here is explicit-use only.** A skill runs when you name it (`/development-workflow`, "use the github skill") or when a workflow you already invoked calls it. "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
 
-### Tools
-
-| Skill | Purpose |
-|---|---|
-| `product-research` | Source-linked consumer product comparison page |
-| `extract-design` | Extract a website's design language into tokens and previews. From [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract) (MIT) |
-| `find-skills` | Discover and install agent skills. Adapted from [vercel-labs/skills](https://github.com/vercel-labs/skills) (MIT) |
-
-### D&D
-
-| Skill | Purpose |
-|---|---|
-| `session-log` | Raw session notes → structured session file + campaign updates |
-| `session-prep` | Fill the Prep half of the next session file (DM or player side) |
-| `srd-import` | Import one SRD 5.2.1 monster or spell as an Obsidian note |
+That is deliberate: the workflows create branches, spawn agents and open pull requests, and loading one because a request resembled it is worse than not loading it. A workflow's authority ends at its handoff; a later status question is a standalone request.
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md).
+Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Use `learn` to make changes; it edits the right file and leaves the diff for review.
 
 ## License
 
-[MIT](LICENSE). Skills adapted from other catalogs keep their upstream license in their own `LICENSE.txt`.
+[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn` and part of `development-workflow` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).

@@ -1,6 +1,6 @@
 ---
 name: shell
-description: "Rules for agent-run shell commands that agents get wrong: stopping and waiting on processes by PID instead of by pattern, starting background jobs you can stop, bounded readiness polls, visible exit statuses, never blocking on a prompt, and keeping secrets off the command line. Use before running a command that starts a server or other background process, stops or kills a process, waits for something to finish or become ready, runs over ssh, or calls a tool that might prompt — even when the user just says \"restart the dev server\", \"kill that\", or \"wait until it's up\"."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Rules for agent-run shell commands that agents get wrong: stopping and waiting on processes by PID instead of by pattern, background jobs you can stop, bounded readiness polls, visible exit statuses, never blocking on a prompt, and keeping secrets off the command line."
 license: MIT (adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   upstream: "https://github.com/fx/skills/tree/4b1010d/skills/shell"

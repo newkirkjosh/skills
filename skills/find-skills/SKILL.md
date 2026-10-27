@@ -1,6 +1,6 @@
 ---
 name: find-skills
-description: Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Discovers and installs agent skills from the open skills ecosystem when the user is looking for functionality that might exist as an installable skill."
 license: MIT (adapted from vercel-labs/skills by Vercel, Inc.; see LICENSE.txt)
 metadata:
   upstream: "https://github.com/vercel-labs/skills/tree/773fb2c/skills/find-skills"
