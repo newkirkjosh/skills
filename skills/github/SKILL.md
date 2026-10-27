@@ -40,8 +40,7 @@ Don't write a `gh` or API version into notes, scripts or answers. When a flag is
 
 - `bash scripts/head-status.sh <pr> [owner/repo]`: head SHA, check rollup for that commit, reviews on it versus older commits, unresolved thread count, as JSON.
 - `bash scripts/wait-for-ci.sh <sha> [timeout-min] [owner/repo]`: waits for every workflow run on that commit. Exits 0 all passed, 1 any failed, 3 timed out, 4 no run appeared.
-- `bash scripts/check-body-wrap.sh < body.md`: exits 1 when a PR or issue body's prose is hard-wrapped.
-- `bash scripts/test-scripts.sh`: offline tests for all three. Run after changing any of them.
+- `bash scripts/test-scripts.sh`: offline tests for both. Run after changing any of them.
 
 ## References
 

@@ -33,7 +33,7 @@ e.g., `feat(android): add habit list screen`
 
 No `#<number>` in the title. On squash merge GitHub appends `(#<PR number>)` itself, and a hand-written `#N` permanently links the commit to whatever issue or PR `N` is. The issue reference goes in the body as `Closes #N`.
 
-**PR body** (one line per paragraph; GitHub reflows markdown, so check it with the github skill's `check-body-wrap.sh`):
+**PR body** (one line per paragraph, never hard-wrapped: GitHub reflows markdown, so wrapped prose renders ragged):
 ```markdown
 ## What
 <1-2 sentences from proposal.md scope>

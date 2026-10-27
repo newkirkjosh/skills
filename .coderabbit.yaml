@@ -1,0 +1,20 @@
+# CodeRabbit configuration (free on public repositories).
+#
+# REVIEW.md holds this catalog's review rules. CodeRabbit's default
+# code_guidelines patterns cover **/AGENTS.md and **/CLAUDE.md but not
+# **/REVIEW.md, so it is listed explicitly; custom patterns append to the
+# defaults. Patterns are case-sensitive.
+language: en-US
+reviews:
+  profile: chill
+  high_level_summary: false
+  poem: false
+  review_status: false
+  path_instructions:
+    - path: "skills/**/SKILL.md"
+      instructions: "A prompt document an agent reads, not code. Review it as instructions against REVIEW.md."
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "**/REVIEW.md"

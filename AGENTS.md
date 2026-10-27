@@ -35,6 +35,8 @@ skills/<name>/
 
 Flat only. Skills install into one shared directory, and the installed name is the leaf directory name, so category folders would add nesting without namespacing anything.
 
+**Scripts are shell by default.** Glue around `gh`, `git`, `curl` and `jq` is bash: no runtime beyond what the skill already needs, readable from `SKILL.md`, and testable by stubbing commands on `PATH`. Use Python only for real parsing or data handling a shell would turn into an awk pile (`srd-import`'s PDF extraction): standard library only, no `pip install`, run with `python3 -I`. A shell script that starts growing parsing logic moves to Python rather than growing further. Don't add a script for something an agent gets right inline.
+
 ## Naming
 
 - **The directory name is the invocable name**, and the Agent Skills spec requires frontmatter `name` to match it. Keep them identical: lowercase letters, digits and single hyphens, at most 64 characters.
@@ -88,7 +90,11 @@ Re-run it after adding, renaming or deleting a skill. It links new skills and re
 
 **Change skills in a worktree, not on `main`.** The installed links point at this checkout's `main`, so an edit there changes every running session on its next skill load, mid-task included. Create one with `wt switch --create <type>/<change> --no-cd` (worktrunk), test a changed skill by pointing the session at the worktree copy's path, and merge to `main` to release it.
 
-Don't use `npx skills add` for this catalog: installing for a single agent copies the folders instead of linking them, so edits stop reaching the installed copy.
+Don't use `npx skills add` for this catalog: it installs copies, not links to the checkout. With `-g` it copies each skill into `~/.agents/skills` and links agents to that copy; without it, it installs into the current project instead. Either way, edits in the checkout never reach the installed skills.
+
+## Review
+
+CodeRabbit reviews every pull request against `REVIEW.md` (`.coderabbit.yaml`). Settle each of its comments before merging: fix it, or reply with why it doesn't apply and resolve the thread.
 
 ## Testing
 
