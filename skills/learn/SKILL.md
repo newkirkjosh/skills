@@ -65,4 +65,4 @@ Always name the resolved path. A learning applied to the wrong file is worse tha
 
 - A dirty working tree in the target repo: report what is already uncommitted and ask before adding to it, so the diff stays reviewable.
 - A generated global CLAUDE.md: check the dotfiles manager shows no diff for it before editing the source, or you will overwrite a manual change.
-- A correction about subagents (what they were told, what they skipped) usually belongs in the role file under `development-workflow/references/`, not in the coordinator's steps.
+- A correction about subagents (what they were told, what they skipped) usually belongs in the role file under `dev/references/`, not in the coordinator's steps.

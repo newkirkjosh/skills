@@ -18,14 +18,14 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 | Skill | Purpose |
 |---|---|
-| `development-workflow` | Runs one change from approved stories to a merged PR and archived change folder. |
-| `product-discovery` | Viability, one-pager, job stories and user flows for a new idea. |
-| `openspec` | Per-feature change folders: proposal, stories, design, tasks. |
-| `architecture-review` | Module boundaries, layer responsibilities and dependency direction. |
+| `dev` | Runs one change from approved stories to a merged PR and archived change folder. |
+| `discovery` | Viability, one-pager, job stories and user flows for a new idea. |
+| `spec-writer` | Per-feature change folders: proposal, stories, design, tasks. |
+| `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
-| `pr-workflow` | PR title, body, issue link and a review set scaled to the change. |
+| `pr` | PR title, body, issue link and a review set scaled to the change. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
-| `github-issue` | Turns a change folder into a GitHub epic and sub-issues. |
+| `gh-issues` | Turns a change folder into a GitHub epic and sub-issues. |
 | `github` | Reference for `gh` and the GitHub APIs. |
 | `linear` | Reference for Linear through its MCP server. |
 | `shell` | Rules for agent-run shell commands. |
@@ -43,7 +43,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 ## Explicit invocation
 
-**Every skill here is explicit-use only.** A skill runs when you name it (`/development-workflow`, "use the github skill") or when a workflow you already invoked calls it. "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
+**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the github skill") or when a workflow you already invoked calls it. "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
 
 That is deliberate: the workflows create branches, spawn agents and open pull requests, and loading one because a request resembled it is worse than not loading it. A workflow's authority ends at its handoff; a later status question is a standalone request.
 
@@ -53,4 +53,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Use `learn` to make chan
 
 ## License
 
-[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn` and part of `development-workflow` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
+[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn` and part of `dev` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).

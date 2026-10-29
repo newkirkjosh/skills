@@ -48,7 +48,7 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 |------|------|-------|
 | `spike` | A feasibility question; the output is an answer, not code you keep | Leave the lifecycle: no change folder, no issues. Answer it, label anything built as throwaway |
 | `bounded` | A well-scoped change to a flow that already exists in the repo: a flag, a small endpoint, a one-file fix | Short design note, one issue, a narrow review set, cheaper models where the role allows |
-| `architectural` | A new project or subsystem, or a change to how components fit together or to interfaces others depend on | `architecture-review` for the design, the user approves it before Phase 1, issues per layer, the full review set |
+| `architectural` | A new project or subsystem, or a change to how components fit together or to interfaces others depend on | `arch-review` for the design, the user approves it before Phase 1, issues per layer, the full review set |
 
 Say the path out loud with its reason so the user can override it. When in doubt take the heavier path. The path only moves up: complexity found mid-change (a second module, a changed interface, a migration) upgrades it, and you stop and say so. Nothing downgrades mid-change.
 
@@ -61,6 +61,6 @@ A `narrow` change gets no opportunistic cleanup. Work you notice but were not as
 ## Using it
 
 - **Subagents**: paste the brief verbatim at the top of the prompt, above the job. A subagent that finds the brief and its job in conflict stops and reports the conflict instead of picking one.
-- **Reviewers** (`pr-workflow`'s review agents, `/code-review`): pass the brief as an OUT OF SCOPE / IN SCOPE block. Findings about excluded work are recorded and dismissed with the exclusion cited, not fixed.
+- **Reviewers** (`pr`'s review agents, `/code-review`): pass the brief as an OUT OF SCOPE / IN SCOPE block. Findings about excluded work are recorded and dismissed with the exclusion cited, not fixed.
 - **Never use the brief to suppress real defects.** Security, privacy, data-loss and correctness problems in the work that *was* done are always in scope, whatever the brief says.
 - **Resuming a change with no `scope-brief.md`**: reconstruct it from `proposal.md`, `specs/` and the conversation, tell the user you did, and save it.

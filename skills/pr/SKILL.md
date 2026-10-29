@@ -1,17 +1,17 @@
 ---
-name: pr-workflow
+name: pr
 description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates well-formed PRs: conventional commit title, structured body and Closes reference, branch naming and squash merge, sub-issue numbers read from issues.md, then a pr-review-toolkit review set scaled to the change's size."
 metadata:
   type: flexible
 ---
 
-# PR Workflow
+# PR
 
 **REQUIRED:** load the github skill for how to run each `gh` step (head-commit scoping, bounded CI waits, bodies from files, verifying writes). This skill owns the conventions; github owns the mechanics.
 
 ## When to Use
 
-**Explicit use only:** the user names this skill, or `development-workflow` calls it.
+**Explicit use only:** the user names this skill, or `dev` calls it.
 - Opening a PR after implementation is complete
 
 **Pre-conditions:**

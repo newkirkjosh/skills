@@ -1,17 +1,17 @@
 ---
-name: github-issue
+name: gh-issues
 description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Translates an OpenSpec change folder into a GitHub parent epic plus one sub-issue per layer, from specs/stories.md and tasks.md, and writes the issues.md anchor file. Idempotent: skips when issues.md already exists."
 metadata:
   type: flexible
 ---
 
-# GitHub Issue
+# GitHub Issues
 
 **REQUIRED:** load the github skill for how to run each `gh` step (head-commit scoping, bounded CI waits, bodies from files, verifying writes). This skill owns the conventions; github owns the mechanics.
 
 ## When to Use
 
-**Explicit use only:** the user names this skill, or `development-workflow` calls it.
+**Explicit use only:** the user names this skill, or `dev` calls it.
 - Translating an OpenSpec change into GitHub issues
 
 **Entry detection:**
