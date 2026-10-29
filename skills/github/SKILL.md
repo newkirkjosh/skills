@@ -29,6 +29,7 @@ Don't write a `gh` or API version into notes, scripts or answers. When a flag is
 
 - **Scope CI and reviews to the head commit.** A green run or an approval on an older commit says nothing about the code being merged. Get `headRefOid` first, then filter checks, runs and reviews by it. `bash scripts/head-status.sh <pr>` does this in one call.
 - **Wait boundedly, on the commit.** A run list read right after a push often doesn't show the new run yet. Use `bash scripts/wait-for-ci.sh <sha>` (with the host's background mechanism), which waits for runs on that SHA to appear and finish, with a deadline. Never `sleep` in a loop by hand.
+- **One push per CI cycle.** Run the project's local checks before pushing, then push once and wait for the result. Never push to a branch whose run is still in progress: a workflow with `cancel-in-progress` cancels it, and a slow pipeline restarts from zero. When CI fails, fix every failure it reported, recheck locally, and send the fixes as one follow-up push.
 - **Paginate all of it.** With `--paginate`, `--jq` runs once per page, so counts and `length` come out per page. Use `--paginate --slurp` and do the math in `jq` afterwards.
 - **Bodies come from files.** `--body-file` or `-F body=@file`. Inline `--body "$(…)"` with heredocs mangles text and substitutions.
 - **Tokens never touch argv.** `gh` reads `GH_TOKEN` from the environment; fill it from the secret store (`GH_TOKEN="$(<secret read>)" gh api user`). To test a raw token, send the header through `curl -K -` on stdin. A `401` means the token is dead.

@@ -24,6 +24,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `architecture-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
 | `pr-workflow` | PR title, body, issue link and a review set scaled to the change. |
+| `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
 | `github-issue` | Turns a change folder into a GitHub epic and sub-issues. |
 | `github` | Reference for `gh` and the GitHub APIs. |
 | `linear` | Reference for Linear through its MCP server. |

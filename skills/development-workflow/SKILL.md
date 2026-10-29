@@ -70,6 +70,8 @@ Read `references/scope-brief.md` before Phase 0. It defines the brief, its field
 
 First find the change: its branch in `wt list --format=json`, then an open PR for it, then `openspec/changes/archive/<feat-name>/` on the default branch. Read the change folder from wherever it is found and continue there; if the worktree is gone but the branch exists, `wt switch <branch> --no-cd` recreates it. Only when it is found nowhere is it a new change.
 
+If the change folder has a `handoff.md`, read it first: it records where a stopped run left off. Resume from it, and delete it in the commit that gets past the point it describes.
+
 Then, checked in order, first match wins. Work proceeds one layer at a time, in `tasks.md` order; "the layer" below is the first layer whose sub-issue in `issues.md` is still open. When several layers map to the **same** issue (a small fix tracked by one issue), treat them as one unit: one branch, one test author/implementer/evaluator pass covering all of them, one PR.
 
 | Existing state | Entry point |
@@ -113,6 +115,7 @@ Otherwise, for the layer:
 1. If the change's evidence only exists on a PR (a CI workflow that triggers on `pull_request`), push and open the PR as a **draft** first, wait for its run, and give the evaluator the PR number as environment. Phase 4 then marks it ready instead of creating it.
 2. Export what it evaluates, without history: `bash scripts/eval-export.sh <worktree> HEAD "$(git merge-base origin/<default> HEAD)" <scratch>/eval-<feat-name>-<short-sha>`, to a scratch directory **outside** the repository. It writes `head/` (the change) and `base/` (the default branch it started from), with no `.git`, so commit messages and the diff can't leak.
    Spawn the **evaluator** with only the brief, the layer, the two export paths and the change folder's path inside `head/`. Never pass implementation context: no diff, no summary, no "should pass because". Delete the export after writing the contract.
+   **Time budget.** Before spawning, estimate the run from what it must do (the last test run's duration, an emulator boot, a CI wait). If it will likely take more than about 10 minutes, tell the user the estimate and what dominates it, then run the evaluator in the background. The evaluator sends a progress line after each step; if 30 minutes pass with no new line, stop it and every process it started (an emulator, a daemon), delete its export, and write `openspec/changes/<feat-name>/handoff.md`: the layer, the last progress line and its time, what was running, what is already known, and the next command to resume with. Commit it with the change folder, tell the user, and stop. Never restart the same evaluation in the same run.
 3. Write the layer's section of `sprint-contract.md` from its report (template in the `openspec` skill), checking only PASS items. Commit it with the change folder (`docs(openspec): …`).
 4. On `VERDICT: PASS`, go to Phase 4.
 5. On `VERDICT: FAIL`, run **one** fix pass: GAP items to a fresh test author, then FAIL items (and the new tests) to a fresh implementer, each given only those items. Commit, then spawn a **fresh** evaluator and rewrite the section from its report.
