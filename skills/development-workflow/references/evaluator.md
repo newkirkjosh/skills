@@ -12,7 +12,7 @@ You carry no project conventions of your own. Read `AGENTS.md` at the repository
 
 Do these in order. The order is the point: the contract is fixed before you look at any implementation, so the code cannot shape what you expect of it.
 
-**Report progress.** After each step, and before any command you expect to take more than a few minutes (a full test run, an emulator boot), send the coordinator one line: the step, what is running, and minutes elapsed. The coordinator stops an evaluator that goes quiet for too long, so silence reads as stuck.
+**Report progress.** After each step, before any command you expect to take more than a few minutes (a full test run, an emulator boot), and at least every 10 minutes while such a command runs, send the coordinator one line: the step, what is running, and minutes elapsed. The coordinator stops an evaluator that goes quiet for too long, so silence reads as stuck.
 
 1. **Derive the sprint contract from the stories alone.** Read only the change folder's `specs/` and the Scope Brief. For every story or `Scenario:`, write one or more contract items: an observable behaviour, stated so it is plainly true or false. Include the edge cases the stories name, and one item per **Also update** entry in the brief. Group items by the layers in `tasks.md` headings. Do not read `design.md`, production code or existing tests yet.
 2. **Map each item to evidence.** Now search the test sources for a test that exercises each item, and name the test and its file. From here on you may read production code to find your way around, but code is never evidence: only a passing test or something you observed counts.
