@@ -1,13 +1,13 @@
 ---
-name: development-workflow
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, openspec, the tracker, test author and implementer subagents, an isolated evaluator, pr-workflow, review and archive."
+name: dev
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, spec-writer, the tracker, test author and implementer subagents, an isolated evaluator, pr, review and archive."
 license: MIT (Scope Brief adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
   upstream: "https://github.com/fx/skills/tree/4b1010d/skills/dev"
 ---
 
-# Development Workflow
+# Dev
 
 ## When to Use
 
@@ -51,7 +51,7 @@ Agent tool:
 
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
 
-**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Scale the review set to the change (see `pr-workflow`).
+**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Scale the review set to the change (see `pr`).
 
 ## Scope Brief
 
@@ -90,19 +90,19 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 ## Phases
 
 **Phase 0 — Scope Brief and OpenSpec setup**
-0. Create the worktree: `wt switch --create <type>/<short-description> --no-cd` (the `pr-workflow` branch name; no issue number is needed), and work from its path from here on.
+0. Create the worktree: `wt switch --create <type>/<short-description> --no-cd` (the `pr` branch name; no issue number is needed), and work from its path from here on.
 1. Build the Scope Brief from the user's own words. Grep for every file the change will touch to fill **Also update**.
-2. Classify the **Path** (`references/scope-brief.md`). A `spike` leaves the lifecycle here: answer it and stop. Otherwise invoke the `openspec` skill, passing the brief: a `bounded` change gets a short design note, an `architectural` one a full `architecture-review`, and the user approves an architectural design before Phase 1.
+2. Classify the **Path** (`references/scope-brief.md`). A `spike` leaves the lifecycle here: answer it and stop. Otherwise invoke the `spec-writer` skill, passing the brief: a `bounded` change gets a short design note, an `architectural` one a full `arch-review`, and the user approves an architectural design before Phase 1.
 3. Save the brief as `openspec/changes/<feat-name>/scope-brief.md`.
 4. Show the user the **Path** with its reason, and the **Interpreted scope**, **Also update** and **Explicitly out of scope** fields, in a few lines, so a wrong reading is caught now.
 
 **Phase 1 — Issue creation**
 Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `issues.md` with the parent identifier and one sub-issue per layer. If the work already has an issue (the user named one, or it was filed earlier), don't create new ones: write `issues.md` mapping each layer to that issue, add it to the board, and comment there if the diagnosis changed.
 
-*GitHub alternate:* for a GitHub-tracked project, invoke `github-issue` instead, and place the issues on the board the repository's `AGENTS.md` names (the github skill's projects reference). They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
+*GitHub alternate:* for a GitHub-tracked project, invoke `gh-issues` instead, and place the issues on the board the repository's `AGENTS.md` names (the github skill's projects reference). They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
 
 **Phase 2 — Implementation**
-If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `development-workflow` again for `<feat-name>`", and stop.
+If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `dev` again for `<feat-name>`", and stop.
 
 Otherwise, for the layer:
 1. In the change's worktree, commit the change folder first (`docs(openspec): …`). A later layer of the same change gets its own branch and worktree, created after the previous layer merges.
@@ -116,7 +116,7 @@ Otherwise, for the layer:
 2. Export what it evaluates, without history: `bash scripts/eval-export.sh <worktree> HEAD "$(git merge-base origin/<default> HEAD)" <scratch>/eval-<feat-name>-<short-sha>`, to a scratch directory **outside** the repository. It writes `head/` (the change) and `base/` (the default branch it started from), with no `.git`, so commit messages and the diff can't leak.
    Spawn the **evaluator** with only the brief, the layer, the two export paths and the change folder's path inside `head/`. Never pass implementation context: no diff, no summary, no "should pass because". Delete the export after writing the contract.
    **Time budget.** Before spawning, estimate the run from what it must do (the last test run's duration, an emulator boot, a CI wait). If it will likely take more than about 10 minutes, tell the user the estimate and what dominates it, then run the evaluator in the background. The evaluator sends a progress line after each step; if 30 minutes pass with no new line, stop it and write `openspec/changes/<feat-name>/handoff.md`: the layer, the last progress line and its time, what was running, what is already known, and the next command to resume with. Commit it with the change folder, tell the user, and stop. Never restart the same evaluation in the same run.
-3. Write the layer's section of `sprint-contract.md` from its report (template in the `openspec` skill), checking only PASS items. Commit it with the change folder (`docs(openspec): …`).
+3. Write the layer's section of `sprint-contract.md` from its report (template in the `spec-writer` skill), checking only PASS items. Commit it with the change folder (`docs(openspec): …`).
 4. On `VERDICT: PASS`, go to Phase 4.
 5. On `VERDICT: FAIL`, run **one** fix pass: GAP items to a fresh test author, then FAIL items (and the new tests) to a fresh implementer, each given only those items. Commit, then spawn a **fresh** evaluator and rewrite the section from its report.
 6. On `INCOMPLETE`, first check whether you can provide what's missing on this machine (boot an existing emulator AVD headless, start a local daemon or database), keeping its PID per the `shell` skill. Evaluators can message you to change shared environment mid-run (e.g. "stop the backend now"); do it, then reply with what changed. Never hand an evaluator input control of the user's live desktop (`xdotool`, `ydotool`, or a real `DISPLAY`): they may be using it. GUI checks run on an off-screen display instead (e.g. Xvfb; the machine's recipe belongs in the global CLAUDE.md); hand the evaluator that display and nothing else. If so, spawn a **fresh** evaluator and tell it only what's now available. Stop it afterwards.
@@ -124,10 +124,10 @@ Otherwise, for the layer:
 
 **Phase 4 — PR creation**
 Once `sprint-contract.md` is final and review is done, make the archive move the PR's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
-Invoke `pr-workflow`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves as the repository's `AGENTS.md` says (the github skill's projects reference). Output: PR URL.
+Invoke `pr`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves as the repository's `AGENTS.md` says (the github skill's projects reference). Output: PR URL.
 
 **Phase 5 — Review**
-`pr-workflow` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge.
+`pr` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge.
 
 **Merging** is the user's call unless the project's `AGENTS.md` has a **Merge policy** that grants it. With that grant, merge yourself only when every gate holds on the PR's current head, re-checked right before merging (the github skill's `head-status.sh`):
 
@@ -151,7 +151,7 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 - Every invocation runs entry detection; never jump to a phase based on wording.
 - Entry detection reads worktrees, branches, PRs and the change folder; never ask the user what phase they're in.
 - One worktree per change. Never start Phase 0 for a change that already has a worktree, branch or PR, and never run a change's phases from the main checkout or another change's worktree.
-- `<feat-name>` is the change folder name exactly: kebab-case with a type prefix (`feat-`, `fix-`, `chore-`; see `openspec`).
+- `<feat-name>` is the change folder name exactly: kebab-case with a type prefix (`feat-`, `fix-`, `chore-`; see `spec-writer`).
 - Every subagent prompt starts with the Scope Brief verbatim. A subagent that reports a brief/job conflict gets an answer from the user, not from you.
 - Test author, implementer and evaluator are separate spawns with no shared context. The evaluator never sees implementation narrative, and a fix pass always ends with a **fresh** evaluator.
 - Subagents never commit, push or open PRs; the coordinator does, after checking each report.
@@ -176,7 +176,7 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 
 User says: "start work on feat-onboarding, just the empty state for now"
 
-Entry detection: no change folder → Phase 0. The brief quotes the request verbatim, size signal `narrow`, out of scope "populated list and add-habit flow: later story group". `openspec` creates the folder; the brief is saved and its scope shown to the user.
+Entry detection: no change folder → Phase 0. The brief quotes the request verbatim, size signal `narrow`, out of scope "populated list and add-habit flow: later story group". `spec-writer` creates the folder; the brief is saved and its scope shown to the user.
 
 Phase 1: `linear` → parent APP-12, sub-issues APP-13 (`:shared`), APP-14 (`:android`).
 
@@ -184,4 +184,4 @@ Phase 2 (`:shared`): branch `feat/onboarding-empty-state`; test author writes tw
 
 Phase 3: a fresh evaluator derives four contract items from `specs/stories.md`, runs the tests, reports `VERDICT: PASS`. `sprint-contract.md` gets a `:shared` section, all checked.
 
-Phase 4: `pr-workflow` opens the PR and the URL is commented on APP-13. The next invocation picks up `:android`.
+Phase 4: `pr` opens the PR and the URL is commented on APP-13. The next invocation picks up `:android`.

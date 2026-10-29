@@ -59,11 +59,11 @@ Flat only. Skills install into one shared directory, and the installed name is t
 Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it.
 ```
 
-A skill may run only when the user names or invokes it (`/development-workflow`, "use the github skill"), or when an already-active, explicitly invoked workflow calls it by name. Never write a description that auto-triggers on task semantics ("GitHub", "the Wi-Fi is slow", "open a PR"): no trigger-phrase lists, no "even when the user only says", no "auto-triggers", `MUST BE USED` or "automatically invoked". Loose descriptions once turned a status question into a full lifecycle run. `scripts/check-descriptions.sh` enforces this in CI.
+A skill may run only when the user names or invokes it (`/dev`, "use the github skill"), or when an already-active, explicitly invoked workflow calls it by name. Never write a description that auto-triggers on task semantics ("GitHub", "the Wi-Fi is slow", "open a PR"): no trigger-phrase lists, no "even when the user only says", no "auto-triggers", `MUST BE USED` or "automatically invoked". Loose descriptions once turned a status question into a full lifecycle run. `scripts/check-descriptions.sh` enforces this in CI.
 
 **A workflow ends at its handoff.** Its rules apply to the request that invoked it and stop at its documented handoff (a merge-ready report, a stop for the user). A later standalone request (a status query, a branch sync, a PR tweak) is handled directly unless the user invokes the workflow again. Say so in the workflow skill itself, since this file isn't loaded at runtime.
 
-Internal delegation stays valid: `development-workflow` calling `openspec`, `linear` or `pr-workflow` is part of its active run, and doesn't authorize those skills to load themselves for unrelated requests.
+Internal delegation stays valid: `dev` calling `spec-writer`, `linear` or `pr` is part of its active run, and doesn't authorize those skills to load themselves for unrelated requests.
 
 ## Host portability
 

@@ -8,7 +8,7 @@ metadata:
 
 # GitHub
 
-The mechanics of operating GitHub. Conventions for titles, bodies, branches, labels and merge strategy belong to the workflow skill in charge (pr-workflow, github-issue) and the repository's `AGENTS.md`, which also says how its project board is organized; this skill says how to carry them out correctly.
+The mechanics of operating GitHub. Conventions for titles, bodies, branches, labels and merge strategy belong to the workflow skill in charge (`pr`, `gh-issues`) and the repository's `AGENTS.md`, which also says how its project board is organized; this skill says how to carry them out correctly.
 
 ## Docs first, never a pinned version
 

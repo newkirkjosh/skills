@@ -39,7 +39,7 @@ Issues reference teams, projects, labels and states by name, and each of those i
 
 ## References
 
-- `references/openspec-issues.md`: turning an OpenSpec change folder into a parent issue plus one sub-issue per layer, and the `issues.md` anchor. Read when `development-workflow` reaches issue creation with Linear as the tracker.
+- `references/openspec-issues.md`: turning an OpenSpec change folder into a parent issue plus one sub-issue per layer, and the `issues.md` anchor. Read when `dev` reaches issue creation with Linear as the tracker.
 
 ## Gotchas
 

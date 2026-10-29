@@ -1,11 +1,11 @@
 ---
-name: product-discovery
+name: discovery
 description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Adaptive product discovery pipeline: viability assessment, lean one-pager, job stories and user flows. Detects which artifacts already exist and enters at the right phase."
 metadata:
   type: flexible
 ---
 
-# Product Discovery
+# Discovery
 
 ## When to Use
 
@@ -33,8 +33,8 @@ metadata:
 If the project folder does not exist, create it at `~/Developer/docs/plans/<project-name>/` (or the plans directory the global CLAUDE.md names) before Phase 0 begins. Project name is derived from the idea name, kebab-cased (e.g., "Habit Tracker" → `habit-tracker/`).
 
 **Not this skill:**
-- Implementing a feature (use `development-workflow`)
-- Reviewing architecture of an existing project (use `architecture-review`)
+- Implementing a feature (use `dev`)
+- Reviewing architecture of an existing project (use `arch-review`)
 - Mid-project scope change (start at the relevant phase directly)
 
 ## Principles
@@ -269,16 +269,16 @@ Appended at the end of `user-flows.md` — a flat list of every screen with a on
 | Downstream skill | Input from discovery |
 |---|---|
 | `devils-advocate` | Light mode runs at Phase 0 go/no-go; also runs in Phases 1–2 if an assumption surfaces that, if wrong, would change the MVP scope or verdict |
-| `architecture-review` | Constraints from `viability.md` + MVP scope from one-pager inform structure decisions |
+| `arch-review` | Constraints from `viability.md` + MVP scope from one-pager inform structure decisions |
 | `kmp-go-contract` | Job stories requiring backend calls → contract defined before implementation |
-| `development-workflow` | Story groups from `job-stories.md` → OpenSpec changes → GitHub issues |
+| `dev` | Story groups from `job-stories.md` → OpenSpec changes → GitHub issues |
 
 **Full pipeline:**
 ```
-product-discovery
+discovery
   └── viability.md + one-pager.md + job-stories.md + user-flows.md
-        └── development-workflow (per story group)
-              └── architecture-review (how to structure it)
+        └── dev (per story group)
+              └── arch-review (how to structure it)
                     └── kmp-go-contract (per backend call)
 ```
 

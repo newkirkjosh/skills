@@ -1,11 +1,11 @@
 ---
-name: architecture-review
+name: arch-review
 description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Stack-agnostic review of system design decisions: module boundaries, layer responsibilities, dependency direction and architectural trade-offs, for questions about how to structure something rather than what to build."
 metadata:
   type: flexible
 ---
 
-# Architecture Review
+# Arch Review
 
 ## When to Use
 - Request involves how to structure a system, module, or service

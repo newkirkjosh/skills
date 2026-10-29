@@ -1,6 +1,6 @@
 # OpenSpec change → Linear issues
 
-The workflow `development-workflow` runs in its Phase 1 when Linear is the tracker. Read the main `SKILL.md` first for access and rules.
+The workflow `dev` runs in its Phase 1 when Linear is the tracker. Read the main `SKILL.md` first for access and rules.
 
 
 ## When to use
