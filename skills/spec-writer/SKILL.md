@@ -10,7 +10,7 @@ metadata:
 ## When to Use
 
 **Invoke for:**
-- Starting work on a story group — "set up openspec for X", "create change folder for X"
+- Starting work on a story group — "set up spec-writer for X", "create change folder for X"
 - Archiving a completed feature — "archive feat-X" (only when explicitly instructed by `dev` after all sub-issues are confirmed closed)
 
 **Explicit use only** — always an explicit act: the user names this skill, or `dev` calls it.
