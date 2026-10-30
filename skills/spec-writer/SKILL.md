@@ -113,6 +113,8 @@ One section per project layer, in the project's order. Omit layer sections that 
 ## :<layer-name>
 - [ ] [concrete testable assertion derived from acceptance criteria]
 - [ ] [concrete testable assertion]
+
+Cross-review: <reviewer>, <n> pass(es), converged at <short-sha>   ← added by `dev` Phase 4
 ```
 
 Layer names are taken from `tasks.md` headings. One section per layer present in `tasks.md`.

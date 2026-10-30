@@ -70,6 +70,8 @@ Internal delegation stays valid: `dev` calling `spec-writer`, `linear` or `pr` i
 - **Model tiers, never model names.** Request `small`, `medium` or `large` and let the host resolve it; names change, tiers don't.
 - **Concrete tool syntax is illustrative.** A Claude Code `Agent tool:` block is fine; say once near its first use that it is an example.
 - **No `.claude/` paths** outside prose that is explicitly about Claude Code. Locate the catalog by resolving the skill's own symlink, and machine paths through the global CLAUDE.md.
+- **Every skill runs on Claude Code and Codex.** Host differences that change a workflow (how to spawn, wait, and what ending a turn does) live in `dev`'s `references/host-adapters.md`; a skill that delegates points there rather than restating them. A skill that relies on a Claude Code plugin (`pr-review-toolkit`) says what to do on a host without it.
+- **Codex reads `AGENTS.md` only.** Anything a skill needs from a project's `CLAUDE.md` or `REVIEW.md` reaches Codex only through `AGENTS.md`.
 
 ## Skill Authoring
 
@@ -84,7 +86,7 @@ Skills follow the open Agent Skills format (https://github.com/agentskills/agent
 
 ## Install and update
 
-`scripts/install.sh` symlinks every skill into `~/.claude/skills` (pass other directories, such as `~/.agents/skills` for Codex, as arguments). Links point into this checkout, so an edit takes effect on the next skill load: there is no version to bump and nothing to sync.
+`scripts/install.sh` symlinks every skill into `~/.claude/skills` (Claude Code) and `~/.agents/skills` (Codex); pass directories as arguments to link elsewhere instead. Links point into this checkout, so an edit takes effect on the next skill load: there is no version to bump and nothing to sync.
 
 Re-run it after adding, renaming or deleting a skill. It links new skills and removes links into this catalog that no longer resolve; it never touches a real directory or a link to somewhere else. The dotfiles repo runs it on a fresh machine (`run_onchange_after_install-skills.sh.tmpl`).
 
@@ -92,7 +94,9 @@ Re-run it after adding, renaming or deleting a skill. It links new skills and re
 
 Don't use `npx skills add` for this catalog: it installs copies, not links to the checkout. With `-g` it copies each skill into `~/.agents/skills` and links agents to that copy; without it, it installs into the current project instead. Either way, edits in the checkout never reach the installed skills.
 
-## Review
+## Code Review Rules
+
+Read `REVIEW.md` at the repository root and apply it in full as the review rules for this repo. This section exists for Codex, which reads `AGENTS.md` but not `REVIEW.md`.
 
 CodeRabbit reviews every pull request against `REVIEW.md` (`.coderabbit.yaml`). Settle each of its comments before merging: fix it, or reply with why it doesn't apply and resolve the thread.
 
