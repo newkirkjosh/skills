@@ -42,6 +42,7 @@ case "$1 $2" in
         c=$(( $(cat "$STUB/checks.count" 2>/dev/null || echo 0) + 1 )); echo "$c" > "$STUB/checks.count"
         [ -n "${STUB_CHECKS_FAIL:-}" ] && { echo "HTTP 502" >&2; exit 1; }
         f="$STUB/checks.$c.json"; [ -f "$f" ] || f=$(ls "$STUB"/checks.[0-9]*.json | sort -t. -k2 -n | tail -1) ;;
+      */timeline*) f="$STUB/timeline.json"; [ -f "$f" ] || echo '[]' > "$f" ;;
       */issues/*) f="$STUB/comments.json"; [ -f "$f" ] || echo '[]' > "$f" ;;
       */commits/*) f="$STUB/commit.json"; [ -f "$f" ] || echo '{"commit":{"committer":{"date":"2026-01-01T00:00:00Z"}}}' > "$f" ;;
     esac
@@ -179,6 +180,16 @@ check "coderabbit: a rate-limit comment older than the head is ignored" '[ "$(rc
 
 reset; heads 1 "$H1"; checks 1 "$(cr in_progress)"; comment 2026-06-01T00:00:00Z "Walkthrough: tweaks the rate limiter config"; run "$wcr" 7 0 example/repo
 check "coderabbit: an ordinary comment about rate limiters is not RATE_LIMITED" '[ "$(rc)" = 3 ]'
+
+reset; heads 1 "$H1"; checks 1 "$(cr in_progress)"; comment 2026-03-01T00:00:00Z "> Rate limit exceeded."
+echo '[{"event":"head_ref_force_pushed","created_at":"2026-06-01T00:00:00Z"}]' > "$STUB/timeline.json"; run "$wcr" 7 0 example/repo
+check "coderabbit: a rate-limit comment from before a force-push is ignored" '[ "$(rc)" = 3 ]'
+
+reset; heads 1 "$H1"; checks 1 "$(cr in_progress)"
+{ printf '['; printf '{"user":{"login":"coderabbitai[bot]"},"updated_at":"2026-06-01T00:00:00Z","body":"Rate limit exceeded."}'
+  for i in $(seq 1 3000); do printf ',{"user":{"login":"coderabbitai[bot]"},"updated_at":"2026-06-01T00:00:00Z","body":"filler %s"}' "$i"; done; printf ']'; } > "$STUB/comments.json"
+run "$wcr" 7 1 example/repo
+check "coderabbit: a match early in a long comment stream still exits 5" '[ "$(rc)" = 5 ]'
 
 reset; heads 1 "$H1"; heads 2 "$H1"; heads 3 "$H2"; checks 1 "$(cr in_progress)"; run "$wcr" 7 1 example/repo
 check "coderabbit: a push mid-wait exits 6, never a stale PASS" '[ "$(rc)" = 6 ] && out | grep -q "^STATUS=HEAD_MOVED from=$H1 to=$H2"'

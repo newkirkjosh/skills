@@ -25,8 +25,14 @@ interval=${WAIT_INTERVAL:-30} appear_min=${WAIT_APPEAR_MIN:-5}
 head_of() { gh pr view "$pr" -R "$nwo" --json headRefOid -q .headRefOid; }
 head=$(head_of) || { echo "cannot read PR $pr in $nwo" >&2; exit 2; }
 [[ $head =~ ^[0-9a-f]{40}$ ]] || { echo "bad head SHA for PR $pr: $head" >&2; exit 2; }
-# A rate-limit comment counts only if CodeRabbit wrote or updated it after this head was committed.
+# A rate-limit comment counts only if CodeRabbit wrote or updated it after this head
+# became the PR's head: after the commit was made, and after the last force-push
+# (which can make an older commit the head again).
 since=$(gh api "repos/$nwo/commits/$head" --jq .commit.committer.date) || { echo "cannot read commit $head" >&2; exit 2; }
+pushed=$(gh api "repos/$nwo/issues/$pr/timeline" --paginate \
+  --jq '.[] | select(.event == "head_ref_force_pushed") | .created_at' | sort | tail -n 1) \
+  || { echo "cannot read PR $pr timeline" >&2; exit 2; }
+[[ -n $pushed && $pushed > $since ]] && since=$pushed
 deadline=$((SECONDS + timeout_min * 60)) appear_deadline=$((SECONDS + appear_min * 60))
 errors=0
 err=$(mktemp) || exit 2
@@ -53,9 +59,11 @@ while :; do
     echo "gh api check-runs failed: $(cat "$err")" >&2
   fi
 
-  if gh api "repos/$nwo/issues/$pr/comments" --paginate \
-      --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and .updated_at >= \"$since\") | .body" 2> /dev/null \
-      | grep -qiE 'rate limit(ed| exceeded)'; then
+  # Read every page before matching: `grep -q` closing the pipe early would fail the
+  # pipeline under pipefail and hide the match.
+  bodies=$(gh api "repos/$nwo/issues/$pr/comments" --paginate \
+    --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and .updated_at >= \"$since\") | .body" 2> /dev/null) || bodies=""
+  if grep -qiE 'rate limit(ed| exceeded)' <<< "$bodies"; then
     echo "STATUS=RATE_LIMITED sha=$head"; exit 5
   fi
 

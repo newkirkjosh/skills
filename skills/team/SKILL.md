@@ -35,7 +35,7 @@ metadata:
 
 ### 1. Scope
 
-1. Resolve the set of changes. Each needs a change folder (`openspec/changes/<feat-name>/` with `scope-brief.md`), and an `architectural` one also needs the user's approval of its design (`dev` Phase 0). A change without either isn't ready: list it in the report as "needs `dev` Phase 0 first" and leave it out, rather than starting a session that will stop to ask.
+1. Resolve the set of changes. Each needs a change folder (`openspec/changes/<feat-name>/` with `scope-brief.md`, `proposal.md` and `tasks.md`, which step 2 orders by), and an `architectural` one also needs the user's approval of its design (`dev` Phase 0). A change without either isn't ready: list it in the report as "needs `dev` Phase 0 first" and leave it out, rather than starting a session that will stop to ask.
 2. Write the run's brief: the user's request **verbatim**, the changes in scope, and anything they said is out of scope. It goes into every session's prompt beside that change's own `scope-brief.md`.
 3. **Do not ask to confirm a clearly scoped request.** "All approved changes", a list of feat-names or a parent issue is the scope; start. Ask only when the scope is genuinely ambiguous or contradictory.
 
@@ -48,7 +48,7 @@ Build the dependency order from each change's `proposal.md` and `tasks.md` (an e
 For each change that is unblocked, while fewer than three sessions are live:
 
 1. **Open** a tab labelled with the feat-name.
-2. **Start** an agent of this session's own kind (Claude Code or Codex) in it, named `dev-<feat-name>` (lowercase letters, digits and hyphens, at most 32 characters). The cross-model review inside `dev` already brings in the other model.
+2. **Start** an agent of this session's own kind (Claude Code or Codex) in it, named `dev-` plus the feat-name, cut so the whole name is at most 32 characters (lowercase letters, digits and hyphens; add `-2`, `-3` if two cut names collide). Key the ledger by feat-name, not by agent name. The cross-model review inside `dev` already brings in the other model.
 3. **Prompt** it with:
 
    ```
@@ -72,7 +72,7 @@ Run one **Wait** per live session, with a 10-minute timeout, as a long command (
 |---|---|
 | Timed out, still working | Check for progress: new commits (`wt list --format=json`), PR state, and a **Read** of its last 40 lines. Something moved: record it and wait again. Nothing moved for two checks in a row (about 20 minutes): report the session to the user with what it last showed, and keep waiting. |
 | `blocked` | An approval or question dialog. **Read** it. Never answer it yourself: tell the user what it asks and which tab it's in. |
-| `idle` or `done`, ending `TEAM: DONE … merged` | Mark it merged. Start whatever it unblocked (step 3). **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes once its current CI run has finished: never mid-run, since a push cancels or invalidates the run it is waiting on. |
+| `idle` or `done`, ending `TEAM: DONE … merged` | The line is a claim: confirm it with `gh pr view <n> --json state,mergeCommit` (`MERGED`, with a merge commit) before marking it merged. Only then start whatever it unblocked (step 3). **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes once its current CI run has finished: never mid-run, since a push cancels or invalidates the run it is waiting on. |
 | `idle` or `done`, ending `TEAM: DONE … merge-ready` or `TEAM: BLOCKED` | Record it for the report. Changes that depend on it stay unstarted. |
 | `idle` or `done` with no `TEAM:` line | It stopped without finishing. **Prompt** it once: "Continue the dev run for <feat-name>. If you are stopped, end with the TEAM line that says why." If it goes idle again without one, record it as stalled and report it. |
 
