@@ -8,7 +8,7 @@ Read this before the first spawn when the coordinator runs on a host other than 
 |---|---|---|
 | Delegate | `Agent` tool: `subagent_type`, `model` (tier), `prompt`, `run_in_background` | `spawn_agent`: `task_name`, `message`, `fork_turns: "none"`, `model`, `reasoning_effort` |
 | Give the delegate its role | The prompt names the role file by absolute path | Same; there is no `Skill` tool, the child reads the file |
-| Wait for a delegate | Its completion notification wakes you; never poll | `wait_agent` with `timeout_ms` in minutes, **before your turn ends** |
+| Wait for a delegate | Its completion notification wakes you; never poll | `wait_agent` with a `timeout_ms` (milliseconds) worth several minutes, e.g. `600000`, **before your turn ends** |
 | Correct a running delegate | `SendMessage` | `send_message`, or `followup_task` to make it act |
 | Run a long command | `Bash` with `run_in_background: true` into a log; read it on the notification | `exec_command` yields after at most 30 s; hand the command to a small-tier child that runs it and reports its `STATUS=` line, and `wait_agent` on that child |
 | Cross-model reviewer (Phase 4) | `codex` | `claude` |
@@ -25,4 +25,4 @@ Read this before the first spawn when the coordinator runs on a host other than 
 - **`task_name` takes only lowercase letters, digits and underscores.** `test-author-ui` is rejected; write `test_author_ui`.
 - **Delegation must be asked for in words.** Codex suppresses sub-agents unless the instructions explicitly ask for sub-agents or delegation, so when running `dev` under Codex, spawn sub-agents for the three roles as written; a child that should fan out must be told to in its `message`.
 - **One shared working directory, no isolation flag.** Every child runs in the same filesystem. `dev` already runs each change in its own worktree; pass that absolute path in every `message` and tell the child to `cd` there on every command.
-- **`claude -p` needs the network.** Under a sandbox that blocks it, the Phase 4 cross-review fails with a connection error, not a review. Run `cross-review.sh` with the host's escalated permission rather than skipping the review.
+- **`claude -p` needs the network.** Under a sandbox that blocks it, the Phase 4 cross-review fails with a connection error, not a review. Before escalating, confirm the worktree holds no secrets: the script sends the diff and the Scope Brief to the other model, which can read any file in the worktree. Then run `cross-review.sh` with the host's escalated permission rather than skipping the review.
