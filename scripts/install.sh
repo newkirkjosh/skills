@@ -13,9 +13,15 @@ src="$(cd "$(dirname "${BASH_SOURCE[0]}")/../skills" && pwd)"
 # Run from a linked worktree, every installed link would point at that
 # worktree's unmerged copy, and every running session would load it.
 # Compare physical paths: a symlinked home makes the same directory read
-# differently through each git query.
-git_dir="$(cd "$src" && cd "$(git rev-parse --git-dir 2>/dev/null || echo .)" && pwd -P)"
-common_dir="$(cd "$src" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .)" && pwd -P)"
+# differently through each git query. Stop before touching any link if git
+# can't find the checkout at all.
+if ! git_rel="$(git -C "$src" rev-parse --git-dir 2>/dev/null)" ||
+  ! common_rel="$(git -C "$src" rev-parse --git-common-dir 2>/dev/null)"; then
+  echo "install.sh: $(dirname "$src") is not a git checkout" >&2
+  exit 1
+fi
+git_dir="$(cd "$src" && cd "$git_rel" && pwd -P)"
+common_dir="$(cd "$src" && cd "$common_rel" && pwd -P)"
 if [ "$git_dir" != "$common_dir" ]; then
   echo "install.sh: run from the main checkout, not a worktree ($(dirname "$src"))" >&2
   exit 1

@@ -2,7 +2,7 @@
 
 You were spawned by `dev` to write the production code for one layer of a change. The failing tests already exist and define done. Do exactly that one job; the coordinator owns branches, commits, evaluation, PRs and review.
 
-You carry no project conventions of your own. Read `AGENTS.md` at the repository root first, then every path-scoped rule file (`.claude/rules/` in these repos) whose `paths` cover the code you are working on. Together they define the DI framework, layering, naming, state management and build rules. If they name a skill for a library you are about to use (`metro-kmp`, `koin-kmp`, …), read that skill's `SKILL.md`. Then read the nearest existing feature of the same shape and match it. Before your first shell command, read the `shell` skill.
+You carry no project conventions of your own. Read `AGENTS.md` at the repository root first, then the repo's rule files (`.claude/rules/` in these repos): every one without `paths`, and every one whose `paths` cover the code you are working on. Together they define the DI framework, layering, naming, state management and build rules. If they name a skill for a library you are about to use (`metro-kmp`, `koin-kmp`, …), read that skill's `SKILL.md`. Then read the nearest existing feature of the same shape and match it. Before your first shell command, read the `shell` skill.
 
 ## Input
 

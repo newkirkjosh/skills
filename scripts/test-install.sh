@@ -38,5 +38,15 @@ if ! bash "$tmp/catalog-link/scripts/install.sh" "$tmp/target-link" >/dev/null 2
   echo "FAIL: install.sh refused the main checkout reached through a symlink"; fail=1
 fi
 
+# Outside any git checkout: refuses, links nothing.
+mkdir -p "$tmp/plain/scripts" "$tmp/plain/skills/alpha"
+cp "$here/install.sh" "$tmp/plain/scripts/"
+if GIT_CEILING_DIRECTORIES="$tmp" bash "$tmp/plain/scripts/install.sh" "$tmp/target-plain" 2>/dev/null; then
+  echo "FAIL: install.sh succeeded outside a git checkout"; fail=1
+fi
+if [ -e "$tmp/target-plain/alpha" ]; then
+  echo "FAIL: install.sh linked a skill outside a git checkout"; fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "install: ok"
 exit "$fail"

@@ -15,7 +15,7 @@ The candidate head is the commit you intend to merge. Everything that can still 
 3. Run any verification that doesn't need a PR (the app, the test plan).
 4. Push once. Record that SHA as the candidate head.
 5. Open or update the PR. Hosted reviewers (CodeRabbit and the like) start on the push.
-6. When they report, settle every finding in one round (`resolve-pr-feedback`). A fix push makes a new candidate head: go back to step 5 for the delta only.
+6. When they report, settle every finding in one round (`resolve-pr-feedback`). A fix push makes a new candidate head: go back to step 5 for the delta and what it affects (§ Evidence is SHA-scoped).
 7. Once hosted review has nothing blocking, wait for CI on the current candidate head.
 8. Check the merge gates against that same SHA, then merge with `--match-head-commit <sha>`.
 
@@ -32,7 +32,7 @@ Every review result and every CI result is about exactly one commit. Note the SH
 When the head changes:
 
 - Waits for the old SHA are superseded. Stop them; never read their verdict, pass or fail, as the new head's.
-- Review results for the old SHA still hold for code that didn't change. Re-review only the delta. CodeRabbit re-reviews every push on its own; a reviewer that doesn't must be re-run explicitly, or the new commits ship unreviewed by it.
+- Review results for the old SHA still hold only for code the delta can't affect. Re-review the delta plus whatever depends on it: callers of a changed function or interface, consumers of a changed config, dependency or generated file. When you can't tell what it affects, re-review the whole change. CodeRabbit re-reviews every push on its own; a reviewer that doesn't must be re-run explicitly, or the new commits ship unreviewed by it.
 - A verdict whose SHA you can't confirm is not a pass.
 
 ## Batch findings: one fix pass per push

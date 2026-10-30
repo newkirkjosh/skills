@@ -22,9 +22,12 @@ One round of hosted review feedback on one PR, then return. **REQUIRED:** load t
    - The bot's severity labels (`Nitpick`, `Trivial`, `Minor`, `Major`) are inputs, not verdicts. A security, privacy, data-loss, correctness or project-rule defect blocks whatever it's labelled.
    - With a Scope Brief, a finding about excluded work is `out of scope`: dismiss it citing the exclusion, never fix it.
 4. **Fix the blocking set once.** Fix every blocking finding in one pass, run the local checks, then one commit and one push (`ship`'s head-discipline, Batch findings). Under `dev`, hand the set to the coordinator instead; it owns the one fix push. A committable suggestion or an AI-agent prompt in the comment is a starting point, not a patch: verify it against the tree first, since one applied as written has introduced the bug it reported.
-5. **Settle every thread.** Reply with the disposition (fixed in `<sha>`, immaterial and why, out of scope citing the brief, or the false-premise evidence), then resolve it. Replying and resolving are visible to others: confirm with the user first unless they asked for exactly this or a running workflow's merge policy covers it.
-6. **Re-count.** Re-run the paginated query and confirm every thread you settled shows `isResolved`. A clean count covers only the bots you triaged; say which.
-7. **Report and return:** the head SHA triaged, the fix commit if any, each finding's disposition, the threads resolved, and what comes next (the bot reviews the fix push, then CI). Don't wait for that review here; that's the caller's next step.
+5. **Settle every finding**, only once its fix is pushed. A blocking finding is settled with the commit that fixes it; under `dev`, settle the threads you handed off only after the coordinator reports its fix push, citing that SHA. Never resolve a blocking thread before its fix is on the branch.
+   - **Threads:** reply with the disposition (fixed in `<sha>`, immaterial and why, out of scope citing the brief, or the false-premise evidence), then resolve it.
+   - **Body-only findings** (no thread to resolve): post one PR comment listing each with its disposition and, if fixed, the commit. A body-only blocking finding counts as open, and blocks the merge, until that comment cites its fix.
+   - Replying, resolving and commenting are visible to others: confirm with the user first unless they asked for exactly this or a running workflow's merge policy covers it.
+6. **Re-count.** Re-run the paginated query and confirm every thread you settled shows `isResolved`, and that the PR comment covers every body-only finding. A clean count covers only the bots you triaged; say which.
+7. **Report and return:** the head SHA triaged, the fix commit if any, each finding's disposition (threads and body-only), what was resolved, and what comes next (the bot reviews the fix push, then CI). Don't wait for that review here; that's the caller's next step.
 
 ## Gotchas
 

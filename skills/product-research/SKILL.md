@@ -102,7 +102,10 @@ This gives the user a chance to correct scope before agents run.
 
 Each delegate is a general-purpose agent running in the background (on
 Claude Code, `Agent` with `subagent_type: general-purpose` and
-`run_in_background: true`; that syntax is only an example). Give each
+`run_in_background: true`; that syntax is only an example). On a host
+without background delegation, run the same lookups yourself in this
+session, one item type at a time, with the same prompt as your brief;
+the steps after this one don't change. Give each
 agent this prompt shape (fill in the bracketed values):
 
 ```
