@@ -50,7 +50,7 @@ Agent tool:
             environment it needs (see Phase 3)>"
 ```
 
-**On any host other than Claude Code**, read `references/host-adapters.md` before the first spawn: on Codex, ending your turn kills running subagents, and a spawn without `fork_turns: "none"` can't take a tier.
+**On any host other than Claude Code, and in a headless session on any host** (nothing can answer or wake you mid-run, as in `claude -p` or `codex exec`), read `references/host-adapters.md` before the first spawn. On Codex, ending your turn kills running subagents, and a spawn without `fork_turns: "none"` can't take a tier. In a headless session its foreground rules override every "run in the background" instruction in this skill.
 
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
 

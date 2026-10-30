@@ -24,6 +24,8 @@ The loop from "the work is done" to "merged and tracked", for a change that is n
 
 ## Gotchas
 
+- **Headless runs wait in the foreground.** When nothing can wake you mid-run (`claude -p`, `codex exec`, a scheduled job), a backgrounded waiter's result never arrives: follow the headless rules in `dev`'s host adapters reference instead of step 4's background waits, and never end the turn while one is outstanding.
+
 - Each extra push to a branch with `cancel-in-progress` CI throws away the running pipeline. Pushing a "quick fix" while CI runs has cost whole slow runs; local checks first, then one push.
 - A green run on an earlier commit says nothing about the head. Re-check right before merging; `--match-head-commit` makes the merge fail if a push slipped in.
 - Merge commits and rebase merges are never used; squash only.
