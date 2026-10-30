@@ -140,7 +140,7 @@ Once `sprint-contract.md` is final and review is done, make the archive move the
 Invoke `pr`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves as the repository's `AGENTS.md` says (the github skill's projects reference). Output: PR URL.
 
 **Phase 5 — Review**
-`pr` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge.
+`pr` runs the review sequence; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Wait for the hosted checks with the github skill's `wait-for-ci.sh <head-sha>` and, where the repository uses CodeRabbit, `wait-for-coderabbit.sh <pr>`, both as long commands; never a hand-written polling loop. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge.
 
 **Merging** is the user's call unless the project's `AGENTS.md` has a **Merge policy** that grants it. With that grant, merge yourself only when every gate holds on the PR's current head, re-checked right before merging (the github skill's `head-status.sh`):
 

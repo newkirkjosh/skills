@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for head-status.sh and wait-for-ci.sh, against a
+# Tests for head-status.sh, wait-for-ci.sh and wait-for-coderabbit.sh, against a
 # stub gh that replays canned responses. No network.
 # usage: bash test-scripts.sh   (needs bash and jq)
 set -uo pipefail
@@ -30,6 +30,15 @@ case "$1 $2" in
     f="$STUB/runs.$r.json"; [ -f "$f" ] || f=$(ls "$STUB"/runs.[0-9]*.json | sort -t. -k2 -n | tail -1)
     [ -n "${STUB_RUN_FAIL:-}" ] && { echo "HTTP 502" >&2; exit 1; }
     cat "$f" ;;
+  "pr view")
+    h=$(( $(cat "$STUB/head.count" 2>/dev/null || echo 0) + 1 )); echo "$h" > "$STUB/head.count"
+    f="$STUB/head.$h"; [ -f "$f" ] || f=$(ls "$STUB"/head.[0-9]* | sort -t. -k2 -n | tail -1)
+    cat "$f" ;;
+  "pr checks")
+    c=$(( $(cat "$STUB/checks.count" 2>/dev/null || echo 0) + 1 )); echo "$c" > "$STUB/checks.count"
+    f="$STUB/checks.$c.json"; [ -f "$f" ] || f=$(ls "$STUB"/checks.[0-9]*.json | sort -t. -k2 -n | tail -1)
+    cat "$f"; exit "${STUB_CHECKS_RC:-0}" ;;
+  "api repos/"*) cat "$STUB/comments.txt" 2>/dev/null ;;
   *) echo "unexpected gh call: $*" >&2; exit 99 ;;
 esac
 EOF
@@ -128,6 +137,35 @@ check "wait: gh errors are reported, not treated as pass" '[ "$(rc)" = 4 ] && gr
 
 reset; runs 1 "$done_ok"; run "$wfc" "$HEAD" 1 other/repo
 check "wait: passes -R for an explicit repo" 'grep -qx -- -R "$STUB/argv.1" && grep -qx other/repo "$STUB/argv.1"'
+
+# --- wait-for-coderabbit.sh ---------------------------------------------------
+wcr="$here/wait-for-coderabbit.sh"
+H1=1111111111111111111111111111111111111111 H2=2222222222222222222222222222222222222222
+heads()  { echo "$2" > "$STUB/head.$1"; }
+checks() { echo "$2" > "$STUB/checks.$1.json"; }
+cr() { echo "[{\"name\":\"validate\",\"bucket\":\"pass\"},{\"name\":\"CodeRabbit\",\"bucket\":\"$1\"}]"; }
+export WAIT_INTERVAL=0
+
+reset; run "$wcr" abc
+check "coderabbit: non-numeric PR exits 2" '[ "$(rc)" = 2 ]'
+
+reset; heads 1 "$H1"; checks 1 "$(cr pending)"; checks 2 "$(cr pass)"; STUB_CHECKS_RC=8 run "$wcr" 7 1 example/repo
+check "coderabbit: waits through pending, then PASS" '[ "$(rc)" = 0 ] && out | grep -q "^STATUS=PASS sha=$H1"'
+
+reset; heads 1 "$H1"; checks 1 "$(cr fail)"; run "$wcr" 7 1 example/repo
+check "coderabbit: a failed check exits 1" '[ "$(rc)" = 1 ] && out | grep -q "^STATUS=FAIL"'
+
+reset; heads 1 "$H1"; checks 1 '[{"name":"validate","bucket":"pass"}]'; WAIT_APPEAR_MIN=0 run "$wcr" 7 1 example/repo
+check "coderabbit: no check is NOT_CONFIGURED (4)" '[ "$(rc)" = 4 ] && out | grep -q "^STATUS=NOT_CONFIGURED"'
+
+reset; heads 1 "$H1"; checks 1 "$(cr pending)"; echo "> Rate limit exceeded. Please wait 12 minutes." > "$STUB/comments.txt"; run "$wcr" 7 1 example/repo
+check "coderabbit: a rate-limit comment exits 5" '[ "$(rc)" = 5 ] && out | grep -q "^STATUS=RATE_LIMITED"'
+
+reset; heads 1 "$H1"; checks 1 "$(cr pending)"; echo "Walkthrough: tweaks the rate limiter config" > "$STUB/comments.txt"; run "$wcr" 7 0 example/repo
+check "coderabbit: an ordinary comment about rate limiters is not RATE_LIMITED" '[ "$(rc)" = 3 ] && out | grep -q "^STATUS=TIMEOUT bucket=pending"'
+
+reset; heads 1 "$H1"; heads 2 "$H1"; heads 3 "$H2"; checks 1 "$(cr pending)"; run "$wcr" 7 1 example/repo
+check "coderabbit: a push mid-wait exits 6, never a stale PASS" '[ "$(rc)" = 6 ] && out | grep -q "^STATUS=HEAD_MOVED from=$H1 to=$H2"'
 
 
 echo

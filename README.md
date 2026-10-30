@@ -19,6 +19,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | Skill | Purpose |
 |---|---|
 | `dev` | Runs one change from approved stories to a merged PR and archived change folder. |
+| `team` | Runs `dev` for several approved changes at once, one terminal session each, in dependency order. |
 | `discovery` | Viability, one-pager, job stories and user flows for a new idea. |
 | `spec-writer` | Per-feature change folders: proposal, stories, design, tasks. |
 | `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
@@ -53,4 +54,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Use `learn` to make chan
 
 ## License
 
-[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn` and part of `dev` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
+[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn`, part of `dev` and the idea behind `team` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
