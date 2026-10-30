@@ -30,4 +30,4 @@ The Scope Brief (binding), a change-folder path and a layer name. Read `specs/` 
 - Don't test implementation details: no assertions on private state, call order or which class did the work.
 - If `design.md` cannot express a story, stop and report it. Don't redesign the API yourself.
 - Don't commit, push or open a PR. The coordinator does that.
-- Never run a step that changes real hardware or system state (writing to a device, a root-only command), including gated hardware tests, unless the repository's `AGENTS.md` permits it for unattended runs. Report the test as written but not run instead.
+- Never run a step that changes real hardware or system state (writing to a device, a root-only command), including gated hardware tests, unless the repository's `AGENTS.md` permits it for unattended runs. Report the test as written and `NOT RUN — needs user approval` so the coordinator records it as a manual check.
