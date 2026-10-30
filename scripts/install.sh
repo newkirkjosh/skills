@@ -9,6 +9,18 @@
 set -euo pipefail
 
 src="$(cd "$(dirname "${BASH_SOURCE[0]}")/../skills" && pwd)"
+
+# Run from a linked worktree, every installed link would point at that
+# worktree's unmerged copy, and every running session would load it.
+# Compare physical paths: a symlinked home makes the same directory read
+# differently through each git query.
+git_dir="$(cd "$src" && cd "$(git rev-parse --git-dir 2>/dev/null || echo .)" && pwd -P)"
+common_dir="$(cd "$src" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .)" && pwd -P)"
+if [ "$git_dir" != "$common_dir" ]; then
+  echo "install.sh: run from the main checkout, not a worktree ($(dirname "$src"))" >&2
+  exit 1
+fi
+
 targets=("$@")
 [ ${#targets[@]} -gt 0 ] || targets=("$HOME/.claude/skills")
 
