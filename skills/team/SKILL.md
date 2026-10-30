@@ -72,7 +72,7 @@ Run one **Wait** per live session, with a 10-minute timeout, as a long command (
 |---|---|
 | Timed out, still working | Check for progress: new commits (`wt list --format=json`), PR state, and a **Read** of its last 40 lines. Something moved: record it and wait again. Nothing moved for two checks in a row (about 20 minutes): report the session to the user with what it last showed, and keep waiting. |
 | `blocked` | An approval or question dialog. **Read** it. Never answer it yourself: tell the user what it asks and which tab it's in. |
-| `idle` or `done`, ending `TEAM: DONE … merged` | Mark it merged. Start whatever it unblocked (step 3). **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes. |
+| `idle` or `done`, ending `TEAM: DONE … merged` | Mark it merged. Start whatever it unblocked (step 3). **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes once its current CI run has finished: never mid-run, since a push cancels or invalidates the run it is waiting on. |
 | `idle` or `done`, ending `TEAM: DONE … merge-ready` or `TEAM: BLOCKED` | Record it for the report. Changes that depend on it stay unstarted. |
 | `idle` or `done` with no `TEAM:` line | It stopped without finishing. **Prompt** it once: "Continue the dev run for <feat-name>. If you are stopped, end with the TEAM line that says why." If it goes idle again without one, record it as stalled and report it. |
 
