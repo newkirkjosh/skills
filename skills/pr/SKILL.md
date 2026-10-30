@@ -57,7 +57,7 @@ No list of changed files, line counts or commits: GitHub already shows them.
 | `normal` code | `silent-failure-hunter`, `code-reviewer`, `pr-test-analyzer` |
 | Significant docs added (docstrings, READMEs) | also `comment-analyzer` |
 
-These agents come from the `pr-review-toolkit` plugin, which only Claude Code has. On a host without it (Codex), the review set is `dev`'s Phase 4 cross-model review, which already ran before the PR: post its final pass as the PR comment instead, and don't re-create the toolkit agents by hand.
+These agents come from the `pr-review-toolkit` plugin, which only Claude Code has. On a host without it (Codex), the review set is a cross-model review instead: under `dev`, post the final pass of its Phase 4 review as the PR comment; invoked on its own, run one pass with `dev`'s `scripts/cross-review.sh claude <worktree> origin/<default> <prompt-file>` (prompt as in `dev` Phase 4 step 1) and post that. Don't re-create the toolkit agents by hand.
 
 Reviewers are independent, so run them **in parallel**. Post each one's findings as a PR comment with `gh pr comment <n> --body-file <file>` (reviewer name + findings + what you'll do about each), then surface them in conversation. A three-reviewer pass costs roughly 150k tokens; on a plan with a session limit, the table above is the budget.
 

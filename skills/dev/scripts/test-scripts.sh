@@ -73,11 +73,15 @@ check "cross-review codex: effort override per run" 'grep -qx "model_reasoning_e
 MCP_FAIL=1 cr codex "$repo" "$base" "$work/brief.md"
 check "cross-review codex: refuses when MCP list fails" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ]'
 STUB_RC=2 cr codex "$repo" "$base" "$work/brief.md"
-check "cross-review: passes the reviewer exit through" '[ "$(rc)" = 2 ] && grep -qx REVIEWER_EXIT=2 "$work/out" && [ "$(last)" = STATUS=COMPLETED ]'
+check "cross-review: a failed reviewer is ERROR, never COMPLETED" '[ "$(rc)" = 2 ] && grep -qx REVIEWER_EXIT=2 "$work/out" && [ "$(last)" = STATUS=ERROR ]'
+check "cross-review codex: forces a read-only sandbox" 'grep -qx "sandbox_mode=\"read-only\"" "$work/codex.args" && grep -qx "approval_policy=\"never\"" "$work/codex.args"'
+(cd "$work" && PATH="$stubs:$PATH" bash "$here/cross-review.sh" codex "$repo" "$base" brief.md > "$work/out" 2> "$work/err"; echo $? > "$work/rc")
+check "cross-review: relative prompt path resolves from the caller" '[ "$(rc)" = 0 ] && grep -q "only the empty state" "$work/codex.stdin"'
 
 cr claude "$repo" "$base" "$work/brief.md"
 check "cross-review claude: completes" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ]'
-check "cross-review claude: print mode, no write tools" 'grep -qx -- "-p" "$work/claude.args" && grep -qx Edit "$work/claude.args" && ! grep -q "Bash(git push" "$work/claude.args"'
+check "cross-review claude: print mode, read-only tools, no shell, no MCP" 'grep -qx -- "-p" "$work/claude.args" && grep -qx -- "--tools" "$work/claude.args" && grep -qx Read "$work/claude.args" && ! grep -q "Bash" "$work/claude.args" && grep -qx -- "--strict-mcp-config" "$work/claude.args"'
+check "cross-review claude: reviews a diff written beforehand" 'grep -q "change.diff" "$work/claude.stdin" && grep -q "only the empty state" "$work/claude.stdin"'
 
 cr gemini "$repo" "$base" "$work/brief.md"
 check "cross-review: unknown reviewer exits 3" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ]'
