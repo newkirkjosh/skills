@@ -50,14 +50,12 @@ Part of: #<parent-issue-number>
 - [ ] [from specs/stories.md acceptance criteria relevant to this layer]
 ```
 
-**Sub-issue labels:** `layer:shared` / `layer:android` / `layer:backend` + type label
+**Sub-issue labels:** `layer:<layer>` (the `tasks.md` heading without its colon) + type label
 
 **`issues.md` anchor format:**
 ```
 epic: <number>
-shared: <number>
-android: <number>
-backend: <number>
+<layer>: <number>   # one line per layer
 ```
 Include only layers that have sub-issues. Written immediately after all issues are created.
 
@@ -66,9 +64,7 @@ Include only layers that have sub-issues. Written immediately after all issues a
 | Label | Purpose | Suggested color |
 |---|---|---|
 | `epic` | Parent issue marker | `#0052cc` |
-| `layer:shared` | KMP shared module work | `#e4e669` |
-| `layer:android` | Compose/Android work | `#a2eeef` |
-| `layer:backend` | Go backend work | `#d4c5f9` |
+| `layer:<layer>` | One per layer in `tasks.md` | `#e4e669`, `#a2eeef`, `#d4c5f9`, … |
 | `feat` | New feature | `#0075ca` |
 | `fix` | Bug fix | `#d73a4a` |
 | `chore` | Non-feature work | `#cfd3d7` |
@@ -79,7 +75,7 @@ Include only layers that have sub-issues. Written immediately after all issues a
 - If the work already has an issue (named by the user or filed earlier), don't create an epic and sub-issues around it: write `issues.md` mapping each layer to that issue number
 - Only create sub-issues for layers that have tasks in `tasks.md`
 - Write `issues.md` immediately after issue creation — do not wait
-- `issues.md` fields use lowercase layer names: `shared`, `android`, `backend`
+- `issues.md` fields use the `tasks.md` layer names in lowercase, without the colon (`:daemon` → `daemon`)
 - Label colors are defaults — do not override if the label already exists with a different color
 
 ## Examples

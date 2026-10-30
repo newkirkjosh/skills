@@ -55,15 +55,13 @@ Part of: <parent-identifier>
 - `team`: same as parent
 - `project`: same as parent
 - `parentId`: parent issue identifier (e.g., `APP-12`)
-- `labels`: `layer:shared` / `layer:android` / `layer:backend` + type label
+- `labels`: `layer:<layer>` (the `tasks.md` heading without its colon) + type label
 - `state`: `"Backlog"`
 
 **`issues.md` anchor format:**
 ```
 parent: <identifier>
-shared: <identifier>
-android: <identifier>
-backend: <identifier>
+<layer>: <identifier>   # one line per layer
 ```
 Include only layers that have sub-issues. Written immediately after all issues are created.
 
@@ -71,9 +69,7 @@ Include only layers that have sub-issues. Written immediately after all issues a
 
 | Label | Purpose | Suggested color |
 |---|---|---|
-| `layer:shared` | KMP shared module work | `#e4e669` |
-| `layer:android` | Compose/Android work | `#a2eeef` |
-| `layer:backend` | Go backend work | `#d4c5f9` |
+| `layer:<layer>` | One per layer in `tasks.md` | `#e4e669`, `#a2eeef`, `#d4c5f9`, … |
 | `feat` | New feature | `#0075ca` |
 | `fix` | Bug fix | `#d73a4a` |
 | `chore` | Non-feature work | `#cfd3d7` |
@@ -83,7 +79,7 @@ Include only layers that have sub-issues. Written immediately after all issues a
 - Idempotent: always check for `issues.md` before creating anything
 - Only create sub-issues for layers that have tasks in `tasks.md`
 - Write `issues.md` immediately after issue creation — do not wait
-- `issues.md` fields use lowercase layer names: `shared`, `android`, `backend`
+- `issues.md` fields use the `tasks.md` layer names in lowercase, without the colon (`:daemon` → `daemon`)
 - Sub-issues must reference the parent via `parentId` — do not use `relatedTo`
 - Do not create labels that already exist
 

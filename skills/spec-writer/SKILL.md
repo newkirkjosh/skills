@@ -36,9 +36,11 @@ metadata:
 | `proposal.md` | `one-pager.md` or `lean-canvas.md` + story group | Derived — no questions needed |
 | `specs/stories.md` | Story group from `job-stories.md` | Pulled verbatim; acceptance criteria derived from story outcomes |
 | `design.md` | `arch-review` skill output; for a `bounded` change, a short design note | Written verbatim from inline `arch-review` invocation output — do not reformat or summarize. A `bounded` change (the Path in the Scope Brief) skips `arch-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
-| `tasks.md` | Derived from `design.md` + story scope | `:shared` first, then `:android`, then `:backend`; omit empty layers |
+| `tasks.md` | Derived from `design.md` + story scope | One section per layer, named and ordered as the project defines them (see Layers); omit empty layers |
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `dev` from the evaluator's report at Phase 3 — do not create during Phase 0 |
 | `issues.md` | Written by `linear` | Do not create — leave absent at this stage |
+
+**Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. A KMP app with a Go backend might use `:shared`, `:android`, `:backend`; a daemon with a client app, `:daemon`, `:app`. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
 
 **Conversation flow:**
 1. Confirm which story group this change covers
@@ -92,17 +94,14 @@ Each story gets its own section with acceptance criteria directly below it.
 **Change:** <feat-name>
 **Date:** YYYY-MM-DD
 
-## :shared
+## :<first-layer>
 - [ ] [task]
 
-## :android
-- [ ] [task]
-
-## :backend
+## :<next-layer>
 - [ ] [task]
 ```
 
-Omit layer sections that have no tasks for this story group.
+One section per project layer, in the project's order. Omit layer sections that have no tasks for this story group.
 
 **`sprint-contract.md` template:**
 ```markdown
@@ -116,7 +115,7 @@ Omit layer sections that have no tasks for this story group.
 - [ ] [concrete testable assertion]
 ```
 
-Layer names are taken from `tasks.md` headings — not hardcoded to `:shared/:android/:backend`. One section per layer present in `tasks.md`.
+Layer names are taken from `tasks.md` headings. One section per layer present in `tasks.md`.
 
 ## Constraints
 
