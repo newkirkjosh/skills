@@ -27,7 +27,7 @@ Each item says why it exists; an item a repository can't use is `n/a`, never for
 | `review-bridge` | `AGENTS.md` has a `## Code Review Rules` section pointing at `REVIEW.md` | Codex reads only `AGENTS.md`; without it the cross-model review never sees the review rules. |
 | `copilot-instructions` | No `.github/copilot-instructions.md` | A second copy of the review rules drifts from `REVIEW.md`. |
 | `coderabbit` | Public: `.coderabbit.yaml` lists `**/REVIEW.md` (`assets/coderabbit.yaml`). Private: `n/a` | CodeRabbit's defaults skip `REVIEW.md`. Private repositories are reviewed locally by `pr`'s review set. |
-| `secrets-ci` | A CI job scans the full history with gitleaks (`assets/secrets-job.yml`) | Catches what the user's local commit hook can't: web edits, other machines, a skipped hook. |
+| `secrets-ci` | A CI job runs gitleaks on a full-history checkout (`fetch-depth: 0`; `assets/secrets-job.yml`) | Catches what the user's local commit hook can't: web edits, other machines, a skipped hook. |
 | `privacy` | Public: `git config privacy.public true` in this clone. Private: `n/a` | Opts the clone into the user's private-term commit check. Local config, so it's set, not committed. |
 | `layers`, `tracker`, `pr-conventions`, `merge-policy` | `AGENTS.md` has a heading for each | `dev`, `spec-writer`, `pr`, `ship` and `linear` read them. These are `decide` items: the user supplies the content. |
 
@@ -56,7 +56,7 @@ Add a row here, and a check in `check-repo.sh` with a test, whenever the standar
 
 ## Gotchas
 
-- **Never write through a symlink.** If `AGENTS.md`, `REVIEW.md` or `CLAUDE.md` is a symlink, the write lands in its target, possibly another repository. Report it and stop.
+- **Never write through a symlink.** If `AGENTS.md`, `REVIEW.md` or `CLAUDE.md` is a symlink, a write lands in its target, possibly another repository. Put it in the step 3 question, saying where it points; with the user's yes, remove the link and write a regular file in its place (copying the target's content first where M1 needs it), never editing through the link. Without a yes, leave that item alone.
 - **A secret already in history isn't fixed by adding the scan.** If the new `secrets` job fails on its first run, stop and report the finding to the user: removing it means rotating the secret and rewriting history, which is their call.
 - **Private-term clashes.** When a public repository's own name is on the user's private-terms list, `privacy.public` would block every commit. Leave it unset, say so, and note a manual leak check in its `AGENTS.md` instead.
 - **gitleaks-action needs a license for organization-owned repositories**; personal repositories are free. For an organization repository, run the gitleaks CLI in the job instead.

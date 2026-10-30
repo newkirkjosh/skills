@@ -47,18 +47,29 @@ if [ -f .github/copilot-instructions.md ]; then
   say stale copilot-instructions ".github/copilot-instructions.md duplicates REVIEW.md; merge it in and delete it (M2)"
 fi
 if [ -f .coderabbit.yaml ]; then
-  if grep -qE '^[^#]*\*\*/REVIEW\.md' .coderabbit.yaml; then say ok coderabbit ".coderabbit.yaml reads **/REVIEW.md"
-  else say stale coderabbit ".coderabbit.yaml doesn't list **/REVIEW.md in knowledge_base.code_guidelines.filePatterns"
+  # Only the code_guidelines block counts: its pattern list, and not switched off.
+  guidelines=$(awk '/^[[:space:]]*code_guidelines:/{f=1; d=match($0,/[^ ]/); next}
+    f && /[^[:space:]]/ && !/^[[:space:]]*#/ { if (match($0,/[^ ]/) <= d) exit; print }' .coderabbit.yaml)
+  if grep -qE '^[^#]*\*\*/REVIEW\.md' <<< "$guidelines" && ! grep -qE '^[[:space:]]*enabled:[[:space:]]*false' <<< "$guidelines"; then
+    say ok coderabbit ".coderabbit.yaml reads **/REVIEW.md"
+  else
+    say stale coderabbit ".coderabbit.yaml doesn't read **/REVIEW.md (knowledge_base.code_guidelines: enabled, with the pattern)"
   fi
 elif [ "$vis" = PUBLIC ]; then say missing coderabbit "public repository without .coderabbit.yaml"
 else say n/a coderabbit "private repository: pr-review-toolkit reviews locally"
 fi
 
 # Secrets and privacy
-if grep -lqs 'gitleaks' .github/workflows/*.yml .github/workflows/*.yaml 2> /dev/null; then
-  say ok secrets-ci "a workflow runs gitleaks"
-else
-  say missing secrets-ci "no CI job scans history for secrets with gitleaks"
+# A workflow file counts when an uncommented step runs gitleaks and its checkout
+# fetches the full history; a comment, or a shallow clone, scans nothing old.
+scan=""
+for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
+  [ -f "$wf" ] || continue
+  grep -qE '^[^#]*(uses:[[:space:]]*gitleaks/gitleaks-action|gitleaks[[:space:]]+(git|detect))' "$wf" \
+    && grep -qE '^[^#]*fetch-depth:[[:space:]]*0' "$wf" && scan=$wf && break
+done
+if [ -n "$scan" ]; then say ok secrets-ci "$scan scans the full history with gitleaks"
+else say missing secrets-ci "no CI job scans the full history with gitleaks (uncommented step, fetch-depth: 0)"
 fi
 case $vis in
   PUBLIC)
