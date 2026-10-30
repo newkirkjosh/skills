@@ -42,7 +42,7 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 | `open-ended` | "thoroughly", "comprehensive", "audit", "deep dive", "properly", "refactor", "whatever it takes" |
 | `normal` | anything else |
 
-**Path** is how deep the lifecycle goes, read from the repository rather than the wording. It uses the classification in the `superpowers:brainstorming` skill:
+**Path** is how deep the lifecycle goes, read from the repository rather than the wording. This table is the canonical definition; it does not depend on any other skill's classification:
 
 | Path | When | Depth |
 |------|------|-------|
