@@ -29,7 +29,7 @@ Verify branch name on invocation. If it doesn't match, rename the branch and re-
 
 **PR title (becomes the squash merge commit subject):**
 `<type>(<layer>): <description>`, imperative, lowercase after the colon, no trailing period
-e.g., `feat(android): add habit list screen`
+e.g., `feat(<layer>): add habit list screen`, with `<layer>` from `issues.md`
 
 No `#<number>` in the title. On squash merge GitHub appends `(#<PR number>)` itself, and a hand-written `#N` permanently links the commit to whatever issue or PR `N` is. The issue reference goes in the body as `Closes #N`.
 
@@ -87,14 +87,14 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 
 ## Examples
 
-**Habit Tracker — android layer PR:**
+**Habit Tracker — `:<layer-2>` layer PR:**
 
-`issues.md` contains `android: 14`.
+`issues.md` contains `<layer-2>: 14`.
 `proposal.md` scope: "Adds the Habit List screen and the Add Habit screen."
 
 Branch: `feat/habit-list-screen`
 
-PR title: `feat(android): add habit list and add habit screens`
+PR title: `feat(<layer-2>): add habit list and add habit screens`
 
 PR body:
 ```markdown

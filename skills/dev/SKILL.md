@@ -46,7 +46,8 @@ Agent tool:
            Change folder: <absolute path>
            Layer: <:layer>
            <role-specific input: the test author's report for the implementer,
-            the failing items on a fix pass; nothing else for the evaluator>"
+            the failing items on a fix pass; for the evaluator only the
+            environment it needs (see Phase 3)>"
 ```
 
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
@@ -115,11 +116,12 @@ Otherwise, for the layer:
 1. If the change's evidence only exists on a PR (a CI workflow that triggers on `pull_request`), push and open the PR as a **draft** first, wait for its run, and give the evaluator the PR number as environment. Phase 4 then marks it ready instead of creating it.
 2. Export what it evaluates, without history: `bash scripts/eval-export.sh <worktree> HEAD "$(git merge-base origin/<default> HEAD)" <scratch>/eval-<feat-name>-<short-sha>`, to a scratch directory **outside** the repository. It writes `head/` (the change) and `base/` (the default branch it started from), with no `.git`, so commit messages and the diff can't leak.
    Spawn the **evaluator** with only the brief, the layer, the two export paths and the change folder's path inside `head/`. Never pass implementation context: no diff, no summary, no "should pass because". Delete the export after writing the contract.
+   **GUI checks.** If the layer has any (a desktop window, a screenshot, simulated input) and the user's global instructions give an isolated display for GUI apps on this machine (an off-screen display, say), copy that recipe into the evaluator's prompt verbatim, and tell it to set `DISPLAY` explicitly on every launch, screenshot and input command, using only input tools scoped to that display (`xdotool`, never a device-level one like `ydotool`, which reaches the live desktop whatever `DISPLAY` says). Subagents don't reliably see those instructions, and an evaluator without the recipe returns `INCOMPLETE`. With no isolated display, GUI checks stay manual: the evaluator reports them `INCOMPLETE` rather than touching the live desktop.
    **Time budget.** Before spawning, estimate the run from what it must do (the last test run's duration, an emulator boot, a CI wait). If it will likely take more than about 10 minutes, tell the user the estimate and what dominates it, then run the evaluator in the background. The evaluator sends a progress line after each step; if 30 minutes pass with no new line, stop it and every process it started (an emulator, a daemon), delete its export, and write `openspec/changes/<feat-name>/handoff.md`: the layer, the last progress line and its time, what was running, what is already known, and the next command to resume with. Commit it with the change folder, tell the user, and stop. Never restart the same evaluation in the same run.
 3. Write the layer's section of `sprint-contract.md` from its report (template in the `spec-writer` skill), checking only PASS items. Commit it with the change folder (`docs(openspec): …`).
 4. On `VERDICT: PASS`, go to Phase 4.
 5. On `VERDICT: FAIL`, run **one** fix pass: GAP items to a fresh test author, then FAIL items (and the new tests) to a fresh implementer, each given only those items. Commit, then spawn a **fresh** evaluator and rewrite the section from its report.
-6. On `INCOMPLETE`, first check whether you can provide what's missing on this machine (boot an existing emulator AVD headless, start a local daemon or database), keeping its PID per the `shell` skill. Evaluators can message you to change shared environment mid-run (e.g. "stop the backend now"); do it, then reply with what changed. Never hand an evaluator input control of the user's live desktop (`xdotool`, `ydotool`, or a real `DISPLAY`): they may be using it. GUI checks run on an off-screen display instead (e.g. Xvfb; the machine's recipe belongs in the global CLAUDE.md); hand the evaluator that display and nothing else. If so, spawn a **fresh** evaluator and tell it only what's now available. Stop it afterwards.
+6. On `INCOMPLETE`, first check whether you can provide what's missing on this machine (boot an existing emulator AVD headless, start a local daemon or database), keeping its PID per the `shell` skill. Evaluators can message you to change shared environment mid-run (e.g. "stop the backend now"); do it, then reply with what changed. Never hand an evaluator input control of the user's live desktop (`xdotool`, `ydotool`, or a real `DISPLAY`): they may be using it. GUI checks run the way the user's global instructions say, handed over as in step 2. If so, spawn a **fresh** evaluator and tell it only what's now available. Stop it afterwards.
 7. If it still fails after the fix pass, or is still `INCOMPLETE`, surface the open items with the evaluator's evidence and stop. Don't loop further. For `INCOMPLETE`, name what's needed (a device, a running daemon) so the user can provide it and re-invoke.
 
 **Phase 4 — PR creation**
@@ -158,6 +160,7 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 - Phase 4 is only reached when the layer's `sprint-contract.md` section exists and every item is checked.
 - Phase 4 always links the PR to its sub-issue (Linear comment, or `Closes #<n>` on GitHub); never skip it.
 - Phase 6 archive is blocked while any sub-issue is open; no partial archive.
+- **Real device state needs permission.** No subagent runs a step that changes real hardware or system state (writing to a device such as lighting, fans or a pump; a root-only command) unless the repository's `AGENTS.md` permits it for unattended runs. Otherwise ask the user before that step runs, and record the item in `sprint-contract.md` as a manual check, saying who ran it. Tell the evaluator in its prompt which such steps are permitted.
 
 ## Gotchas
 
@@ -178,10 +181,10 @@ User says: "start work on feat-onboarding, just the empty state for now"
 
 Entry detection: no change folder → Phase 0. The brief quotes the request verbatim, size signal `narrow`, out of scope "populated list and add-habit flow: later story group". `spec-writer` creates the folder; the brief is saved and its scope shown to the user.
 
-Phase 1: `linear` → parent APP-12, sub-issues APP-13 (`:shared`), APP-14 (`:android`).
+Phase 1: `linear` → parent APP-12, sub-issues APP-13 (`:<layer-1>`), APP-14 (`:<layer-2>`).
 
-Phase 2 (`:shared`): branch `feat/onboarding-empty-state`; test author writes two failing repository tests; implementer makes them pass and wires DI; both commits made.
+Phase 2 (`:<layer-1>`): branch `feat/onboarding-empty-state`; test author writes two failing repository tests; implementer makes them pass and wires DI; both commits made.
 
-Phase 3: a fresh evaluator derives four contract items from `specs/stories.md`, runs the tests, reports `VERDICT: PASS`. `sprint-contract.md` gets a `:shared` section, all checked.
+Phase 3: a fresh evaluator derives four contract items from `specs/stories.md`, runs the tests, reports `VERDICT: PASS`. `sprint-contract.md` gets a `:<layer-1>` section, all checked.
 
-Phase 4: `pr` opens the PR and the URL is commented on APP-13. The next invocation picks up `:android`.
+Phase 4: `pr` opens the PR and the URL is commented on APP-13. The next invocation picks up `:<layer-2>`.
