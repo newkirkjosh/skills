@@ -26,6 +26,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
 | `pr` | PR title, body, issue link and a review set scaled to the change. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
+| `repo-setup` | Brings a repository up to the standard the workflow skills expect, and upgrades it when that changes. |
 | `gh-issues` | Turns a change folder into a GitHub epic and sub-issues. |
 | `github` | Reference for `gh` and the GitHub APIs. |
 | `linear` | Reference for Linear through its MCP server. |
@@ -54,4 +55,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Use `learn` to make chan
 
 ## License
 
-[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn`, part of `dev` and the idea behind `team` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
+[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn`, part of `dev`, the idea behind `team` and `repo-setup` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
