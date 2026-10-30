@@ -25,6 +25,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
 | `pr` | PR title, body, issue link and a review set scaled to the change. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
+| `resolve-pr-feedback` | One round of review-bot threads: triage, one fix push, reply and resolve. |
 | `gh-issues` | Turns a change folder into a GitHub epic and sub-issues. |
 | `github` | Reference for `gh` and the GitHub APIs. |
 | `linear` | Reference for Linear through its MCP server. |

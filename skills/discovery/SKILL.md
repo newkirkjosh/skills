@@ -18,7 +18,9 @@ metadata:
 
 **Explicit use only** — discovery is always an intentional act, never started without the user naming it.
 
-**Entry point detection** — Claude checks `~/Developer/docs/plans/<project-name>/` (or the plans directory the global CLAUDE.md names) for existing artifacts before starting:
+**Plans directory** — `<plans-dir>` is the plans directory the global CLAUDE.md names, else `~/Developer/docs/plans`.
+
+**Entry point detection** — check `<plans-dir>/<project-name>/` for existing artifacts before starting:
 
 | Existing artifacts | Entry point |
 |---|---|
@@ -30,7 +32,7 @@ metadata:
 
 **"Summarize current state" format:** One-line verdict from `viability.md`, MVP scope from one-pager/lean-canvas, story count by group (Onboarding / Core Loop / Edge Cases), flat list of screens from the inventory.
 
-If the project folder does not exist, create it at `~/Developer/docs/plans/<project-name>/` (or the plans directory the global CLAUDE.md names) before Phase 0 begins. Project name is derived from the idea name, kebab-cased (e.g., "Habit Tracker" → `habit-tracker/`).
+If the project folder does not exist, create it at `<plans-dir>/<project-name>/` before Phase 0 begins. Project name is derived from the idea name, kebab-cased (e.g., "Habit Tracker" → `habit-tracker/`).
 
 **Not this skill:**
 - Implementing a feature (use `dev`)

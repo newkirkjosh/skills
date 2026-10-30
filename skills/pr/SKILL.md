@@ -1,6 +1,6 @@
 ---
 name: pr
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates well-formed PRs: conventional commit title, structured body and Closes reference, branch naming and squash merge, sub-issue numbers read from issues.md, then a pr-review-toolkit review set scaled to the change's size."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates well-formed PRs: conventional commit title, structured body and Closes reference, branch naming and squash merge, sub-issue numbers read from issues.md, then a review set scaled to the change's size."
 metadata:
   type: flexible
 ---
@@ -51,11 +51,13 @@ No list of changed files, line counts or commits: GitHub already shows them.
 
 **Review set — scaled to the change** (read the size signal from `scope-brief.md`):
 
-| Change | Reviewers |
+| Change | Reviewer roles |
 |---|---|
-| `narrow` config/docs-only (manifests, CI tweaks, wording) | `pr-review-toolkit:code-reviewer` only; add `silent-failure-hunter` if it touches security, auth or error paths |
-| `normal` code | `silent-failure-hunter`, `code-reviewer`, `pr-test-analyzer` |
-| Significant docs added (docstrings, READMEs) | also `comment-analyzer` |
+| `narrow` config/docs-only (manifests, CI tweaks, wording) | code review only; add failure-path review if it touches security, auth or error paths |
+| `normal` code | failure-path review, code review, test-coverage review |
+| Significant docs added (docstrings, READMEs) | also comment-accuracy review |
+
+Each role is one delegated reviewer. On Claude Code they are the `pr-review-toolkit` agents: code review is `code-reviewer`, failure-path review `silent-failure-hunter`, test-coverage review `pr-test-analyzer`, comment-accuracy review `comment-analyzer`. On a host without them, delegate one reviewer per role and give it the role's focus in its prompt.
 
 Reviewers are independent, so run them **in parallel**. Post each one's findings as a PR comment with `gh pr comment <n> --body-file <file>` (reviewer name + findings + what you'll do about each), then surface them in conversation. A three-reviewer pass costs roughly 150k tokens; on a plan with a session limit, the table above is the budget.
 
@@ -72,7 +74,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 3. Verify branch name matches convention — rename and re-push if needed
 4. Create PR with formatted title and body
 5. Run the review set for this change (table above), in parallel; post each reviewer's findings with `gh pr comment`, then surface them in conversation
-6. Consolidate all findings and present before merge
+6. Consolidate all findings and present before merge. Hosted review bots (CodeRabbit and the like) post review threads; settle them with `resolve-pr-feedback`
 7. On merge: move the sub-issue on the repository's board as its `AGENTS.md` says (the github skill's projects reference)
 
 ## Constraints
@@ -81,7 +83,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 - Never skip the review set the table assigns; never run more than it assigns without a reason (cost)
 - Squash merge only — reject merge commit and rebase merge
 - Always read `issues.md` for sub-issue number — never ask the user
-- `comment-analyzer` only runs if significant documentation (docstrings, README changes, inline explanations) was added
+- Comment-accuracy review only runs if significant documentation (docstrings, README changes, inline explanations) was added
 - Post findings as PR comments (`gh pr comment`); never approve or request changes on the user's behalf
 - Merge only on a green CI run for the PR's head commit. A red job may be rerun once (`gh run rerun --job`) only when its failure matches an already-filed flake issue; cite the issue in the PR
 

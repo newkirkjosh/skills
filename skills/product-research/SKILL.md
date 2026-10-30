@@ -49,7 +49,8 @@ your first reply so the user can redirect before agents dispatch.
   > Do you have a budget or price tier in mind? (e.g. budget / mid-range /
   > premium, or a specific $ range)
 
-  Use `AskUserQuestion` with 3-4 concrete tier options plus an open range.
+  Ask it as one structured question (on Claude Code, `AskUserQuestion`)
+  with 3-4 concrete tier options plus an open range.
   Skip this question entirely if a tier or number is already stated or
   implied.
 
@@ -70,7 +71,7 @@ every agent prompt in Step 4 must carry a self-contained text brief.
 - **Pasted image(s):** analyze them yourself (you are multimodal) and write
   a short style brief covering fabrics, silhouettes, colors, era/reference
   brands — 3-5 sentences is enough.
-- **A URL (e.g. an Instagram page):** attempt `WebFetch` on it. If it
+- **A URL (e.g. an Instagram page):** fetch it (on Claude Code, `WebFetch`). If it
   returns usable content (captions, visible style cues), fold that into the
   brief. If it fails, is blocked, or returns unusable content (common for
   Instagram), say so explicitly:
@@ -95,12 +96,13 @@ This gives the user a chance to correct scope before agents run.
 
 ## Step 4: Dispatch research agent(s)
 
-- **Single-category:** dispatch one background `Agent` call.
-- **Style-matching:** dispatch one background `Agent` call **per item type**
-  in parallel, per `superpowers:dispatching-parallel-agents` — these are
-  independent lookups with no shared state.
+- **Single-category:** dispatch one background research delegate.
+- **Style-matching:** dispatch one background delegate **per item type**,
+  all in parallel — these are independent lookups with no shared state.
 
-Use `subagent_type: general-purpose`, `run_in_background: true`. Give each
+Each delegate is a general-purpose agent running in the background (on
+Claude Code, `Agent` with `subagent_type: general-purpose` and
+`run_in_background: true`; that syntax is only an example). Give each
 agent this prompt shape (fill in the bracketed values):
 
 ```
@@ -153,14 +155,16 @@ Once all dispatched agents have reported back:
      source URL from the agent findings. No unlinked claims.
    - If an agent reported too few candidates, the section says so plainly
      instead of padding.
-3. Write the file to:
-   `~/Documents/product-research/<slug>-<YYYY-MM-DD>.html`
-   where `<slug>` is a short kebab-case description of the request (e.g.
-   `brooks-running-shoe`, `old-money-look`). Create the
-   `~/Documents/product-research` directory if it doesn't exist. If that
+3. Write the file to `<research-dir>/<slug>-<YYYY-MM-DD>.html`, where
+   `<research-dir>` is the directory the global CLAUDE.md names for
+   product research, else `~/Documents/product-research`, and `<slug>` is
+   a short kebab-case description of the request (e.g.
+   `brooks-running-shoe`, `old-money-look`). Create the directory if it
+   doesn't exist. If that
    path already exists (a second run of a similar request same day),
    append `-2`, `-3`, etc. rather than overwriting it.
-4. Publish the same file via the `Artifact` tool (pick a one/two-emoji
-   favicon fitting the product category).
-5. Reply to the user with the Artifact link and mention the local copy's
-   path.
+4. If the host can publish a shareable page, publish the same file (on
+   Claude Code, the `Artifact` tool, with an icon fitting the product
+   category).
+5. Reply to the user with the page link, if published, and the local
+   copy's path.
