@@ -26,3 +26,13 @@ Read this before the first spawn when the coordinator runs on a host other than 
 - **Delegation must be asked for in words.** Codex suppresses sub-agents unless the instructions explicitly ask for sub-agents or delegation, so when running `dev` under Codex, spawn sub-agents for the three roles as written; a child that should fan out must be told to in its `message`.
 - **One shared working directory, no isolation flag.** Every child runs in the same filesystem. `dev` already runs each change in its own worktree; pass that absolute path in every `message` and tell the child to `cd` there on every command.
 - **`claude -p` needs the network.** Under a sandbox that blocks it, the Phase 4 cross-review fails with a connection error, not a review. Before escalating, confirm the worktree holds no secrets: the script sends the diff and the Scope Brief to the other model, which can read any file in the worktree. Then run `cross-review.sh` with the host's escalated permission rather than skipping the review.
+
+## Headless sessions
+
+A run is headless when nothing can answer or wake it mid-run: a one-shot `claude -p` or `codex exec`, a scheduled job, or any session whose process ends with its turn. If you can't tell, treat it as headless: waiting in the foreground on an interactive host costs idle time, while ending the turn on a headless one silently skips every gate still ahead.
+
+- **Never end the turn while a wait is outstanding**: a subagent, a review, or a CI or CodeRabbit waiter. Nothing will wake you to read it.
+- **Run waiters in the foreground**, inside the host's foreground limit (under 10 minutes for a Claude Code `Bash` call): pass the waiter a shorter timeout and relaunch it on `STATUS=TIMEOUT` until the full budget is spent.
+- **Spawn subagents in the foreground** (on Claude Code, without `run_in_background`), so the call returns their report.
+- **No questions mid-run.** Where the workflow would stop to ask the user, finish everything the question doesn't block, then put the question in the final report.
+- **Polling is still forbidden.** The bundled waiter scripts, run as above, are the only waits.
