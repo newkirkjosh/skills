@@ -75,7 +75,7 @@ Include only layers that have sub-issues. Written immediately after all issues a
 - If the work already has an issue (named by the user or filed earlier), don't create an epic and sub-issues around it: write `issues.md` mapping each layer to that issue number
 - Only create sub-issues for layers that have tasks in `tasks.md`
 - Write `issues.md` immediately after issue creation — do not wait
-- `issues.md` fields use the `tasks.md` layer names in lowercase, without the colon (`:daemon` → `daemon`)
+- `issues.md` fields use the `tasks.md` layer names in lowercase, without the colon (`:<layer>` → `<layer>`)
 - Label colors are defaults — do not override if the label already exists with a different color
 
 ## Examples
@@ -85,14 +85,14 @@ Include only layers that have sub-issues. Written immediately after all issues a
 Epic created: `#12 — Onboarding` (labeled `epic`, `feat`)
 
 Sub-issues:
-- `#13 — Onboarding: shared layer` (labeled `layer:shared`, `feat`) — Part of #12
-- `#14 — Onboarding: android layer` (labeled `layer:android`, `feat`) — Part of #12
+- `#13 — Onboarding: <layer-1> layer` (labeled `layer:<layer-1>`, `feat`) — Part of #12
+- `#14 — Onboarding: <layer-2> layer` (labeled `layer:<layer-2>`, `feat`) — Part of #12
 
 `issues.md` written to `openspec/changes/feat-onboarding/`:
 ```
 epic: 12
-shared: 13
-android: 14
+<layer-1>: 13
+<layer-2>: 14
 ```
 
-No `backend` field — this story group had no backend tasks.
+No field for the project's other layers: this story group had no tasks there.

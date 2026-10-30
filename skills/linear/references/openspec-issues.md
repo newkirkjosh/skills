@@ -51,7 +51,7 @@ Part of: <parent-identifier>
 ```
 
 **Sub-issue fields:**
-- `title`: `<feature name>: <layer> layer` (e.g., `Onboarding: shared layer`)
+- `title`: `<feature name>: <layer> layer` (e.g., `Onboarding: <layer-1> layer`)
 - `team`: same as parent
 - `project`: same as parent
 - `parentId`: parent issue identifier (e.g., `APP-12`)
@@ -79,7 +79,7 @@ Include only layers that have sub-issues. Written immediately after all issues a
 - Idempotent: always check for `issues.md` before creating anything
 - Only create sub-issues for layers that have tasks in `tasks.md`
 - Write `issues.md` immediately after issue creation — do not wait
-- `issues.md` fields use the `tasks.md` layer names in lowercase, without the colon (`:daemon` → `daemon`)
+- `issues.md` fields use the `tasks.md` layer names in lowercase, without the colon (`:<layer>` → `<layer>`)
 - Sub-issues must reference the parent via `parentId` — do not use `relatedTo`
 - Do not create labels that already exist
 
@@ -90,14 +90,14 @@ Include only layers that have sub-issues. Written immediately after all issues a
 Parent created: `APP-12 — Onboarding` (labeled `feat`)
 
 Sub-issues:
-- `APP-13 — Onboarding: shared layer` (labeled `layer:shared`, `feat`) — parentId: `APP-12`
-- `APP-14 — Onboarding: android layer` (labeled `layer:android`, `feat`) — parentId: `APP-12`
+- `APP-13 — Onboarding: <layer-1> layer` (labeled `layer:<layer-1>`, `feat`) — parentId: `APP-12`
+- `APP-14 — Onboarding: <layer-2> layer` (labeled `layer:<layer-2>`, `feat`) — parentId: `APP-12`
 
 `issues.md` written to `openspec/changes/feat-onboarding/`:
 ```
 parent: APP-12
-shared: APP-13
-android: APP-14
+<layer-1>: APP-13
+<layer-2>: APP-14
 ```
 
-No `backend` field — this story group had no backend tasks.
+No field for the project's other layers: this story group had no tasks there.

@@ -40,7 +40,7 @@ metadata:
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `dev` from the evaluator's report at Phase 3 — do not create during Phase 0 |
 | `issues.md` | Written by `linear` | Do not create — leave absent at this stage |
 
-**Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. A KMP app with a Go backend might use `:shared`, `:android`, `:backend`; a daemon with a client app, `:daemon`, `:app`. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
+**Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
 
 **Conversation flow:**
 1. Confirm which story group this change covers
@@ -141,8 +141,8 @@ Change folder created at `openspec/changes/feat-onboarding/`:
 proposal.md       ← scope: first-time user adds a habit without friction
 specs/
   stories.md      ← 3 onboarding stories, each with acceptance criteria below
-design.md         ← arch-review output (verbatim): HabitRepository in :shared, HabitListScreen in :android
-tasks.md          ← :shared tasks + :android tasks (no :backend — this group has no backend work)
+design.md         ← arch-review output (verbatim): HabitRepository in the first layer, HabitListScreen in the second
+tasks.md          ← one section per project layer that has work (here two: :<layer-1>, :<layer-2>)
 issues.md         ← absent at creation time; written later by linear
 sprint-contract.md  ← absent at creation time; written at Phase 3 from the evaluator's report
 ```
@@ -153,12 +153,12 @@ sprint-contract.md  ← absent at creation time; written at Phase 3 from the eva
 **Change:** feat-onboarding
 **Date:** 2026-03-23
 
-## :shared
+## :<layer-1>
 - [ ] Define Habit schema in SqlDelight
 - [ ] Implement HabitRepository with insert and getAll operations
 - [ ] Write unit tests for HabitRepository
 
-## :android
+## :<layer-2>
 - [ ] Implement HabitListScreen composable with empty state
 - [ ] Implement AddHabitScreen composable with a name field
 - [ ] Wire navigation between HabitListScreen and AddHabitScreen
