@@ -32,5 +32,6 @@ The Scope Brief (binding), a change-folder path, a layer name, and the test auth
 - If the brief and your job conflict, stop and report the conflict. Deliver everything unambiguously in scope first; never stop with nothing done.
 - Dependency versions go only where `AGENTS.md` says they go.
 - Don't commit, push or open a PR.
+- Never run a step that changes real hardware or system state (writing to a device, a root-only command) unless the repository's `AGENTS.md` permits it for unattended runs. Report it as `NOT RUN — needs user approval` so the coordinator records it as a manual check.
 - Never report passing tests you did not run in this session.
 - **Failures in files you didn't touch:** check whether they also happen on the default branch, from a separate checkout or worktree (never `git stash`; it's shared with other worktrees), and report each as *pre-existing* or *caused by this change*. Don't fix pre-existing failures; they're outside the brief.

@@ -36,9 +36,11 @@ metadata:
 | `proposal.md` | `one-pager.md` or `lean-canvas.md` + story group | Derived — no questions needed |
 | `specs/stories.md` | Story group from `job-stories.md` | Pulled verbatim; acceptance criteria derived from story outcomes |
 | `design.md` | `arch-review` skill output; for a `bounded` change, a short design note | Written verbatim from inline `arch-review` invocation output — do not reformat or summarize. A `bounded` change (the Path in the Scope Brief) skips `arch-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
-| `tasks.md` | Derived from `design.md` + story scope | `:shared` first, then `:android`, then `:backend`; omit empty layers |
+| `tasks.md` | Derived from `design.md` + story scope | One section per layer, named and ordered as the project defines them (see Layers); omit empty layers |
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `dev` from the evaluator's report at Phase 3 — do not create during Phase 0 |
 | `issues.md` | Written by `linear` | Do not create — leave absent at this stage |
+
+**Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
 
 **Conversation flow:**
 1. Confirm which story group this change covers
@@ -92,17 +94,14 @@ Each story gets its own section with acceptance criteria directly below it.
 **Change:** <feat-name>
 **Date:** YYYY-MM-DD
 
-## :shared
+## :<first-layer>
 - [ ] [task]
 
-## :android
-- [ ] [task]
-
-## :backend
+## :<next-layer>
 - [ ] [task]
 ```
 
-Omit layer sections that have no tasks for this story group.
+One section per project layer, in the project's order. Omit layer sections that have no tasks for this story group.
 
 **`sprint-contract.md` template:**
 ```markdown
@@ -116,7 +115,7 @@ Omit layer sections that have no tasks for this story group.
 - [ ] [concrete testable assertion]
 ```
 
-Layer names are taken from `tasks.md` headings — not hardcoded to `:shared/:android/:backend`. One section per layer present in `tasks.md`.
+Layer names are taken from `tasks.md` headings. One section per layer present in `tasks.md`.
 
 ## Constraints
 
@@ -142,8 +141,8 @@ Change folder created at `openspec/changes/feat-onboarding/`:
 proposal.md       ← scope: first-time user adds a habit without friction
 specs/
   stories.md      ← 3 onboarding stories, each with acceptance criteria below
-design.md         ← arch-review output (verbatim): HabitRepository in :shared, HabitListScreen in :android
-tasks.md          ← :shared tasks + :android tasks (no :backend — this group has no backend work)
+design.md         ← arch-review output (verbatim): HabitRepository in the first layer, HabitListScreen in the second
+tasks.md          ← one section per project layer that has work (here two: :<layer-1>, :<layer-2>)
 issues.md         ← absent at creation time; written later by linear
 sprint-contract.md  ← absent at creation time; written at Phase 3 from the evaluator's report
 ```
@@ -154,12 +153,12 @@ sprint-contract.md  ← absent at creation time; written at Phase 3 from the eva
 **Change:** feat-onboarding
 **Date:** 2026-03-23
 
-## :shared
+## :<layer-1>
 - [ ] Define Habit schema in SqlDelight
 - [ ] Implement HabitRepository with insert and getAll operations
 - [ ] Write unit tests for HabitRepository
 
-## :android
+## :<layer-2>
 - [ ] Implement HabitListScreen composable with empty state
 - [ ] Implement AddHabitScreen composable with a name field
 - [ ] Wire navigation between HabitListScreen and AddHabitScreen
