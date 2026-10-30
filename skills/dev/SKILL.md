@@ -1,6 +1,6 @@
 ---
 name: dev
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, spec-writer, the tracker, test author and implementer subagents, an isolated evaluator, pr, review and archive."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, spec-writer, the tracker, test author and implementer subagents, an isolated evaluator, a cross-model review (Codex or Claude, whichever did not write it), pr, review and archive."
 license: MIT (Scope Brief adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -50,6 +50,8 @@ Agent tool:
             environment it needs (see Phase 3)>"
 ```
 
+**On any host other than Claude Code**, read `references/host-adapters.md` before the first spawn: on Codex, ending your turn kills running subagents, and a spawn without `fork_turns: "none"` can't take a tier.
+
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
 
 **Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Scale the review set to the change (see `pr`).
@@ -84,7 +86,9 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | `issues.md` exists, no branch for the layer | Phase 2: Implementation |
 | Branch exists, no open PR, no `sprint-contract.md` section for the layer | Phase 3: Evaluation (start) |
 | Branch exists, no open PR, the layer's contract has unchecked items | Phase 3: Evaluation (fix pass) |
-| Branch exists, no open PR, the layer's contract is all checked | Phase 4: PR creation |
+| Branch exists, no open PR, the layer's contract is all checked, no `Cross-review:` line | Phase 4: Cross-model review |
+| Branch exists, no open PR, the layer's contract is all checked and has its `Cross-review:` line | Phase 4: PR creation |
+| Draft PR open (from Phase 3 step 1), the layer's contract all checked, no `Cross-review:` line | Phase 4: Cross-model review, then mark the draft ready |
 | PR open for the layer | Phase 5: Review |
 | All sub-issues in `issues.md` are closed | Phase 6: Archive |
 
@@ -124,7 +128,14 @@ Otherwise, for the layer:
 6. On `INCOMPLETE`, first check whether you can provide what's missing on this machine (boot an existing emulator AVD headless, start a local daemon or database), keeping its PID per the `shell` skill. Evaluators can message you to change shared environment mid-run (e.g. "stop the backend now"); do it, then reply with what changed. Never hand an evaluator input control of the user's live desktop (`xdotool`, `ydotool`, or a real `DISPLAY`): they may be using it. GUI checks run the way the user's global instructions say, handed over as in step 2. If so, spawn a **fresh** evaluator and tell it only what's now available. Stop it afterwards.
 7. If it still fails after the fix pass, or is still `INCOMPLETE`, surface the open items with the evaluator's evidence and stop. Don't loop further. For `INCOMPLETE`, name what's needed (a device, a running daemon) so the user can provide it and re-invoke.
 
-**Phase 4 — PR creation**
+**Phase 4 — Cross-model review and PR creation**
+1. **Cross-model review, before the PR is opened or a Phase 3 draft is marked ready.** The model that didn't write the change reviews it: Codex when you run on Claude Code, Claude when you run on Codex. Skip it only for a `narrow` docs-only change: record `Cross-review: skipped (narrow docs-only)` as in step 4, tell the user, and go on to the PR. Write a prompt file in scratch space: the Scope Brief verbatim as OUT OF SCOPE / IN SCOPE, then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` the change doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Run it as a long command (backgrounded on Claude Code; a waiter child on Codex), logging to scratch space:
+   `bash <skill-dir>/scripts/cross-review.sh <codex|claude> <worktree> origin/<default> <prompt-file> > <scratch>/cross-review-<n>.log 2>&1`
+   Its last line is `STATUS=COMPLETED` or `STATUS=ERROR`; a log without one is still running. Never poll it, and never set a timeout on the review command (a waiter child's `wait_agent` timeout is fine): a real review takes many minutes and prints nothing until it finishes.
+2. Triage each finding against the brief. In-scope blocking findings go to a fresh implementer as a fix list, all of them in one pass; out-of-scope ones are recorded with the exclusion that covers them. Commit each fix pass (`fix(<scope>): …`) before the next review: the script reviews committed changes only, so an uncommitted fix is never reviewed and the next pass would converge on the old code. A fix that changes behaviour re-runs Phase 3 with a fresh evaluator before the next pass.
+3. **Converge**: re-run with the prompt prefixed "Pass <n>. Already fixed: <findings, with commit SHAs>. Report only blocking findings not listed here." Stop when a pass reports no blocking finding (other remarks don't count), or after three passes; then surface what is still open and stop for the user. On `STATUS=ERROR` or a reviewer that can't run, fix the setup error if it is one (the script names it); otherwise record the review as unavailable, tell the user, and continue without it.
+4. Record it in the layer's `sprint-contract.md` section: `Cross-review: <reviewer>, <passes> pass(es), converged at <short-sha>` (or `Cross-review: unavailable: <reason>`, or the skip from step 1), and save the final pass's output as `cross-review.md` in the change folder, for `pr` to post; commit both with the change folder.
+
 Once `sprint-contract.md` is final and review is done, make the archive move the PR's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
 Invoke `pr`, passing the Scope Brief for the PR body and the reviewers. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves as the repository's `AGENTS.md` says (the github skill's projects reference). Output: PR URL.
 
@@ -134,7 +145,7 @@ Invoke `pr`, passing the Scope Brief for the PR body and the reviewers. After th
 **Merging** is the user's call unless the project's `AGENTS.md` has a **Merge policy** that grants it. With that grant, merge yourself only when every gate holds on the PR's current head, re-checked right before merging (the github skill's `head-status.sh`):
 
 1. CI green on the head commit.
-2. The layer's `sprint-contract.md` section is all checked from an evaluator `VERDICT: PASS`.
+2. The layer's `sprint-contract.md` section is all checked from an evaluator `VERDICT: PASS`, and its `Cross-review:` line says converged, skipped for a `narrow` docs-only change, or unavailable and reported to the user.
 3. Every review finding is fixed or dismissed with a reason in the PR comment; none is open or blocking.
 4. Zero unresolved review threads.
 5. Nothing the policy excludes (it may exclude, for example, migrations, auth or release PRs).
@@ -169,6 +180,9 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 - **Squash merges break ancestry.** A branch built on top of another PR's branch hits add/add conflicts after that PR is squash-merged. Check that `main`'s copy equals the branch's base (`git show origin/main:<f>` vs `git show <base>:<f>`); if so, keep the branch's version.
 - **Signing or push failures stop the run.** If a commit or push fails with a signing-agent or SSH-agent error, nothing after it may run: chain with `&&`, report, and ask the user to unlock. Never fall back to unsigned commits.
 - **An implementer that didn't show red first** (tests failing before the fix) leaves you without red-to-green evidence. Ask the evaluator to prove it: run the new tests against the pre-fix code in a scratch worktree.
+
+- **Codex reads `AGENTS.md` only**, not `CLAUDE.md` or `REVIEW.md`. In a repo with a `REVIEW.md`, the cross-review applies its rules only when `AGENTS.md` has a `## Code Review Rules` section pointing at it. If Codex flags something `REVIEW.md` explicitly allows, the pointer is missing: report that rather than applying the finding.
+- **Never call `codex review --base`** for the cross-review: it refuses a prompt alongside `--base`, so it can't carry the brief and reviews work the change deliberately left out. `cross-review.sh` passes the range inside the prompt instead.
 
 - A subagent's "tests pass" is a claim. Check its report names the command and shows the result; if it doesn't, the evaluator will find out the hard way.
 - Evaluators that read `design.md` or code before writing the contract grade the code instead of the stories. The role file forbids it; if a report's contract items mirror implementation names rather than story language, rerun with a fresh evaluator.

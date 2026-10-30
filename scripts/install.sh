@@ -5,12 +5,13 @@
 # skills and removes links that point into this catalog but no longer resolve.
 # Also opts this checkout into the global private-term commit check.
 #
-# usage: scripts/install.sh [target-dir ...]   (default: ~/.claude/skills)
+# usage: scripts/install.sh [target-dir ...]
+#   default: ~/.claude/skills (Claude Code) and ~/.agents/skills (Codex)
 set -euo pipefail
 
 src="$(cd "$(dirname "${BASH_SOURCE[0]}")/../skills" && pwd)"
 targets=("$@")
-[ ${#targets[@]} -gt 0 ] || targets=("$HOME/.claude/skills")
+[ ${#targets[@]} -gt 0 ] || targets=("$HOME/.claude/skills" "$HOME/.agents/skills")
 
 for target in "${targets[@]}"; do
   mkdir -p "$target"

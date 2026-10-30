@@ -115,6 +115,8 @@ One section per project layer, in the project's order. Omit layer sections that 
 - [ ] [concrete testable assertion]
 ```
 
+Never write a `Cross-review:` line into the contract: `dev` adds it in Phase 4 from a real review result, and its presence is what tells `dev` the review ran.
+
 Layer names are taken from `tasks.md` headings. One section per layer present in `tasks.md`.
 
 ## Constraints

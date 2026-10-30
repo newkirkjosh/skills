@@ -14,10 +14,10 @@ metadata:
 **Explicit use only:** the user names this skill, or `dev` calls it.
 - Opening a PR after implementation is complete
 
-**Pre-conditions:**
+**Pre-conditions** (`<change>` below is `openspec/changes/<feat-name>/`, or `openspec/changes/archive/<feat-name>/` once `dev` Phase 4 has moved it there; use whichever exists on the branch):
 - A branch exists for this layer's work
-- `openspec/changes/<feat-name>/issues.md` exists with the sub-issue number
-- `openspec/changes/<feat-name>/proposal.md` exists for PR body content
+- `<change>/issues.md` exists with the sub-issue number
+- `<change>/proposal.md` exists for PR body content
 
 ## Principles
 
@@ -57,9 +57,11 @@ No list of changed files, line counts or commits: GitHub already shows them.
 | `normal` code | `silent-failure-hunter`, `code-reviewer`, `pr-test-analyzer` |
 | Significant docs added (docstrings, READMEs) | also `comment-analyzer` |
 
+These agents come from the `pr-review-toolkit` plugin, which only Claude Code has. On a host without it (Codex), the review set is a cross-model review instead: under `dev`, post `<change>/cross-review.md` (its Phase 4 final pass) as the PR comment; invoked on its own, run one pass with `dev`'s `scripts/cross-review.sh claude <worktree> origin/<default> <prompt-file>` (prompt as in `dev` Phase 4 step 1) and post that. Don't re-create the toolkit agents by hand.
+
 Reviewers are independent, so run them **in parallel**. Post each one's findings as a PR comment with `gh pr comment <n> --body-file <file>` (reviewer name + findings + what you'll do about each), then surface them in conversation. A three-reviewer pass costs roughly 150k tokens; on a plan with a session limit, the table above is the budget.
 
-**Scope Brief:** if `openspec/changes/<feat-name>/scope-brief.md` exists, paste it verbatim at the top of each review agent's prompt as an OUT OF SCOPE / IN SCOPE block, and triage findings against it: a finding about excluded work is recorded and dismissed with the exclusion cited, not fixed. Security, privacy, data-loss and correctness defects in the change are always in scope.
+**Scope Brief:** if `<change>/scope-brief.md` exists, paste it verbatim at the top of each review agent's prompt as an OUT OF SCOPE / IN SCOPE block, and triage findings against it: a finding about excluded work is recorded and dismissed with the exclusion cited, not fixed. Security, privacy, data-loss and correctness defects in the change are always in scope.
 
 **Merge convention:** Squash merge only. PR title becomes the single commit on the base branch. Never use merge commit or rebase merge.
 
@@ -67,8 +69,8 @@ Reviewers are independent, so run them **in parallel**. Post each one's findings
 
 Note: steps 1-2 are elaborations not in the spec — they are required reads to populate the PR body and issue reference before the main flow begins.
 
-1. Read `openspec/changes/<feat-name>/issues.md` to get the sub-issue number for this layer
-2. Read `openspec/changes/<feat-name>/proposal.md` for PR body content
+1. Read `<change>/issues.md` to get the sub-issue number for this layer
+2. Read `<change>/proposal.md` for PR body content
 3. Verify branch name matches convention — rename and re-push if needed
 4. Create PR with formatted title and body
 5. Run the review set for this change (table above), in parallel; post each reviewer's findings with `gh pr comment`, then surface them in conversation
