@@ -88,6 +88,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Branch exists, no open PR, the layer's contract has unchecked items | Phase 3: Evaluation (fix pass) |
 | Branch exists, no open PR, the layer's contract is all checked, no `Cross-review:` line | Phase 4: Cross-model review |
 | Branch exists, no open PR, the layer's contract is all checked and has its `Cross-review:` line | Phase 4: PR creation |
+| Draft PR open (from Phase 3 step 1), the layer's contract all checked, no `Cross-review:` line | Phase 4: Cross-model review, then mark the draft ready |
 | PR open for the layer | Phase 5: Review |
 | All sub-issues in `issues.md` are closed | Phase 6: Archive |
 
