@@ -86,7 +86,7 @@ Skills follow the open Agent Skills format (https://github.com/agentskills/agent
 
 `scripts/install.sh` symlinks every skill into `~/.claude/skills` (pass other directories, such as `~/.agents/skills` for Codex, as arguments). Links point into this checkout, so an edit takes effect on the next skill load: there is no version to bump and nothing to sync.
 
-Re-run it after adding, renaming or deleting a skill. It links new skills and removes links into this catalog that no longer resolve; it never touches a real directory or a link to somewhere else. The dotfiles repo runs it on a fresh machine (`run_onchange_after_install-skills.sh.tmpl`).
+Re-run it after adding, renaming or deleting a skill, **from the main checkout only**. Run from a worktree, it repoints every installed link at that worktree's copy, so every running session loads unmerged skills until it is re-run from the main checkout. It links new skills and removes links into this catalog that no longer resolve; it never touches a real directory or a link to somewhere else. The dotfiles repo runs it on a fresh machine (`run_onchange_after_install-skills.sh.tmpl`).
 
 **Change skills in a worktree, not on `main`.** The installed links point at this checkout's `main`, so an edit there changes every running session on its next skill load, mid-task included. Create one with `wt switch --create <type>/<change> --no-cd` (worktrunk), test a changed skill by pointing the session at the worktree copy's path, and merge to `main` to release it.
 
