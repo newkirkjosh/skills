@@ -41,6 +41,7 @@ Each item says why it exists; an item a repository can't use is `n/a`, never for
    - `stale` items by the migration below.
    - `decide` items exactly as the user answered.
    - `privacy` with `git config privacy.public true` in the main checkout (it is per clone and never committed). Then run `check-private --all` from the user's git hooks directory, if the global instructions name one, and stop on any hit: turning the check on doesn't clean what is already there.
+   - Before committing, read every line copied in from elsewhere (a symlink target, `copilot-instructions.md`) for credentials, personal details, private project names and machine specifics: the pattern checks only catch what they list. On a public repository, anything doubtful goes back to the user.
 5. **Verify.** Run `check-repo.sh` again: nothing `missing` or `stale` may remain except what the user chose to leave. Run the repository's own local checks.
 6. **Ship** with the `ship` skill: one commit (`chore: adopt the repo setup standard`, body listing the items), the repository's labels and board from `AGENTS.md`, CI and CodeRabbit waits, merge only under its Merge policy.
 
@@ -56,7 +57,7 @@ Add a row here, and a check in `check-repo.sh` with a test, whenever the standar
 
 ## Gotchas
 
-- **Never write through a symlink.** If `AGENTS.md`, `REVIEW.md` or `CLAUDE.md` is a symlink, a write lands in its target, possibly another repository. Put it in the step 3 question, saying where it points; with the user's yes, remove the link and write a regular file in its place (copying the target's content first where M1 needs it), never editing through the link. Without a yes, leave that item alone.
+- **Never write through a symlink.** If `AGENTS.md`, `REVIEW.md` or `CLAUDE.md` is a symlink, a write lands in its target, possibly another repository. Put it in the step 3 question, saying where it points and that its content will be committed to this repository (published, if public); with the user's yes, remove the link and write a regular file in its place (copying the target's content first where M1 needs it), never editing through the link. Without a yes, leave that item alone.
 - **A secret already in history isn't fixed by adding the scan.** If the new `secrets` job fails on its first run, stop and report the finding to the user: removing it means rotating the secret and rewriting history, which is their call.
 - **Private-term clashes.** When a public repository's own name is on the user's private-terms list, `privacy.public` would block every commit. Leave it unset, say so, and note a manual leak check in its `AGENTS.md` instead.
 - **gitleaks-action needs a license for organization-owned repositories**; personal repositories are free. For an organization repository, run the gitleaks CLI in the job instead.

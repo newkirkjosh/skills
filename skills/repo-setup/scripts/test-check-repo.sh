@@ -22,7 +22,7 @@ adopted() {
   printf '# P\n\n## Layers\n:a\n\n## Tracker\nLinear\n\n## Pull requests\nlabels\n\n## Merge policy\nnone\n\n## Code Review Rules\n\nRead `REVIEW.md` and apply it.\n\n## Testing\nx\n' > "$work/r/AGENTS.md"
   echo "# PR Review" > "$work/r/REVIEW.md"
   mkdir -p "$work/r/.github/workflows"
-  printf 'jobs:\n  secrets:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - uses: gitleaks/gitleaks-action@v2\n' > "$work/r/.github/workflows/ci.yml"
+  printf 'on:\n  push:\n  pull_request:\njobs:\n  secrets:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - uses: gitleaks/gitleaks-action@v3\n' > "$work/r/.github/workflows/ci.yml"
 }
 
 adopted; run
@@ -61,8 +61,17 @@ check "a gitleaks comment is not a scan" 'has missing secrets-ci'
 adopted; sed -i '/fetch-depth/d' "$work/r/.github/workflows/ci.yml"; run
 check "a shallow checkout is not a full-history scan" 'has missing secrets-ci'
 
-adopted; printf 'jobs:\n  s:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - run: gitleaks git --redact .\n' > "$work/r/.github/workflows/ci.yml"; run
+adopted; printf 'on: [push]\njobs:\n  s:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - run: gitleaks git --redact .\n' > "$work/r/.github/workflows/ci.yml"; run
 check "the gitleaks CLI on a full checkout counts" 'has ok secrets-ci'
+
+adopted; printf 'on: push\njobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n  b:\n    steps:\n      - uses: actions/checkout@v4\n      - uses: gitleaks/gitleaks-action@v3\n' > "$work/r/.github/workflows/ci.yml"; run
+check "full checkout in one job and gitleaks in another is not a scan" 'has missing secrets-ci'
+
+adopted; sed -i 's/^on:$/on:\n  workflow_dispatch:/; /^  push:$/d; /^  pull_request:$/d' "$work/r/.github/workflows/ci.yml"; run
+check "a scan only started by hand doesn't count" 'has missing secrets-ci'
+
+adopted; VIS=UNKNOWN run
+check "unknown visibility leaves coderabbit to decide" 'has decide coderabbit'
 
 adopted; printf 'knowledge_base:\n  code_guidelines:\n    enabled: false\n    filePatterns:\n      - "**/REVIEW.md"\n' > "$work/r/.coderabbit.yaml"; git -C "$work/r" config privacy.public true; VIS=PUBLIC run
 check "disabled code_guidelines is stale even with the pattern" 'has stale coderabbit'

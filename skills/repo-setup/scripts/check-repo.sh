@@ -56,17 +56,32 @@ if [ -f .coderabbit.yaml ]; then
     say stale coderabbit ".coderabbit.yaml doesn't read **/REVIEW.md (knowledge_base.code_guidelines: enabled, with the pattern)"
   fi
 elif [ "$vis" = PUBLIC ]; then say missing coderabbit "public repository without .coderabbit.yaml"
-else say n/a coderabbit "private repository: pr-review-toolkit reviews locally"
+elif [ "$vis" = PRIVATE ]; then say n/a coderabbit "private repository: pr-review-toolkit reviews locally"
+else say decide coderabbit "visibility unknown (gh unavailable); check it before deciding"
 fi
 
 # Secrets and privacy
-# A workflow file counts when an uncommented step runs gitleaks and its checkout
-# fetches the full history; a comment, or a shallow clone, scans nothing old.
+# A workflow counts when it runs on push or pull_request and one job both
+# checks out the full history and runs gitleaks in an uncommented step. A
+# comment, a shallow clone, or a scan only started by hand protects nothing.
+scan_job() {
+  awk '
+    /^[[:space:]]*#/ { next }
+    /^on:/ { on = 1; if ($0 ~ /push|pull_request/) trig = 1; next }
+    on && /^[^ ]/ { on = 0 }
+    on && /(push|pull_request)/ { trig = 1 }
+    /^jobs:/ { jobs = 1; next }
+    jobs && /^[^ ]/ { jobs = 0 }
+    jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { if (gl[job] && fd[job]) hit = 1; job = $1; next }
+    jobs && /fetch-depth:[[:space:]]*0/ { fd[job] = 1 }
+    jobs && /(uses:[[:space:]]*gitleaks\/gitleaks-action|gitleaks[[:space:]]+(git|detect))/ { gl[job] = 1 }
+    END { if (gl[job] && fd[job]) hit = 1; exit !(hit && trig) }
+  ' "$1"
+}
 scan=""
 for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
   [ -f "$wf" ] || continue
-  grep -qE '^[^#]*(uses:[[:space:]]*gitleaks/gitleaks-action|gitleaks[[:space:]]+(git|detect))' "$wf" \
-    && grep -qE '^[^#]*fetch-depth:[[:space:]]*0' "$wf" && scan=$wf && break
+  scan_job "$wf" && scan=$wf && break
 done
 if [ -n "$scan" ]; then say ok secrets-ci "$scan scans the full history with gitleaks"
 else say missing secrets-ci "no CI job scans the full history with gitleaks (uncommented step, fetch-depth: 0)"
