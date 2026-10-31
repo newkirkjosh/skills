@@ -41,7 +41,8 @@ Don't write a `gh` or API version into notes, scripts or answers. When a flag is
 
 - `bash scripts/head-status.sh <pr> [owner/repo]`: head SHA, check rollup for that commit, reviews on it versus older commits, unresolved thread count, as JSON.
 - `bash scripts/wait-for-ci.sh <sha> [timeout-min] [owner/repo]`: waits for every workflow run on that commit. Exits 0 all passed, 1 any failed, 3 timed out, 4 no run appeared.
-- `bash scripts/test-scripts.sh`: offline tests for both. Run after changing any of them.
+- `bash scripts/wait-for-coderabbit.sh <pr> [timeout-min] [owner/repo]`: waits for CodeRabbit's check on the PR's current head. Exits 0 passed, 1 failed, 3 timed out, 4 `NOT_CONFIGURED` (no CodeRabbit check appeared; terminal, record it and don't retry), 5 `RATE_LIMITED` (settle what it already posted and go on; never wait out the cooldown), 6 `HEAD_MOVED` (a push landed; rerun for the new head).
+- `bash scripts/test-scripts.sh`: offline tests for all three. Run after changing any of them.
 
 ## References
 

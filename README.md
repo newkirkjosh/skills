@@ -19,12 +19,14 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | Skill | Purpose |
 |---|---|
 | `dev` | Runs one change from approved stories to a merged PR and archived change folder. |
+| `team` | Runs `dev` for several approved changes at once, one terminal session each, in dependency order. |
 | `discovery` | Viability, one-pager, job stories and user flows for a new idea. |
 | `spec-writer` | Per-feature change folders: proposal, stories, design, tasks. |
 | `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
-| `pr` | PR title, body, issue link and a review set scaled to the change. |
+| `pr` | PR title, body and issue link; the other model reviews it (Codex from Claude Code, Claude from Codex), then CodeRabbit where configured. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
+| `repo-setup` | Brings a repository up to the standard the workflow skills expect, and upgrades it when that changes. |
 | `resolve-pr-feedback` | One round of review-bot threads: triage, one fix push, reply and resolve. |
 | `gh-issues` | Turns a change folder into a GitHub epic and sub-issues. |
 | `github` | Reference for `gh` and the GitHub APIs. |
@@ -54,4 +56,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Use `learn` to make chan
 
 ## License
 
-[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn` and part of `dev` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
+[MIT](LICENSE). Adapted skills keep their upstream license in their own `LICENSE.txt`: `github`, `shell`, `learn`, part of `dev`, the idea behind `team` and `repo-setup` from [fx/skills](https://github.com/fx/skills), `find-skills` from [vercel-labs/skills](https://github.com/vercel-labs/skills), `extract-design` from [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).

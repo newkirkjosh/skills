@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for eval-export.sh, using a real throwaway git repository. No network.
+# Tests for eval-export.sh and cross-review.sh, using a real throwaway git repository. No network.
 # usage: bash test-scripts.sh   (needs bash and git)
 set -uo pipefail
 
@@ -38,6 +38,60 @@ ex "$repo" "$head"
 check "export: missing args exits 2" '[ "$(rc)" = 2 ]'
 ex "$work/nope" "$head" "$base" "$work/eval3"
 check "export: non-repo exits 2" '[ "$(rc)" = 2 ]'
+
+# cross-review.sh, with codex and claude stubbed on PATH: each stub records its
+# arguments and stdin, and exits with $STUB_RC.
+stubs="$work/bin"
+mkdir -p "$stubs"
+for tool in codex claude; do
+  cat > "$stubs/$tool" <<EOF
+#!/usr/bin/env bash
+if [ "\$1 \$2" = "mcp list" ]; then
+  [ -n "\${MCP_FAIL:-}" ] && exit 1
+  echo '[{"name":"alpha"},{"name":"beta.svc"}]'; exit 0
+fi
+printf '%s\n' "\$@" > "$work/$tool.args"
+cat > "$work/$tool.stdin"
+echo "review text"
+exit "\${STUB_RC:-0}"
+EOF
+  chmod +x "$stubs/$tool"
+done
+git -C "$repo" checkout -q -- a.txt
+echo "brief: only the empty state" > "$work/brief.md"
+cr() { PATH="$stubs:$PATH" bash "$here/cross-review.sh" "$@" > "$work/out" 2> "$work/err"; echo $? > "$work/rc"; }
+last() { tail -n 1 "$work/out"; }
+
+cr codex "$repo" "$base" "$work/brief.md"
+check "cross-review codex: completes" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ]'
+check "cross-review codex: disables every MCP server by name" 'grep -qx "mcp_servers.\"alpha\".enabled=false" "$work/codex.args" && grep -qx "mcp_servers.\"beta.svc\".enabled=false" "$work/codex.args"'
+check "cross-review codex: no --base (codex rejects it with a prompt)" '! grep -qx -- "--base" "$work/codex.args"'
+check "cross-review codex: prompt carries the range and the brief" 'grep -q "git diff $base...HEAD" "$work/codex.stdin" && grep -q "only the empty state" "$work/codex.stdin"'
+check "cross-review codex: no model override unless asked" '! grep -q "^model=" "$work/codex.args"'
+CROSS_REVIEW_EFFORT=high cr codex "$repo" "$base" "$work/brief.md"
+check "cross-review codex: effort override per run" 'grep -qx "model_reasoning_effort=\"high\"" "$work/codex.args"'
+MCP_FAIL=1 cr codex "$repo" "$base" "$work/brief.md"
+check "cross-review codex: refuses when MCP list fails" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ]'
+STUB_RC=2 cr codex "$repo" "$base" "$work/brief.md"
+check "cross-review: a failed reviewer is ERROR, never COMPLETED" '[ "$(rc)" = 2 ] && grep -qx REVIEWER_EXIT=2 "$work/out" && [ "$(last)" = STATUS=ERROR ]'
+check "cross-review codex: forces a read-only sandbox" 'grep -qx "sandbox_mode=\"read-only\"" "$work/codex.args" && grep -qx "approval_policy=\"never\"" "$work/codex.args"'
+(cd "$work" && PATH="$stubs:$PATH" bash "$here/cross-review.sh" codex "$repo" "$base" brief.md > "$work/out" 2> "$work/err"; echo $? > "$work/rc")
+check "cross-review: relative prompt path resolves from the caller" '[ "$(rc)" = 0 ] && grep -q "only the empty state" "$work/codex.stdin"'
+
+cr claude "$repo" "$base" "$work/brief.md"
+check "cross-review claude: completes" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ]'
+check "cross-review claude: print mode, read-only tools, no shell, no MCP" 'grep -qx -- "-p" "$work/claude.args" && grep -qx -- "--tools" "$work/claude.args" && grep -qx Read "$work/claude.args" && ! grep -q "Bash" "$work/claude.args" && grep -qx -- "--strict-mcp-config" "$work/claude.args"'
+check "cross-review claude: reviews a diff written beforehand" 'grep -q "change.diff" "$work/claude.stdin" && grep -q "only the empty state" "$work/claude.stdin"'
+
+cr gemini "$repo" "$base" "$work/brief.md"
+check "cross-review: unknown reviewer exits 3" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ]'
+cr codex "$repo" nope "$work/brief.md"
+check "cross-review: unknown base exits 3" '[ "$(rc)" = 3 ]'
+cr codex "$repo" HEAD "$work/brief.md"
+check "cross-review: empty range exits 3" '[ "$(rc)" = 3 ] && grep -q "nothing to review" "$work/err"'
+: > "$work/empty.md"
+cr codex "$repo" "$base" "$work/empty.md"
+check "cross-review: empty prompt exits 3" '[ "$(rc)" = 3 ]'
 
 echo
 echo "$pass passed, $fail failed"

@@ -11,7 +11,7 @@ One failure motivates all of it: **every push invalidates the evidence gathered 
 The candidate head is the commit you intend to merge. Everything that can still change the tree happens before it exists; everything slow and head-scoped happens after.
 
 1. Implement, and commit everything the change needs: code, tests, tracker docs, generated files, the archive move. A "finalizing" commit after review is a push you didn't need.
-2. Run every local check and local reviewer. Batch every finding and fix them in one pass.
+2. Run every local check and the local review (`pr`'s review set: the cross-model review, converged). Batch every finding and fix them in one pass.
 3. Run any verification that doesn't need a PR (the app, the test plan).
 4. Push once. Record that SHA as the candidate head.
 5. Open or update the PR. Hosted reviewers (CodeRabbit and the like) start on the push.
@@ -47,4 +47,4 @@ Take everything already reported (local reviewers, hosted reviewers, verificatio
 2. Wait on hosted reviewers before CI: their findings decide whether the head survives at all.
 3. Wait on CI last, once the head has no unresolved blocking finding.
 
-A reviewer that isn't configured for the repository (no `.coderabbit.yaml`, no bot activity on any PR) stays unconfigured for the rest of the run: note it once and stop checking for it.
+A reviewer that isn't configured for the repository (its waiter reports `NOT_CONFIGURED`; CodeRabbit can run without a `.coderabbit.yaml`, so the file's absence proves nothing) stays unconfigured for the rest of the run: note it once and stop checking for it.
