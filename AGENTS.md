@@ -108,7 +108,7 @@ Conventional-commit titles, squash merge only. Labels: `enhancement` or `bug`, p
 
 ## Merge policy
 
-An agent may squash-merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the Codex cross-review converged, every CodeRabbit comment fixed or answered, and no unresolved review thread. Hand the merge back to the user when the PR touches `.github/workflows/`, the privacy checks (`scripts/check-private.sh`, the Security and privacy section above) or what switches them on (`scripts/install.sh`, which sets `privacy.public`), the review rules and what applies them (`REVIEW.md`, `.coderabbit.yaml`), or this Merge policy or the Code Review Rules section of this file.
+An agent may squash-merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the Codex cross-review converged, every CodeRabbit comment fixed or answered, and no unresolved review thread. Hand the merge back to the user when the PR touches credential handling (a bundled script that reads a token, key or password, such as `skills/unifi/scripts/` or `skills/*/scripts/` secret helpers), `.github/workflows/`, the privacy checks (`scripts/check-private.sh`, the Security and privacy section above) or what switches them on (`scripts/install.sh`, which sets `privacy.public`), the review rules and what applies them (`REVIEW.md`, `.coderabbit.yaml`), or this Merge policy or the Code Review Rules section of this file.
 
 ## Code Review Rules
 
