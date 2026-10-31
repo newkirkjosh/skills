@@ -199,6 +199,8 @@ def main(argv):
             print(show(n))
         return 0
     if cmd == "type" and len(args) == 1:
+        if any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in args[0]):
+            fail("type does not support control characters (including newlines and tabs)")
         # input text needs spaces as %s and shell metacharacters escaped.
         escaped = re.sub(r"([\\'\"`$&|;<>()*?!#~])", r"\\\1", args[0]).replace(" ", "%s")
         adb(serial, "shell", "input", "text", escaped)

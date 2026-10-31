@@ -31,7 +31,7 @@ printf '%s\n' "$*" >> "$STUB/adb.log"
 case "$*" in
   "start-server") ;;
   "shell input keycombination 113 29") [ -z "${STUB_KEYCOMBINATION_FAIL:-}" ] ;;
-  "shell getprop sys.boot_completed") echo "${STUB_BOOTED:-1}" ;;
+  "shell getprop sys.boot_completed") if [ -n "${STUB_BOOT_FILE:-}" ]; then cat "$STUB_BOOT_FILE"; else echo "${STUB_BOOTED:-1}"; fi ;;
   "emu kill") [ -n "${STUB_NO_EMU_KILL:-}" ] || pkill -f "$STUB/bin/emulator" ;;
   "shell uiautomator dump "*) echo "UI hierchary dumped to: $4" ;;
   "exec-out cat /data/local/tmp/verify-ui.xml") cat "$STUB/ui.xml" ;;
@@ -45,6 +45,7 @@ emu() { bash "$here/android-emulator.sh" "$@" > "$work/out" 2> "$work/err"; echo
 rc() { cat "$work/rc"; }
 last() { tail -n 1 "$work/out"; }
 lock="$work/emu.lock"
+group_stopped() { ! ps -eo pgid=,stat= | awk -v g="$group" '$1 == g && $2 !~ /^Z/ { found=1 } END { exit !found }'; }
 
 # --- android-emulator.sh ------------------------------------------------------
 emu up --port 5554 --lock "$lock" --timeout 10
@@ -58,18 +59,44 @@ check "up: recorded PID is the process group leader" '[ "$(ps -o pgid= -p "$pid"
 emu up --port 5554 --lock "$lock"
 check "up again: reuses the running device" '[ "$(rc)" = 0 ] && grep -q reused "$work/out"'
 
+emu up --port 5554 --lock "$work/other.lock"
+check "up: another lock on the same port is BUSY" '[ "$(rc)" = 4 ] && [ "$(last)" = STATUS=BUSY ]'
+emu up --port 5554 --avd another-avd --lock "$lock"
+check "up: another AVD on the same port is BUSY" '[ "$(rc)" = 4 ] && [ "$(last)" = STATUS=BUSY ]'
+check "busy callers preserve ownership" '[ "$(cat "$work/run/verify-change/emulator-5554.pid")" = "$pid" ] && [ "$(cat "$work/run/verify-change/emulator-5554.lockpath")" = "$lock" ] && [ "$(cat "$work/run/verify-change/emulator-5554.avd")" = one-avd ]'
+
 emu up --port 5556 --lock "$lock"
 check "a second device on the same lock is BUSY (4), not shared" '[ "$(rc)" = 4 ] && [ "$(last)" = STATUS=BUSY ]'
 
+group="$pid"
+check "down assertion detects the live recorded group" '! group_stopped'
 emu down --port 5554
-check "down: STOPPED and the emulator is gone" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=STOPPED ] && ! pgrep -f "$work/bin/emulator 2>/dev/null" -u "$(id -u)" >/dev/null && [ ! -f "$work/run/verify-change/emulator-5554.pid" ]'
+check "down: STOPPED and the emulator is gone" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=STOPPED ] && ! kill -0 "$pid" 2>/dev/null && group_stopped && [ ! -f "$work/run/verify-change/emulator-5554.pid" ]'
 check "down: the lock is free again" 'flock -n "$lock" true'
 
 STUB_NO_EMU_KILL=1 emu up --avd x --port 5564 --lock "$lock"
-group_stopped() { ! ps -eo pgid=,stat= | awk -v g="$group" '$1 == g && $2 !~ /^Z/ { found=1 } END { exit !found }'; }
 group="$(cat "$work/run/verify-change/emulator-5564.pid")"
 STUB_NO_EMU_KILL=1 emu down --port 5564
 check "down: an emulator ignoring emu kill is stopped with its whole group" '[ "$(last)" = STATUS=STOPPED ] && flock -n "$lock" true && group_stopped'
+
+# Hold the first run in its boot poll while competing callers try the same port.
+echo 0 > "$work/booted"
+STUB_BOOT_FILE="$work/booted" bash "$here/android-emulator.sh" up --avd x --port 5566 --lock "$lock" --timeout 15 > "$work/first.out" 2> "$work/first.err" &
+first_up=$!
+for _ in $(seq 1 50); do
+  [ -f "$work/run/verify-change/emulator-5566.pid" ] && break
+  sleep 0.1
+done
+first_pid="$(cat "$work/run/verify-change/emulator-5566.pid")"
+STUB_BOOT_FILE="$work/booted" emu up --avd x --port 5566 --lock "$lock"
+check "racing up during boot is BUSY" '[ "$(rc)" = 4 ] && [ "$(last)" = STATUS=BUSY ]'
+STUB_BOOT_FILE="$work/booted" emu up --avd x --port 5566 --lock "$work/other.lock"
+check "racing up with another lock preserves the first records" '[ "$(rc)" = 4 ] && [ "$(cat "$work/run/verify-change/emulator-5566.pid")" = "$first_pid" ] && [ "$(cat "$work/run/verify-change/emulator-5566.lockpath")" = "$lock" ] && [ "$(cat "$work/run/verify-change/emulator-5566.avd")" = x ]'
+echo 1 > "$work/booted"
+wait "$first_up"; first_rc=$?
+check "first run completes boot after racing callers" '[ "$first_rc" = 0 ] && grep -q STATUS=READY "$work/first.out"'
+emu down --port 5566
+check "first run remains stoppable after racing callers" '[ "$(rc)" = 0 ] && flock -n "$lock" true'
 
 emu status --port 5554
 check "status after down is STOPPED" '[ "$(last)" = STATUS=STOPPED ]'
@@ -87,6 +114,7 @@ emu down --port 5560
 flock "$lock" sleep 30 & holder=$!; sleep 0.5
 emu up --avd x --port 5562 --lock "$lock"
 check "a lock held by another run is BUSY" '[ "$(rc)" = 4 ]'
+check "failed lock acquisition publishes no ownership records" '[ ! -e "$work/run/verify-change/emulator-5562.pid" ] && [ ! -e "$work/run/verify-change/emulator-5562.lockpath" ] && [ ! -e "$work/run/verify-change/emulator-5562.avd" ]' 
 kill "$holder"; holder=""
 
 emu up --port 5555 --lock "$lock"
@@ -166,6 +194,11 @@ ui gone "Nope" --timeout 1
 check "ui gone: succeeds when absent" '[ "$(rc)" = 0 ]'
 ui type "it's a test & more"
 check "ui type: spaces become %s and metacharacters are escaped" "grep -qF \"input text it\\\\'s%sa%stest%s\\\\&%smore\" \"\$work/adb.log\""
+for control in $'hello\ninput keyevent HOME' $'hello\tworld' $'hello\rworld' $'hello\033world' $'hello\177world' $'hello\u0085world'; do
+  : > "$work/adb.log"
+  ui type "$control"
+  check "ui type: rejects control characters before any adb call" '[ "$(rc)" = 2 ] && grep -q "control characters" "$work/err" && [ ! -s "$work/adb.log" ]'
+done
 ui key back
 check "ui key: BACK maps to KEYCODE_BACK" '[ "$(rc)" = 0 ] && grep -q "input keyevent KEYCODE_BACK" "$work/adb.log"'
 printf '\x89PNGrest' > "$work/screen"; ui screenshot "$work/shot.png"

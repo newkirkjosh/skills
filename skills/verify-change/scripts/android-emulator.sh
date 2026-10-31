@@ -43,6 +43,12 @@ while (($#)); do
 done
 [[ $port =~ ^[0-9]+$ ]] && (( port % 2 == 0 )) || die "--port must be an even number"
 serial="emulator-$port" pidfile="$state/emulator-$port.pid" lockref="$state/emulator-$port.lockpath" log="$state/emulator-$port.log"
+avdref="$state/emulator-$port.avd"
+
+# Serialize ownership publication and shutdown for this port, even across locks.
+mkdir -p "$state" || die "can't create state directory"
+exec 8>"$state/emulator-$port.guard"
+flock -n 8 || { status=BUSY; exit 4; }
 
 alive() { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; }
 booted() { [ "$("$adb" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; }
@@ -60,23 +66,34 @@ case "$cmd" in
       lock="$common/locks/emulator"
     fi
     mkdir -p "$state" "$(dirname "$lock")" || die "can't create $state or the lock directory"
-    if alive && booted; then
-      echo "serial=$serial pid=$(cat "$pidfile") reused"; status=READY; exit 0
+    lock="$(cd "$(dirname "$lock")" && pwd -P)/$(basename "$lock")"
+    if alive; then
+      if [ "$(cat "$lockref" 2>/dev/null)" = "$lock" ] &&
+         [ "$(cat "$avdref" 2>/dev/null)" = "$avd" ] && booted; then
+        echo "serial=$serial pid=$(cat "$pidfile") reused"; status=READY; exit 0
+      fi
+      echo "port $port belongs to another run or is still booting"
+      status=BUSY; exit 4
     fi
-    # The emulator itself holds the lock, so it is released exactly when the device goes away.
-    # Job control assigns the background job PGID=$!, without setsid forking.
+    # Acquire before publishing anything. The child inherits fd 9 and holds
+    # the device lock until it and its helpers exit; the parent closes its copy.
+    exec 9>"$lock"
+    flock -n 9 || { echo "lock held: $lock"; status=BUSY; exit 4; }
     start=$SECONDS
+    # Job control assigns the background job PGID=$!, without setsid forking.
     set -m
-    flock -n -E 99 "$lock" "$emulator" -avd "$avd" -port "$port" \
-      -no-window -gpu host -no-audio -no-boot-anim -no-snapshot-save >"$log" 2>&1 &
-    echo $! >"$pidfile"
+    "$emulator" -avd "$avd" -port "$port" \
+      -no-window -gpu host -no-audio -no-boot-anim -no-snapshot-save 8>&- >"$log" 2>&1 &
+    pid=$!
     set +m
     echo "$lock" >"$lockref"
+    echo "$avd" >"$avdref"
+    echo "$pid" >"$pidfile"
+    exec 9>&-
+    exec 8>&-
     sleep 1
-    if ! kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-      wait "$(cat "$pidfile")"; rc=$?
-      rm -f "$pidfile"
-      if [ "$rc" = 99 ]; then echo "lock held: $lock"; status=BUSY; exit 4; fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid"; rc=$?
       tail -5 "$log" >&2; die "emulator exited at start (exit $rc); log: $log"
     fi
     "$adb" start-server >/dev/null 2>&1 || :
@@ -98,8 +115,7 @@ case "$cmd" in
       pid="$(cat "$pidfile")"
       "$adb" -s "$serial" emu kill >/dev/null 2>&1 || :
       for _ in $(seq 1 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
-      # Signal the whole group: killing only the flock wrapper would leave the
-      # emulator running and still holding the lock.
+      # Signal the whole group so emulator helpers cannot keep the lock held.
       if kill -0 "$pid" 2>/dev/null; then kill -TERM -- "-$pid" 2>/dev/null; sleep 3; fi
       if kill -0 "$pid" 2>/dev/null; then kill -KILL -- "-$pid" 2>/dev/null; sleep 1; fi
       kill -0 "$pid" 2>/dev/null && die "emulator group $pid didn't stop"
@@ -109,7 +125,7 @@ case "$cmd" in
     if [ -f "$lockref" ]; then
       flock -w 15 "$(cat "$lockref")" true || die "emulator stopped but its lock is still held: $(cat "$lockref")"
     fi
-    rm -f "$pidfile" "$lockref"
+    rm -f "$pidfile" "$lockref" "$avdref"
     status=STOPPED ;;
   status)
     if alive && booted; then echo "serial=$serial pid=$(cat "$pidfile")"; status=READY
