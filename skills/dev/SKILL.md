@@ -54,7 +54,7 @@ Agent tool:
 
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
 
-**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Reviews go to the other model (Phase 4), not to more Claude agents (see `pr`).
+**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Reviews go to the other model (Phase 4), not to more Claude agents; `pr`'s toolkit agents are only its fallback when the other model is unavailable.
 
 ## Scope Brief
 
@@ -145,7 +145,7 @@ Invoke `pr`, passing the Scope Brief for the PR body and the reviewers. After th
 **Merging** is the user's call unless the project's `AGENTS.md` has a **Merge policy** that grants it. With that grant, merge yourself only when every gate holds on the PR's current head, re-checked right before merging (the github skill's `head-status.sh`):
 
 1. CI green on the head commit.
-2. The layer's `sprint-contract.md` section is all checked from an evaluator `VERDICT: PASS`, and its `Cross-review:` line says converged, skipped for a `narrow` docs-only change, or unavailable and reported to the user.
+2. The layer's `sprint-contract.md` section is all checked from an evaluator `VERDICT: PASS`, and its `Cross-review:` line says converged (at the head, or re-run on every commit pushed after it, the way Phase 4 step 3 re-runs), skipped for a `narrow` docs-only change, or unavailable and reported to the user.
 3. Every review finding is fixed or dismissed with a reason in the PR comment; none is open or blocking.
 4. Zero unresolved review threads.
 5. Nothing the policy excludes (it may exclude, for example, migrations, auth or release PRs).

@@ -51,7 +51,7 @@ No list of changed files, line counts or commits: GitHub already shows them.
 
 **Review set: the other model, converged, then CodeRabbit.** The local review is the cross-model review: Codex when you run on Claude Code, Claude when you run on Codex, through the cross-review script in `dev` with the Scope Brief as its prompt. Under `dev` it already ran in Phase 4: post `<change>/cross-review.md` (its final pass) as a PR comment. Invoked on its own, run it before pushing, the way `dev` Phase 4 steps 1-3 describe (fix blocking findings, re-run with the already-fixed list, at most three passes), then post the final pass. When `dev` recorded `Cross-review: skipped (narrow docs-only)` or `Cross-review: unavailable: <reason>`, post that line instead and say why in the PR body. CodeRabbit reviews the PR itself where the repository has it.
 
-The `pr-review-toolkit` agents (Claude Code only) are a fallback, not the default: run them only when the cross-model review is unavailable (the reviewer's CLI is missing or can't authenticate) or the user asks for them. On Codex there is no fallback: record the review as unavailable in the PR body, and the merge goes to the user. They cost roughly 50k tokens each, so then use `code-reviewer`, plus `silent-failure-hunter` for security, auth or error paths and `pr-test-analyzer` for new logic.
+The `pr-review-toolkit` agents (Claude Code only) are a fallback, not the default: run them only when the cross-model review is unavailable (the reviewer's CLI is missing or can't authenticate; under `dev`, when Phase 4 recorded it unavailable) or the user asks for them. On Codex there is no fallback: record the review as unavailable in the PR body, and the merge goes to the user. They cost roughly 50k tokens each, so then use `code-reviewer`, plus `silent-failure-hunter` for security, auth or error paths and `pr-test-analyzer` for new logic.
 
 **Scope Brief:** if `<change>/scope-brief.md` exists, paste it verbatim at the top of each review agent's prompt as an OUT OF SCOPE / IN SCOPE block, and triage findings against it: a finding about excluded work is recorded and dismissed with the exclusion cited, not fixed. Security, privacy, data-loss and correctness defects in the change are always in scope.
 
@@ -65,7 +65,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 2. Read `<change>/proposal.md` for PR body content
 3. Verify branch name matches convention — rename and re-push if needed
 4. Create PR with formatted title and body
-5. Post the cross-model review's final pass with `gh pr comment <n> --body-file <file>` (running it first if `dev` didn't), then wait for CodeRabbit and settle every comment: fix it, or reply with why it doesn't apply
+5. Post the cross-model review's final pass with `gh pr comment <n> --body-file <file>` (invoking `pr`, or `dev`, which calls it, is the request for this comment on the PR it opened) (running it first if `dev` didn't), then wait for CodeRabbit and settle every comment: fix it, or reply with why it doesn't apply
 6. Consolidate all findings and present before merge
 7. On merge: move the sub-issue on the repository's board as its `AGENTS.md` says (the github skill's projects reference)
 
