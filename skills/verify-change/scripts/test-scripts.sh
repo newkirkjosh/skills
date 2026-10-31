@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for android-emulator.sh and android-ui.py, with adb and the emulator
 # stubbed. No network, no device, no SDK.
-# usage: bash test-scripts.sh   (needs bash, flock and python3)
+# usage: bash test-scripts.sh   (needs bash, flock, python3 and node)
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -149,6 +149,28 @@ echo "$dead" > "$work/run/verify-change/emulator-5572.pid"; : > "$work/adb.log"
 emu down --port 5572
 check "down with a stale record doesn't send emu kill to the serial" '[ "$(last)" = STATUS=STOPPED ] && ! grep -q "emu kill" "$work/adb.log"'
 
+# A reused live PID must never be mistaken for our emulator.
+set -m
+sleep 120 & unrelated=$!
+set +m
+for operation in status down up; do
+  record="$work/run/verify-change/emulator-5570"
+  echo "$unrelated" > "$record.pid"
+  echo 'not the recorded start time' > "$record.start"
+  echo "$work/identity.lock" > "$record.lockpath"
+  echo x > "$record.avd"
+  : > "$work/adb.log"
+  emu "$operation" --port 5570 --avd x --lock "$work/identity.lock"
+  check "$operation: recycled PID is untouched" 'kill -0 "$unrelated" 2>/dev/null && ! grep -q "emu kill" "$work/adb.log"'
+  if [ "$operation" = up ]; then
+    check "up: replaces stale identity with a new owned emulator" '[ "$(rc)" = 0 ] && [ "$(cat "$record.pid")" != "$unrelated" ] && [ -s "$record.start" ]'
+    emu down --port 5570
+  else
+    check "$operation: discards stale ownership records" '[ "$(last)" = STATUS=STOPPED ] && [ ! -e "$record.pid" ] && [ ! -e "$record.start" ] && [ ! -e "$record.lockpath" ] && [ ! -e "$record.avd" ]'
+  fi
+done
+kill "$unrelated"; wait "$unrelated" 2>/dev/null || :
+
 # --- android-ui.py --------------------------------------------------------------
 cat > "$work/ui.xml" <<'EOF'
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
@@ -242,9 +264,7 @@ ui wait "Nope" --timeout 1
 check "ui wait: times out with exit 1" '[ "$(rc)" = 1 ] && grep -q "timed out after 1s" "$work/err"'
 ui gone "Nope" --timeout 1
 check "ui gone: succeeds when absent" '[ "$(rc)" = 0 ]'
-ui type "it's a test & more"
-check "ui type: spaces become %s and metacharacters are escaped" "grep -qF \"input text it\\\\'s%sa%stest%s\\\\&%smore\" \"\$work/adb.log\""
-for control in $'hello\ninput keyevent HOME' $'hello\tworld' $'hello\rworld' $'hello\033world' $'hello\177world' $'hello\u0085world'; do
+for control in $'hello\ninput keyevent HOME' $'hello\tworld' $'hello\rworld' $'hello\033world' $'hello\177world' "$(printf 'hello\302\205world')"; do
   : > "$work/adb.log"
   ui type "$control"
   check "ui type: rejects control characters before any adb call" '[ "$(rc)" = 2 ] && grep -q "control characters" "$work/err" && [ ! -s "$work/adb.log" ]'
@@ -260,6 +280,86 @@ printf 'error: device offline' > "$work/screen"; ui screenshot "$work/bad.png"
 check "ui screenshot: refuses output that isn't a PNG" '[ "$(rc)" = 2 ] && [ ! -e "$work/bad.png" ]'
 printf 'not xml' > "$work/ui.xml"; ui find x
 check "ui: an unparseable dump is exit 2, not 'not found'" '[ "$(rc)" = 2 ]'
+
+# Exercise the helper's subprocess boundary and the actual shell's parsing.
+python3 -I - "$here/android-ui.py" "$work" <<'PYTEST'
+import contextlib
+import importlib.util
+import io
+import subprocess
+import sys
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location("android_ui", sys.argv[1])
+ui = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ui)
+for error in (subprocess.TimeoutExpired("adb", 60), OSError("missing adb")):
+    with patch.object(ui.subprocess, "run", side_effect=error), contextlib.redirect_stderr(io.StringIO()) as err:
+        try:
+            ui.adb("test", "shell", "true")
+            raise AssertionError("expected exit 2")
+        except SystemExit as e:
+            assert e.code == 2 and "adb could not complete" in err.getvalue()
+for text in ("it's a test & more", "[d]ata {a,b}", '$(echo bad); `echo bad`', 'two words'):
+    with patch.object(ui, "adb") as adb:
+        assert ui.main(["--serial", "test", "--device", "type", text]) == 0
+        remote = " ".join(adb.call_args.args[2:])
+    # Existing file would trigger glob expansion if the value were not quoted.
+    from pathlib import Path
+    Path(sys.argv[2], "data").touch()
+    result = subprocess.run(["bash", "-c", 'input() { printf "%s\n" "$@"; }; ' + remote],
+                            cwd=sys.argv[2], capture_output=True, text=True, check=True)
+    assert result.stdout.splitlines() == ["text", text.replace(" ", "%s")], result.stdout
+PYTEST
+check "ui: adb exceptions are exit 2 and type survives shell parsing" '[ "$?" = 0 ]'
+for command in key launch; do
+  for value in 'KEYCODE_HOME; reboot' 'com.example.app; reboot' 'x y' ''; do
+    : > "$work/adb.log"
+    ui "$command" "$value"
+    check "ui $command: rejects shell input before adb" '[ "$(rc)" = 2 ] && [ ! -s "$work/adb.log" ]'
+  done
+done
+for value in KEYCODE_HOME 3 enter; do
+  ui key "$value"
+  check "ui key: accepts allowlisted key" '[ "$(rc)" = 0 ]'
+done
+ui launch com.example.app
+check "ui launch: accepts Android package" '[ "$(rc)" = 0 ] && grep -q "monkey -p com.example.app" "$work/adb.log"'
+
+# Playwright stub models a hidden first match and a late HTTP error.
+mkdir -p "$work/modules/playwright"
+cat > "$work/modules/playwright/index.js" <<'JS'
+const assert = require('node:assert/strict');
+exports.chromium = { launch: async () => ({
+  close: async () => {},
+  newPage: async () => {
+    const handlers = {};
+    return {
+      on: (name, fn) => { handlers[name] = fn; },
+      goto: async () => ({status: () => 200}),
+      getByText: () => {
+        let visible = false;
+        const locator = {
+          filter: (options) => { visible = options.visible === true; return locator; },
+          first: () => locator,
+          waitFor: async () => { assert(visible, 'hidden first match was selected'); }
+        };
+        return locator;
+      },
+      waitForLoadState: async (state, options) => {
+        assert.equal(state, 'networkidle');
+        assert.equal(options.timeout, 1234);
+        await new Promise(resolve => setTimeout(resolve, 5));
+        if (process.env.WEB_LATE_ERROR) handlers.response({status: () => 500, url: () => 'http://example.com/late'});
+      }
+    };
+  }
+})};
+JS
+NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --timeout 1234 > "$work/web.out" 2>&1
+check "web: visible match wins over hidden first match" '[ "$?" = 0 ] && grep -q "PASS  text visible" "$work/web.out"'
+WEB_LATE_ERROR=1 NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --timeout 1234 > "$work/web.out" 2>&1
+web_rc=$?
+check "web: waits for network idle and catches late errors" '[ "$web_rc" = 1 ] && grep -q "FAIL  HTTP 500" "$work/web.out"'
 
 echo
 echo "$pass passed, $fail failed"

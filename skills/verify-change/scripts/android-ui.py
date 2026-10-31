@@ -35,6 +35,7 @@ Exit: 0 ok, 1 not found / timed out, 2 usage or adb failure.
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import time
@@ -51,7 +52,10 @@ def fail(msg, code=2):
 
 def adb(serial, *args, binary=False, allow_failure=False):
     cmd = [ADB, "-s", serial] + list(args)
-    r = subprocess.run(cmd, capture_output=True, timeout=60)
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=60)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        fail(f"adb could not complete: {e}")
     if allow_failure:
         return r.returncode == 0
     if r.returncode != 0:
@@ -231,8 +235,7 @@ def main(argv):
             fail("type does not support control characters (including newlines and tabs)")
         if "%s" in args[0]:
             fail("type does not support literal %s (Android converts it to a space)")
-        # input text needs spaces as %s and shell metacharacters escaped.
-        escaped = re.sub(r"([\\'\"`$&|;<>()*?!#~])", r"\\\1", args[0]).replace(" ", "%s")
+        escaped = shlex.quote(args[0].replace(" ", "%s"))
         adb(serial, "shell", "input", "text", escaped)
         return 0
     if cmd == "clear" and not args:
@@ -244,6 +247,8 @@ def main(argv):
         return 0
     if cmd == "key" and len(args) == 1:
         k = args[0] if args[0].startswith("KEYCODE_") or args[0].isdigit() else "KEYCODE_" + args[0].upper()
+        if not re.fullmatch(r"(?:KEYCODE_[A-Z0-9_]+|[0-9]+)", k):
+            fail("key must be a KEYCODE name, short name, or digits")
         adb(serial, "shell", "input", "keyevent", k)
         return 0
     if cmd == "screenshot" and len(args) == 1:
@@ -255,6 +260,8 @@ def main(argv):
         print(args[0])
         return 0
     if cmd == "launch" and len(args) == 1:
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+", args[0]):
+            fail("launch requires an Android package name")
         adb(serial, "shell", "am", "force-stop", args[0])
         adb(serial, "shell", "monkey", "-p", args[0], "-c", "android.intent.category.LAUNCHER", "1")
         return 0

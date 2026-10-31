@@ -45,13 +45,14 @@ function usage() {
     console.log(`loaded ${url} (HTTP ${resp ? resp.status() : "?"})`);
     for (const text of expect) {
       try {
-        await page.getByText(text, { exact: false }).first().waitFor({ state: "visible", timeout });
+        await page.getByText(text, { exact: false }).filter({ visible: true }).first().waitFor({ state: "visible", timeout });
         console.log(`PASS  text visible: ${text}`);
       } catch {
         console.log(`FAIL  text not visible within ${timeout} ms: ${text}`);
         failed = true;
       }
     }
+    await page.waitForLoadState("networkidle", { timeout });
     if (screenshot) {
       await page.screenshot({ path: screenshot, fullPage: true });
       console.log(`screenshot: ${screenshot}`);

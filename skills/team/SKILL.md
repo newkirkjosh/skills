@@ -87,7 +87,7 @@ When nothing is live and nothing more can start, report one row per change: feat
 ## Gotchas
 
 - **Never hand one session several changes.** One change per session is the whole design; batching them into one `dev` run is the context blow-up this skill exists to avoid.
-- **Start needs a pane at a shell prompt, and a new tab's shell takes a few seconds to get there.** An agent start sent the moment the tab opens is typed into a shell that's still loading and lost, and a longer start timeout doesn't help: the command is typed at once. After Open, **Read** the pane until it shows a shell prompt (bounded, a few seconds), then Start. A pane already running something isn't at a prompt at all.
+- **Start needs a pane at a shell prompt, and a new tab's shell takes a few seconds to get there.** An agent start sent the moment the tab opens is typed into a shell that's still loading and lost, and a longer start timeout doesn't help: the command is typed at once. After Open, **Read** the pane until it shows a shell prompt (bounded, a few seconds), then Start. If no prompt appears within that bound, record and report the session as `not started`; never Start it or leave it running unattended. A pane already running something isn't at a prompt at all.
 - **Don't answer another session's dialogs.** A `blocked` session is waiting for the user, even when the answer looks obvious.
 - **Wave labels never go in PR titles.** Each `dev` session titles its own PR through `pr`; a wave or batch number in a title links the squash commit to an unrelated issue.
 - **Merging is still per repository.** `team` grants no merge permission the repository's Merge policy doesn't; without one, every PR stops at merge-ready and the report says so.

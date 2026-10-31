@@ -45,6 +45,7 @@ done
 [[ $port =~ ^[0-9]+$ ]] && (( port % 2 == 0 )) || die "--port must be an even number"
 serial="emulator-$port" pidfile="$state/emulator-$port.pid" lockref="$state/emulator-$port.lockpath" log="$state/emulator-$port.log"
 avdref="$state/emulator-$port.avd"
+startref="$state/emulator-$port.start"
 
 # Serialize ownership publication and shutdown for this port, even across locks.
 mkdir -p -m 0700 "$state" || die "can't create state directory $state"
@@ -52,6 +53,21 @@ mkdir -p -m 0700 "$state" || die "can't create state directory $state"
   || die "state directory $state isn't a directory owned by you (or is a symlink); refusing to use it"
 exec 8>"$state/emulator-$port.guard"
 flock -n 8 || { status=BUSY; exit 4; }
+
+process_start() { ps -o lstart= -p "$1" 2>/dev/null; }
+drop_records() { rm -f "$pidfile" "$lockref" "$avdref" "$startref"; }
+# Never signal or reuse a PID that has been recycled since publication.
+if [ -f "$pidfile" ]; then
+  recorded_pid="$(cat "$pidfile")"
+  if [[ ! $recorded_pid =~ ^[1-9][0-9]*$ ]]; then
+    drop_records
+  elif kill -0 "$recorded_pid" 2>/dev/null; then
+    current_start="$(process_start "$recorded_pid")"
+    if [ -z "$current_start" ] || [ "$current_start" != "$(cat "$startref" 2>/dev/null)" ]; then
+      drop_records
+    fi
+  fi
+fi
 
 alive() { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; }
 booted() { [ "$("$adb" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; }
@@ -91,6 +107,7 @@ case "$cmd" in
     set +m
     echo "$lock" >"$lockref"
     echo "$avd" >"$avdref"
+    process_start "$pid" >"$startref"
     echo "$pid" >"$pidfile"
     exec 9>&-
     exec 8>&-
@@ -134,7 +151,7 @@ case "$cmd" in
     if [ -f "$lockref" ]; then
       flock -w 15 "$(cat "$lockref")" true || die "emulator stopped but its lock is still held: $(cat "$lockref")"
     fi
-    rm -f "$pidfile" "$lockref" "$avdref"
+    drop_records
     status=STOPPED ;;
   status)
     if alive && booted; then echo "serial=$serial pid=$(cat "$pidfile")"; status=READY
