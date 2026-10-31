@@ -47,8 +47,8 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 | Path | When | Depth |
 |------|------|-------|
 | `spike` | A feasibility question; the output is an answer, not code you keep | Leave the lifecycle: no change folder, no issues. Answer it, label anything built as throwaway |
-| `bounded` | A well-scoped change to a flow that already exists in the repo: a flag, a small endpoint, a one-file fix | Short design note, one issue, a narrow review set, cheaper models where the role allows |
-| `architectural` | A new project or subsystem, or a change to how components fit together or to interfaces others depend on | `arch-review` for the design, the user approves it before Phase 1, issues per layer, the full review set |
+| `bounded` | A well-scoped change to a flow that already exists in the repo: a flag, a small endpoint, a one-file fix | Short design note, one issue, the cross-model review, cheaper models where the role allows |
+| `architectural` | A new project or subsystem, or a change to how components fit together or to interfaces others depend on | `arch-review` for the design, the user approves it before Phase 1, issues per layer, the cross-model review on every layer |
 
 Say the path out loud with its reason so the user can override it. When in doubt take the heavier path. The path only moves up: complexity found mid-change (a second module, a changed interface, a migration) upgrades it, and you stop and say so. Nothing downgrades mid-change.
 

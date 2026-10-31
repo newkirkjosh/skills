@@ -12,7 +12,7 @@ Read this before the first spawn when the coordinator runs on a host other than 
 | Correct a running delegate | `SendMessage` | `send_message`, or `followup_task` to make it act |
 | Run a long command | `Bash` with `run_in_background: true` into a log; read it on the notification | `exec_command` yields after at most 30 s; hand the command to a small-tier child that runs it and reports its `STATUS=` line, and `wait_agent` on that child |
 | Cross-model reviewer (Phase 4) | `codex` | `claude` |
-| `pr` review set | `pr-review-toolkit` agents | Not installed: the cross-model review is the review set (see `pr`) |
+| `pr` review set | The cross-model review (Codex); `pr-review-toolkit` agents only as the fallback | The cross-model review (Claude); no fallback plugin |
 | Instructions the host reads | `CLAUDE.md` (which imports `AGENTS.md`) | `AGENTS.md` only; never `CLAUDE.md` or `REVIEW.md` |
 | Skills directory | `~/.claude/skills` | `~/.agents/skills` |
 

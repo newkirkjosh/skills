@@ -94,6 +94,22 @@ Re-run it after adding, renaming or deleting a skill. It links new skills and re
 
 Don't use `npx skills add` for this catalog: it installs copies, not links to the checkout. With `-g` it copies each skill into `~/.agents/skills` and links agents to that copy; without it, it installs into the current project instead. Either way, edits in the checkout never reach the installed skills.
 
+## Tracker
+
+GitHub issues on this repository.
+
+## Layers
+
+None: a change here is one PR, not a layered `dev` run.
+
+## Pull requests
+
+Conventional-commit titles, squash merge only. Labels: `enhancement` or `bug`, plus `documentation`. No project board.
+
+## Merge policy
+
+An agent may squash-merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the Codex cross-review converged, every CodeRabbit comment fixed or answered, and no unresolved review thread. Hand the merge back to the user when the PR touches credential handling (a bundled script that reads a token, key or password, such as `skills/unifi/scripts/` or `skills/*/scripts/` secret helpers), a security guard in a bundled script (the reviewer sandbox and tool limits in `skills/dev/scripts/cross-review.sh`, the head-SHA and secret-scan checks in `skills/github/scripts/` and `skills/repo-setup/scripts/check-repo.sh`), `.github/workflows/`, the privacy checks (`scripts/check-private.sh`, the Security and privacy section above) or what switches them on (`scripts/install.sh`, which sets `privacy.public`), the review rules and what applies them (`REVIEW.md`, `.coderabbit.yaml`), or this Merge policy or the Code Review Rules section of this file.
+
 ## Code Review Rules
 
 Read `REVIEW.md` at the repository root and apply it in full as the review rules for this repo. This section exists for Codex, which reads `AGENTS.md` but not `REVIEW.md`.

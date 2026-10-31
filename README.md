@@ -24,7 +24,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `spec-writer` | Per-feature change folders: proposal, stories, design, tasks. |
 | `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `devils-advocate` | Stress-tests a high-stakes recommendation before it is final. |
-| `pr` | PR title, body, issue link and a review set scaled to the change. |
+| `pr` | PR title, body and issue link; the other model reviews it (Codex from Claude Code, Claude from Codex), then CodeRabbit where configured. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
 | `repo-setup` | Brings a repository up to the standard the workflow skills expect, and upgrades it when that changes. |
 | `gh-issues` | Turns a change folder into a GitHub epic and sub-issues. |
