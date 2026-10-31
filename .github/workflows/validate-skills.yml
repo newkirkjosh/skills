@@ -62,4 +62,4 @@ jobs:
           echo "$SHA256  $tgz" | sha256sum -c -
           tar -xzf "$tgz" -C "$RUNNER_TEMP" gitleaks
       - name: Scan full history for secrets
-        run: '"$RUNNER_TEMP/gitleaks" git --redact --no-banner .'
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --no-banner --verbose --log-opts="--all --full-history -m" .'

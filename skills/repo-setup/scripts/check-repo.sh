@@ -63,7 +63,7 @@ fi
 # Secrets and privacy
 # A workflow counts when it runs on push or pull_request and one enabled job
 # checks out the full history and runs the gitleaks CLI over all of it. A
-# comment, a shallow clone, a job with `if: false`, a --log-opts range, or a
+# comment, a shallow clone, a job with `if: false`, restricted log options, or a
 # scan only started by hand doesn't cover the history. gitleaks-action is
 # reported separately: on push and pull_request it scans only that event's commits.
 scan_job() {
@@ -77,7 +77,27 @@ scan_job() {
     jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { if (gl[job] && fd[job] && !off[job]) hit = 1; job = $1; next }
     jobs && /^    if:[[:space:]]*(false|\$\{\{[[:space:]]*false[[:space:]]*\}\})/ { off[job] = 1 }
     jobs && /fetch-depth:[[:space:]]*0/ { fd[job] = 1 }
-    jobs && /gitleaks"?[[:space:]]+(git|detect)/ && !/--log-opts/ { gl[job] = 1 }
+    # Inspect inline run values and indented block bodies, never step names.
+    jobs && /^[[:space:]]*(-[[:space:]]+)?run:/ {
+      run_indent = match($0, /[^ ]/)
+      cmd = $0; sub(/^[[:space:]]*(-[[:space:]]+)?run:[[:space:]]*/, "", cmd)
+      block = (cmd ~ /^[|>][-+]?[[:space:]]*$/)
+      if (!block) scan(cmd)
+      next
+    }
+    jobs && block && /[^[:space:]]/ {
+      if (match($0, /[^ ]/) > run_indent) scan($0)
+      else block = 0
+    }
+    function scan(cmd) {
+      # Require a direct CLI invocation and the exact unrestricted log options.
+      sub(/^[[:space:]]*/, "", cmd)
+      sub(/^\047/, "", cmd)
+      if (cmd ~ /^("[^" ]*\/gitleaks"|gitleaks)[[:space:]]+git[[:space:]]/ &&
+          cmd ~ /--log-opts="--all --full-history -m"/ &&
+          gsub(/--log-opts/, "&", cmd) == 1)
+        gl[job] = 1
+    }
     END { if (gl[job] && fd[job] && !off[job]) hit = 1; exit !(hit && trig) }
   ' "$1"
 }

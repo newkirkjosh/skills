@@ -52,7 +52,7 @@ Each item says why it exists; an item a repository can't use is `n/a`, never for
 | M1 `claude-pointer` | `CLAUDE.md` with its own content | Move every line into `AGENTS.md` (merge into matching sections, never duplicate), then reduce `CLAUDE.md` to `@AGENTS.md`. A symlinked `CLAUDE.md` becomes that file. |
 | M2 `copilot-instructions` | `.github/copilot-instructions.md` | Merge its review rules into `REVIEW.md` and its coding rules into `AGENTS.md`, then delete it. |
 | M3 `coderabbit` | `.coderabbit.yaml` without `**/REVIEW.md` | Add the pattern under `knowledge_base.code_guidelines.filePatterns` and set `enabled: true` there; keep every other setting. |
-| M4 `secrets-ci` | A `gitleaks/gitleaks-action` step | Replace the job with `assets/secrets-job.yml`. On push and pull_request the action scans only that event's commits, so an old secret is never seen; the CLI scans all of it each run. |
+| M4 `secrets-ci` | A `gitleaks/gitleaks-action` step | Remove only the action scan step and add a separate job from `assets/secrets-job.yml`, preserving every unrelated test, build and other step in the existing job. On push and pull_request the action scans only that event's commits, so an old secret is never seen; the CLI scans all of it each run. |
 
 Add a row here, and a check in `check-repo.sh` with a test, whenever the standard changes; that is what makes re-running this skill an upgrade.
 
