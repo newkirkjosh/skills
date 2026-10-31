@@ -22,7 +22,7 @@ adopted() {
   printf '# P\n\n## Layers\n:a\n\n## Tracker\nLinear\n\n## Pull requests\nlabels\n\n## Merge policy\nnone\n\n## Code Review Rules\n\nRead `REVIEW.md` and apply it.\n\n## Testing\nx\n' > "$work/r/AGENTS.md"
   echo "# PR Review" > "$work/r/REVIEW.md"
   mkdir -p "$work/r/.github/workflows"
-  printf 'on:\n  push:\n  pull_request:\njobs:\n  secrets:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - uses: gitleaks/gitleaks-action@v3\n' > "$work/r/.github/workflows/ci.yml"
+  printf 'on:\n  push:\n  pull_request:\njobs:\n  secrets:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - run: gitleaks git --redact --no-banner .\n' > "$work/r/.github/workflows/ci.yml"
 }
 
 adopted; run
@@ -64,11 +64,23 @@ check "a shallow checkout is not a full-history scan" 'has missing secrets-ci'
 adopted; printf 'on: [push]\njobs:\n  s:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - run: gitleaks git --redact .\n' > "$work/r/.github/workflows/ci.yml"; run
 check "the gitleaks CLI on a full checkout counts" 'has ok secrets-ci'
 
-adopted; printf 'on: push\njobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n  b:\n    steps:\n      - uses: actions/checkout@v4\n      - uses: gitleaks/gitleaks-action@v3\n' > "$work/r/.github/workflows/ci.yml"; run
+adopted; printf 'on: push\njobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n  b:\n    steps:\n      - uses: actions/checkout@v4\n      - run: gitleaks git --redact --no-banner .\n' > "$work/r/.github/workflows/ci.yml"; run
 check "full checkout in one job and gitleaks in another is not a scan" 'has missing secrets-ci'
 
 adopted; sed -i 's/^on:$/on:\n  workflow_dispatch:/; /^  push:$/d; /^  pull_request:$/d' "$work/r/.github/workflows/ci.yml"; run
 check "a scan only started by hand doesn't count" 'has missing secrets-ci'
+
+adopted; sed -i 's|- run: gitleaks git --redact --no-banner .|- uses: gitleaks/gitleaks-action@v3|' "$work/r/.github/workflows/ci.yml"; run
+check "gitleaks-action is stale: it scans only each event's commits (M4)" 'has stale secrets-ci'
+
+adopted; sed -i 's|gitleaks git --redact|gitleaks git --log-opts=HEAD~1..HEAD --redact|' "$work/r/.github/workflows/ci.yml"; run
+check "a --log-opts range is not a full-history scan" 'has missing secrets-ci'
+
+adopted; sed -i 's|^    steps:|    if: false\n    steps:|' "$work/r/.github/workflows/ci.yml"; run
+check "a job with if: false is not a scan" 'has missing secrets-ci'
+
+adopted; sed -i 's|- run: gitleaks git|- run: "$RUNNER_TEMP/gitleaks" git|' "$work/r/.github/workflows/ci.yml"; run
+check "the template's quoted CLI path counts" 'has ok secrets-ci'
 
 adopted; VIS=UNKNOWN run
 check "unknown visibility leaves coderabbit to decide" 'has decide coderabbit'

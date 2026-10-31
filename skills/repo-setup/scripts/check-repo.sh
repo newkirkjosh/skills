@@ -61,9 +61,11 @@ else say decide coderabbit "visibility unknown (gh unavailable); check it before
 fi
 
 # Secrets and privacy
-# A workflow counts when it runs on push or pull_request and one job both
-# checks out the full history and runs gitleaks in an uncommented step. A
-# comment, a shallow clone, or a scan only started by hand protects nothing.
+# A workflow counts when it runs on push or pull_request and one enabled job
+# checks out the full history and runs the gitleaks CLI over all of it. A
+# comment, a shallow clone, a job with `if: false`, a --log-opts range, or a
+# scan only started by hand doesn't cover the history. gitleaks-action is
+# reported separately: on push and pull_request it scans only that event's commits.
 scan_job() {
   awk '
     /^[[:space:]]*#/ { next }
@@ -72,10 +74,11 @@ scan_job() {
     on && /(push|pull_request)/ { trig = 1 }
     /^jobs:/ { jobs = 1; next }
     jobs && /^[^ ]/ { jobs = 0 }
-    jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { if (gl[job] && fd[job]) hit = 1; job = $1; next }
+    jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { if (gl[job] && fd[job] && !off[job]) hit = 1; job = $1; next }
+    jobs && /^    if:[[:space:]]*(false|\$\{\{[[:space:]]*false[[:space:]]*\}\})/ { off[job] = 1 }
     jobs && /fetch-depth:[[:space:]]*0/ { fd[job] = 1 }
-    jobs && /(uses:[[:space:]]*gitleaks\/gitleaks-action|gitleaks[[:space:]]+(git|detect))/ { gl[job] = 1 }
-    END { if (gl[job] && fd[job]) hit = 1; exit !(hit && trig) }
+    jobs && /gitleaks"?[[:space:]]+(git|detect)/ && !/--log-opts/ { gl[job] = 1 }
+    END { if (gl[job] && fd[job] && !off[job]) hit = 1; exit !(hit && trig) }
   ' "$1"
 }
 scan=""
@@ -83,8 +86,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
   [ -f "$wf" ] || continue
   scan_job "$wf" && scan=$wf && break
 done
-if [ -n "$scan" ]; then say ok secrets-ci "$scan scans the full history with gitleaks"
-else say missing secrets-ci "no CI job scans the full history with gitleaks (uncommented step, fetch-depth: 0)"
+action=$(grep -lsE '^[^#]*uses:[[:space:]]*gitleaks/gitleaks-action' .github/workflows/*.yml .github/workflows/*.yaml 2> /dev/null | head -n 1)
+if [ -n "$scan" ]; then say ok secrets-ci "$scan scans the full history with the gitleaks CLI"
+elif [ -n "$action" ]; then say stale secrets-ci "$action uses gitleaks-action, which scans only each push's or PR's commits; switch to the CLI job (M4)"
+else say missing secrets-ci "no CI job scans the full history with the gitleaks CLI"
 fi
 case $vis in
   PUBLIC)
