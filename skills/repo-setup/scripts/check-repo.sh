@@ -55,9 +55,7 @@ if [ -f .coderabbit.yaml ]; then
   else
     say stale coderabbit ".coderabbit.yaml doesn't read **/REVIEW.md (knowledge_base.code_guidelines: enabled, with the pattern)"
   fi
-elif [ "$vis" = PUBLIC ]; then say missing coderabbit "public repository without .coderabbit.yaml"
-elif [ "$vis" = PRIVATE ]; then say n/a coderabbit "private repository: pr-review-toolkit reviews locally"
-else say decide coderabbit "visibility unknown (gh unavailable); check it before deciding"
+else say missing coderabbit "no .coderabbit.yaml (needed on private repositories too: without it CodeRabbit never reads REVIEW.md)"
 fi
 
 # Secrets and privacy

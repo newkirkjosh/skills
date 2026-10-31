@@ -21,6 +21,7 @@ adopted() {
   echo "@AGENTS.md" > "$work/r/CLAUDE.md"
   printf '# P\n\n## Layers\n:a\n\n## Tracker\nLinear\n\n## Pull requests\nlabels\n\n## Merge policy\nnone\n\n## Code Review Rules\n\nRead `REVIEW.md` and apply it.\n\n## Testing\nx\n' > "$work/r/AGENTS.md"
   echo "# PR Review" > "$work/r/REVIEW.md"
+  printf 'knowledge_base:\n  code_guidelines:\n    enabled: true\n    filePatterns:\n      - "**/REVIEW.md"\n' > "$work/r/.coderabbit.yaml"
   mkdir -p "$work/r/.github/workflows"
   printf 'on:\n  push:\n  pull_request:\njobs:\n  secrets:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - run: gitleaks git --log-opts="--all --full-history -m" --redact --no-banner .\n' > "$work/r/.github/workflows/ci.yml"
 }
@@ -114,8 +115,7 @@ check "--staged ignores --log-opts, so it is not a full-history scan" 'has missi
 adopted; sed -i 's|gitleaks git --log-opts|gitleaks git --pre-commit --log-opts|' "$work/r/.github/workflows/ci.yml"; run
 check "--pre-commit is not a full-history scan" 'has missing secrets-ci'
 
-adopted; VIS=UNKNOWN run
-check "unknown visibility leaves coderabbit to decide" 'has decide coderabbit'
+
 
 adopted; printf 'knowledge_base:\n  code_guidelines:\n    enabled: false\n    filePatterns:\n      - "**/REVIEW.md"\n' > "$work/r/.coderabbit.yaml"; git -C "$work/r" config privacy.public true; VIS=PUBLIC run
 check "disabled code_guidelines is stale even with the pattern" 'has stale coderabbit'
@@ -126,7 +126,10 @@ check "the pattern outside code_guidelines doesn't count" 'has stale coderabbit'
 adopted; printf 'knowledge_base:\n  code_guidelines:\n    enabled: true\n    filePatterns:\n      - "**/REVIEW.md"\n' > "$work/r/.coderabbit.yaml"; VIS=PUBLIC run
 check "a correct code_guidelines block is ok" 'has ok coderabbit'
 
-adopted; VIS=PUBLIC run
+adopted; rm "$work/r/.coderabbit.yaml"; run
+check "private without .coderabbit.yaml is missing too" 'has missing coderabbit'
+
+adopted; rm "$work/r/.coderabbit.yaml"; VIS=PUBLIC run
 check "public without .coderabbit.yaml is missing" 'has missing coderabbit'
 check "public without privacy.public is missing" 'has missing privacy'
 
