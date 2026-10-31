@@ -348,6 +348,7 @@ exports.chromium = { launch: async () => ({
       waitForLoadState: async (state, options) => {
         assert.equal(state, 'networkidle');
         assert.equal(options.timeout, 1234);
+        if (process.env.WEB_NEVER_IDLE) throw new Error('Timeout 1234ms exceeded.');
         await new Promise(resolve => setTimeout(resolve, 5));
         if (process.env.WEB_LATE_ERROR) handlers.response({status: () => 500, url: () => 'http://example.com/late'});
       }
@@ -355,11 +356,15 @@ exports.chromium = { launch: async () => ({
   }
 })};
 JS
-NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --timeout 1234 > "$work/web.out" 2>&1
-check "web: visible match wins over hidden first match" '[ "$?" = 0 ] && grep -q "PASS  text visible" "$work/web.out"'
-WEB_LATE_ERROR=1 NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --timeout 1234 > "$work/web.out" 2>&1
+NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 1234 > "$work/web.out" 2>&1
 web_rc=$?
-check "web: waits for network idle and catches late errors" '[ "$web_rc" = 1 ] && grep -q "FAIL  HTTP 500" "$work/web.out"'
+check "web: visible match wins over hidden first match" '[ "$web_rc" = 0 ] && grep -q "PASS  text visible" "$work/web.out"'
+WEB_LATE_ERROR=1 NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 1234 > "$work/web.out" 2>&1
+web_rc=$?
+check "web: a late error inside the settle window fails the check" '[ "$web_rc" = 1 ] && grep -q "FAIL  HTTP 500" "$work/web.out"'
+WEB_NEVER_IDLE=1 NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 1234 > "$work/web.out" 2>&1
+web_rc=$?
+check "web: a page that never goes idle (persistent connection) still passes" '[ "$web_rc" = 0 ] && grep -q "network still busy" "$work/web.out"'
 
 echo
 echo "$pass passed, $fail failed"

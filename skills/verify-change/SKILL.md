@@ -64,7 +64,7 @@ Run the app on the off-screen display from the user's global instructions, never
 
 ### Web
 
-Headless Playwright with Chromium, run inside a dev workspace, where it's baked in and files you write keep your ownership (or `npx playwright` where there's no workspace). Start the app as `AGENTS.md` says and wait for its port with a bounded `curl` loop, then per check: navigate, wait for the text or role the check names, act through roles and labels (`getByRole`, `getByLabel`), screenshot, and record **console errors, failed requests and 4xx/5xx responses**: a page can look right while throwing. `assets/web-check.cjs` does the load, text, screenshot and error part (measured: about 7 seconds for a static site); copy it for clicks and form input:
+Headless Playwright with Chromium, run inside a dev workspace, where it's baked in and files you write keep your ownership (or `npx playwright` where there's no workspace). Start the app as `AGENTS.md` says and wait for its port with a bounded `curl` loop, then per check: navigate, wait for the text or role the check names, act through roles and labels (`getByRole`, `getByLabel`), screenshot, and record **console errors, failed requests and 4xx/5xx responses**: a page can look right while throwing. `assets/web-check.cjs` does the load, text, screenshot and error part (measured: about 7 seconds for a static site); it then gives late requests a short settle window (`--settle`, default 3 s) and reports errors seen in it, without requiring the network to go idle, which a page holding a persistent connection never does. Copy it for clicks and form input:
 
 ```bash
 NODE_PATH="$(npm root -g)" node <skill-dir>/assets/web-check.cjs http://localhost:<port>/ \
