@@ -1,0 +1,17 @@
+# CodeRabbit configuration.
+#
+# REVIEW.md holds this repository's review rules. CodeRabbit's default
+# code_guidelines patterns cover **/AGENTS.md and **/CLAUDE.md but not
+# **/REVIEW.md, so it is listed explicitly; custom patterns append to the
+# defaults. Patterns are case-sensitive.
+language: en-US
+reviews:
+  profile: chill
+  high_level_summary: false
+  poem: false
+  review_status: false
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "**/REVIEW.md"
