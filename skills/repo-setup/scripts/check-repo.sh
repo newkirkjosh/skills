@@ -123,7 +123,7 @@ esac
 # What the workflow skills read from AGENTS.md: the user decides each, the agent never invents one.
 if heading 'Layers'; then say ok layers "AGENTS.md declares layers"; else say decide layers "no Layers section; needed before dev or spec-writer runs here"; fi
 if heading 'Tracker'; then say ok tracker "AGENTS.md names the tracker"; else say decide tracker "no Tracker section (Linear team and project, or GitHub issues and board)"; fi
-if heading '(Pull request|PR)'; then say ok pr-conventions "AGENTS.md has PR conventions"; else say decide pr-conventions "no Pull Request section (labels, project or board)"; fi
+if heading '(Pull requests?|PRs?)([[:space:]]|$)'; then say ok pr-conventions "AGENTS.md has PR conventions"; else say decide pr-conventions "no Pull Request section (labels, project or board)"; fi
 if heading 'Merge policy'; then say ok merge-policy "AGENTS.md has a Merge policy"; else say decide merge-policy "no Merge policy: every PR stops at merge-ready, which is a valid choice"; fi
 
 exit "$todo"

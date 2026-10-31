@@ -99,6 +99,12 @@ check "the actual secrets job template counts" 'has ok secrets-ci'
 adopted; sed -i 's/- run: /- run: |\n          /' "$work/r/.github/workflows/ci.yml"; run
 check "a block run command counts" 'has ok secrets-ci'
 
+adopted; sed -i 's/^## Pull requests$/## Project skills/' "$work/r/AGENTS.md"; run
+check "a heading starting with Pr (Project) is not PR conventions" 'has decide pr-conventions'
+
+adopted; sed -i 's/^## Pull requests$/### PR labels/' "$work/r/AGENTS.md"; run
+check "a PR heading at any level counts" 'has ok pr-conventions'
+
 adopted; VIS=UNKNOWN run
 check "unknown visibility leaves coderabbit to decide" 'has decide coderabbit'
 
