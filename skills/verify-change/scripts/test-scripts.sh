@@ -365,6 +365,9 @@ check "web: a late error inside the settle window fails the check" '[ "$web_rc" 
 WEB_NEVER_IDLE=1 NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 1234 > "$work/web.out" 2>&1
 web_rc=$?
 check "web: a page that never goes idle (persistent connection) still passes" '[ "$web_rc" = 0 ] && grep -q "network still busy" "$work/web.out"'
+WEB_NEVER_IDLE=1 NODE_PATH="$work/modules" timeout 10 node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 0 > "$work/web.out" 2>&1
+web_rc=$?
+check "web: --settle 0 skips the idle wait instead of waiting forever" '[ "$web_rc" = 0 ] && ! grep -q "network still busy" "$work/web.out"'
 
 echo
 echo "$pass passed, $fail failed"

@@ -56,8 +56,11 @@ function usage() {
     // A bounded settle window, not a requirement: late requests that fail inside it
     // are caught, but a page holding a persistent connection (SSE, long polling)
     // never goes idle and mustn't fail for that alone.
-    await page.waitForLoadState("networkidle", { timeout: settle }).catch(() =>
-      console.log(`note: network still busy after ${settle} ms (a persistent connection?); reporting errors seen so far`));
+    // Playwright reads timeout 0 as "no timeout", so --settle 0 skips the wait instead.
+    if (settle > 0) {
+      await page.waitForLoadState("networkidle", { timeout: settle }).catch(() =>
+        console.log(`note: network still busy after ${settle} ms (a persistent connection?); reporting errors seen so far`));
+    }
     if (screenshot) {
       await page.screenshot({ path: screenshot, fullPage: true });
       console.log(`screenshot: ${screenshot}`);
