@@ -82,7 +82,8 @@ scan_job() {
       run_indent = match($0, /[^ ]/)
       cmd = $0; sub(/^[[:space:]]*(-[[:space:]]+)?run:[[:space:]]*/, "", cmd)
       block = (cmd ~ /^[|>][-+]?[[:space:]]*$/)
-      if (!block) scan(cmd)
+      # Only an inline value can be YAML-quoted; a block line keeps its quote, as the shell would see it.
+      if (!block) { sub(/^\047/, "", cmd); scan(cmd) }
       next
     }
     jobs && block && /[^[:space:]]/ {
@@ -92,8 +93,9 @@ scan_job() {
     function scan(cmd) {
       # Require a direct CLI invocation and the exact unrestricted log options.
       sub(/^[[:space:]]*/, "", cmd)
-      sub(/^\047/, "", cmd)
+      # --staged and --pre-commit switch gitleaks to a diff scan that ignores --log-opts.
       if (cmd ~ /^("[^" ]*\/gitleaks"|gitleaks)[[:space:]]+git[[:space:]]/ &&
+          cmd !~ /--(staged|pre-commit)/ &&
           cmd ~ /--log-opts="--all --full-history -m"/ &&
           gsub(/--log-opts/, "&", cmd) == 1)
         gl[job] = 1

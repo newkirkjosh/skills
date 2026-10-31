@@ -105,6 +105,15 @@ check "a heading starting with Pr (Project) is not PR conventions" 'has decide p
 adopted; sed -i 's/^## Pull requests$/### PR labels/' "$work/r/AGENTS.md"; run
 check "a PR heading at any level counts" 'has ok pr-conventions'
 
+adopted; sed -i "s#- run: gitleaks git#- run: |\n          'gitleaks git#; s#--no-banner .\$#--no-banner .'#" "$work/r/.github/workflows/ci.yml"; run
+check "a block line still wrapped in quotes is one bogus command, not a scan" 'has missing secrets-ci'
+
+adopted; sed -i 's|gitleaks git --log-opts|gitleaks git --staged --log-opts|' "$work/r/.github/workflows/ci.yml"; run
+check "--staged ignores --log-opts, so it is not a full-history scan" 'has missing secrets-ci'
+
+adopted; sed -i 's|gitleaks git --log-opts|gitleaks git --pre-commit --log-opts|' "$work/r/.github/workflows/ci.yml"; run
+check "--pre-commit is not a full-history scan" 'has missing secrets-ci'
+
 adopted; VIS=UNKNOWN run
 check "unknown visibility leaves coderabbit to decide" 'has decide coderabbit'
 

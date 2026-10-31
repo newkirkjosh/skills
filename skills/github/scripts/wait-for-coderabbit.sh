@@ -6,7 +6,8 @@
 #
 # usage: bash wait-for-coderabbit.sh <pr-number> [timeout-minutes] [owner/repo]
 #   timeout-minutes  default 20; owner/repo defaults to the current repository
-#   WAIT_APPEAR_MIN  minutes to wait for the CodeRabbit check to appear (default 5)
+#   WAIT_APPEAR_MIN  minutes to wait for the CodeRabbit check to appear (default 15:
+#                    with several PRs open at once it can take over 5)
 #   WAIT_INTERVAL    seconds between polls (default 30)
 # Exit: 0 PASS, 1 FAIL, 3 TIMEOUT (also when GitHub couldn't be read), 4
 # NOT_CONFIGURED (no CodeRabbit check on the head: terminal, don't retry), 5
@@ -20,7 +21,7 @@ timeout_min=${2:-20}
 [[ $timeout_min =~ ^[0-9]+$ ]] || { echo "timeout must be whole minutes" >&2; exit 2; }
 nwo=${3:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}
 [[ $nwo =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "bad owner/repo: $nwo" >&2; exit 2; }
-interval=${WAIT_INTERVAL:-30} appear_min=${WAIT_APPEAR_MIN:-5}
+interval=${WAIT_INTERVAL:-30} appear_min=${WAIT_APPEAR_MIN:-15}
 
 head_of() { gh pr view "$pr" -R "$nwo" --json headRefOid -q .headRefOid; }
 head=$(head_of) || { echo "cannot read PR $pr in $nwo" >&2; exit 2; }
