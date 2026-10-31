@@ -49,9 +49,9 @@ Closes #<sub-issue-number>
 
 No list of changed files, line counts or commits: GitHub already shows them.
 
-**Review set: the other model, converged, then CodeRabbit.** The local review is the cross-model review: Codex when you run on Claude Code, Claude when you run on Codex, through the cross-review script in `dev` with the Scope Brief as its prompt. Under `dev` it already ran in Phase 4: post `<change>/cross-review.md` (its final pass) as a PR comment. Invoked on its own, run it before pushing, the way `dev` Phase 4 steps 1-3 describe (fix blocking findings, re-run with the already-fixed list, at most three passes), then post the final pass. CodeRabbit reviews the PR itself where the repository has it.
+**Review set: the other model, converged, then CodeRabbit.** The local review is the cross-model review: Codex when you run on Claude Code, Claude when you run on Codex, through the cross-review script in `dev` with the Scope Brief as its prompt. Under `dev` it already ran in Phase 4: post `<change>/cross-review.md` (its final pass) as a PR comment. Invoked on its own, run it before pushing, the way `dev` Phase 4 steps 1-3 describe (fix blocking findings, re-run with the already-fixed list, at most three passes), then post the final pass. When `dev` recorded `Cross-review: skipped (narrow docs-only)` or `Cross-review: unavailable: <reason>`, post that line instead and say why in the PR body. CodeRabbit reviews the PR itself where the repository has it.
 
-The `pr-review-toolkit` agents (Claude Code only) are a fallback, not the default: run them only when the cross-model review is unavailable (the reviewer's CLI is missing or can't authenticate) or the user asks for them. They cost roughly 50k tokens each, so then use `code-reviewer`, plus `silent-failure-hunter` for security, auth or error paths and `pr-test-analyzer` for new logic.
+The `pr-review-toolkit` agents (Claude Code only) are a fallback, not the default: run them only when the cross-model review is unavailable (the reviewer's CLI is missing or can't authenticate) or the user asks for them. On Codex there is no fallback: record the review as unavailable in the PR body, and the merge goes to the user. They cost roughly 50k tokens each, so then use `code-reviewer`, plus `silent-failure-hunter` for security, auth or error paths and `pr-test-analyzer` for new logic.
 
 **Scope Brief:** if `<change>/scope-brief.md` exists, paste it verbatim at the top of each review agent's prompt as an OUT OF SCOPE / IN SCOPE block, and triage findings against it: a finding about excluded work is recorded and dismissed with the exclusion cited, not fixed. Security, privacy, data-loss and correctness defects in the change are always in scope.
 
@@ -72,7 +72,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 ## Constraints
 
 - Branch name must conform before PR creation — never create a PR from a non-conforming branch
-- Never skip the cross-model review; use `pr-review-toolkit` agents only as the fallback above (cost)
+- Never skip the cross-model review, except `dev`'s recorded skip for a `narrow` docs-only change; use `pr-review-toolkit` agents only as the fallback above (cost)
 - Squash merge only — reject merge commit and rebase merge
 - Always read `issues.md` for sub-issue number — never ask the user
 - `comment-analyzer` only runs if significant documentation (docstrings, README changes, inline explanations) was added
