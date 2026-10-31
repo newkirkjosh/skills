@@ -1,6 +1,6 @@
 ---
 name: repo-setup
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Brings a repository up to the standard the workflow skills expect (instruction files, review rules, secret scanning, privacy, the AGENTS.md sections dev reads), and re-run later upgrades it: checks every item, migrates old layouts, asks before each decision, and ships the result as one PR."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Brings a repository up to the standard the workflow skills expect (instruction files, review rules, secret scanning, privacy, the AGENTS.md sections dev reads), and re-run later upgrades it: checks every item, migrates old layouts, decides what the repository's own evidence supports, and ships the result as one PR."
 license: MIT (adapted from fx/skills fx-setup and fx-upgrade by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -35,11 +35,16 @@ Each item says why it exists; an item a repository can't use is `n/a`, never for
 
 1. **Check.** `bash <skill-dir>/scripts/check-repo.sh <repo>` prints one `<state> <id> <detail>` line per item: `ok`, `missing`, `stale`, `decide` or `n/a`. It is read-only.
 2. **Plan.** List each `missing` and `stale` item with the file it adds or changes, and each `decide` item with its question. Read `AGENTS.md` first: a section may exist under another heading (layers named in prose, say); offer to move it under the standard heading rather than adding a duplicate.
-3. **Ask once**, in one message: the plan, plus the `decide` questions. Never invent a Merge policy, layer list or tracker. "Leave it" is a valid answer for each; a repository without a Merge policy stops every PR at merge-ready, and one that never runs `dev` needs no layers. Wait for the answer.
+3. **Decide from the evidence; ask only when there is none.** Fill each `decide` item from what the repository already shows, and say what you chose and why in the PR body:
+   - **Tracker**: one the repository already names anywhere (its README, `AGENTS.md`, issue links); otherwise GitHub issues on that repository.
+   - **Layers**: from the module or directory split the change folders already use; a repository that never runs `dev` gets "None".
+   - **Pull requests**: conventional-commit titles, squash merge, and type labels that exist on the repository (`gh label list`); a project board only if one is already in use.
+   - **Merge policy**: the agent may merge its own PR when CI is green on the head, the cross-model review converged, every CodeRabbit comment is settled and no thread is open. Hand the merge back for anything that changes secrets handling, auth, a security guard **or what configures or switches it on**, CI itself, or content an outside party reviews (a published privacy policy).
+   Ask the user only when the repository gives nothing to go on and the default would be wrong for it, or for a destructive step.
 4. **Apply** in a worktree on `chore/repo-setup` (`wt switch --create chore/repo-setup --no-cd`), never on the default branch:
    - `missing` items from the assets, with `<placeholders>` in `REVIEW.md` filled from what the repository actually is (read its `AGENTS.md`, CI and code), or left out when there's nothing true to say yet.
    - `stale` items by the migration below.
-   - `decide` items exactly as the user answered.
+   - `decide` items as decided in step 3.
    - `privacy` with `git config privacy.public true` in the main checkout (it is per clone and never committed). Then run `check-private --all` from the user's git hooks directory, if the global instructions name one, and stop on any hit: turning the check on doesn't clean what is already there.
    - Before committing, read every line copied in from elsewhere (a symlink target, `copilot-instructions.md`) for credentials, personal details, private project names and machine specifics: the pattern checks only catch what they list. Stop on every confirmed match and report it to the user before anything is committed; on a public repository, anything doubtful goes back to the user too.
 5. **Verify.** Run `check-repo.sh` again: nothing `missing` or `stale` may remain except what the user chose to leave. Run the repository's own local checks.

@@ -1,6 +1,6 @@
 ---
 name: pr
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates well-formed PRs: conventional commit title, structured body and Closes reference, branch naming and squash merge, sub-issue numbers read from issues.md, then a pr-review-toolkit review set scaled to the change's size."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates well-formed PRs: conventional commit title, structured body and Closes reference, branch naming and squash merge, sub-issue numbers read from issues.md, then a review by the other model (Codex from Claude Code, Claude from Codex) as the local review, beside CodeRabbit."
 metadata:
   type: flexible
 ---
@@ -49,17 +49,9 @@ Closes #<sub-issue-number>
 
 No list of changed files, line counts or commits: GitHub already shows them.
 
-**Review set — scaled to the change** (read the size signal from `scope-brief.md`):
+**Review set: the other model, converged, then CodeRabbit.** The local review is the cross-model review: Codex when you run on Claude Code, Claude when you run on Codex, through the cross-review script in `dev` with the Scope Brief as its prompt. Under `dev` it already ran in Phase 4: post `<change>/cross-review.md` (its final pass) as a PR comment. Invoked on its own, run it before pushing, the way `dev` Phase 4 steps 1-3 describe (fix blocking findings, re-run with the already-fixed list, at most three passes), then post the final pass. CodeRabbit reviews the PR itself where the repository has it.
 
-| Change | Reviewers |
-|---|---|
-| `narrow` config/docs-only (manifests, CI tweaks, wording) | `pr-review-toolkit:code-reviewer` only; add `silent-failure-hunter` if it touches security, auth or error paths |
-| `normal` code | `silent-failure-hunter`, `code-reviewer`, `pr-test-analyzer` |
-| Significant docs added (docstrings, READMEs) | also `comment-analyzer` |
-
-These agents come from the `pr-review-toolkit` plugin, which only Claude Code has. On a host without it (Codex), the review set is a cross-model review instead: under `dev`, post `<change>/cross-review.md` (its Phase 4 final pass) as the PR comment; invoked on its own, run one pass with `dev`'s `scripts/cross-review.sh claude <worktree> origin/<default> <prompt-file>` (prompt as in `dev` Phase 4 step 1) and post that. Don't re-create the toolkit agents by hand.
-
-Reviewers are independent, so run them **in parallel**. Post each one's findings as a PR comment with `gh pr comment <n> --body-file <file>` (reviewer name + findings + what you'll do about each), then surface them in conversation. A three-reviewer pass costs roughly 150k tokens; on a plan with a session limit, the table above is the budget.
+The `pr-review-toolkit` agents (Claude Code only) are a fallback, not the default: run them only when the cross-model review is unavailable (the reviewer's CLI is missing or can't authenticate) or the user asks for them. They cost roughly 50k tokens each, so then use `code-reviewer`, plus `silent-failure-hunter` for security, auth or error paths and `pr-test-analyzer` for new logic.
 
 **Scope Brief:** if `<change>/scope-brief.md` exists, paste it verbatim at the top of each review agent's prompt as an OUT OF SCOPE / IN SCOPE block, and triage findings against it: a finding about excluded work is recorded and dismissed with the exclusion cited, not fixed. Security, privacy, data-loss and correctness defects in the change are always in scope.
 
@@ -73,14 +65,14 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 2. Read `<change>/proposal.md` for PR body content
 3. Verify branch name matches convention — rename and re-push if needed
 4. Create PR with formatted title and body
-5. Run the review set for this change (table above), in parallel; post each reviewer's findings with `gh pr comment`, then surface them in conversation
+5. Post the cross-model review's final pass with `gh pr comment <n> --body-file <file>` (running it first if `dev` didn't), then wait for CodeRabbit and settle every comment: fix it, or reply with why it doesn't apply
 6. Consolidate all findings and present before merge
 7. On merge: move the sub-issue on the repository's board as its `AGENTS.md` says (the github skill's projects reference)
 
 ## Constraints
 
 - Branch name must conform before PR creation — never create a PR from a non-conforming branch
-- Never skip the review set the table assigns; never run more than it assigns without a reason (cost)
+- Never skip the cross-model review; use `pr-review-toolkit` agents only as the fallback above (cost)
 - Squash merge only — reject merge commit and rebase merge
 - Always read `issues.md` for sub-issue number — never ask the user
 - `comment-analyzer` only runs if significant documentation (docstrings, README changes, inline explanations) was added

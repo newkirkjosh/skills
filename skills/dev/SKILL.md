@@ -54,7 +54,7 @@ Agent tool:
 
 Never hand a subagent the whole lifecycle, and never do a delegated job yourself: a coordinator that writes the code also grades it. One exception: a review or evaluation finding that only needs a few lines of non-code wording (docs, comments, a contract sentence) you apply directly and say so in the commit; anything touching code, config or tests goes to an implementer.
 
-**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Scale the review set to the change (see `pr`).
+**Budget.** Each spawn costs roughly 50–80k tokens, and the user's plan has a session limit that a long run can hit. Match the tier to the job: `small` for narrow or mechanical evaluations and doc fixes, `medium` for test authoring, implementation and judgment-heavy evaluation. Keep at most three agents in flight. Reviews go to the other model (Phase 4), not to more Claude agents (see `pr`).
 
 ## Scope Brief
 

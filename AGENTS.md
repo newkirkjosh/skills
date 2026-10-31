@@ -94,6 +94,22 @@ Re-run it after adding, renaming or deleting a skill. It links new skills and re
 
 Don't use `npx skills add` for this catalog: it installs copies, not links to the checkout. With `-g` it copies each skill into `~/.agents/skills` and links agents to that copy; without it, it installs into the current project instead. Either way, edits in the checkout never reach the installed skills.
 
+## Tracker
+
+GitHub issues on this repository.
+
+## Layers
+
+None: a change here is one PR, not a layered `dev` run.
+
+## Pull requests
+
+Conventional-commit titles, squash merge only. Labels: `enhancement` or `bug`, plus `documentation`. No project board.
+
+## Merge policy
+
+An agent may squash-merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the Codex cross-review converged, every CodeRabbit comment fixed or answered, and no unresolved review thread. Hand the merge back to the user when the PR touches `.github/workflows/` or the privacy checks (`scripts/check-private.sh`, the Security and privacy section above).
+
 ## Code Review Rules
 
 Read `REVIEW.md` at the repository root and apply it in full as the review rules for this repo. This section exists for Codex, which reads `AGENTS.md` but not `REVIEW.md`.
