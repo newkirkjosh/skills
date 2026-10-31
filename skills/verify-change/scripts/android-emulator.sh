@@ -117,8 +117,12 @@ case "$cmd" in
     if [ -f "$pidfile" ]; then
       pid="$(cat "$pidfile")"
       [[ $pid =~ ^[1-9][0-9]*$ ]] || die "invalid recorded process group"
-      "$adb" -s "$serial" emu kill >/dev/null 2>&1 || :
-      for _ in $(seq 1 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+      # Ask the emulator to quit only while our recorded process is alive: if it died
+      # without down, the serial may now belong to an emulator someone else started.
+      if kill -0 "$pid" 2>/dev/null; then
+        "$adb" -s "$serial" emu kill >/dev/null 2>&1 || :
+        for _ in $(seq 1 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+      fi
       # Signal the whole group so emulator helpers cannot keep the lock held.
       if kill -0 -- "-$pid" 2>/dev/null; then kill -TERM -- "-$pid" 2>/dev/null; sleep 3; fi
       if kill -0 -- "-$pid" 2>/dev/null; then kill -KILL -- "-$pid" 2>/dev/null; sleep 1; fi

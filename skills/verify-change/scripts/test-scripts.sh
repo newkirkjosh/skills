@@ -143,6 +143,12 @@ mkdir -p "$work/evil-target" "$work/evilrun"; ln -s "$work/evil-target" "$work/e
 XDG_RUNTIME_DIR="$work/evilrun" emu up --avd x --port 5570 --lock "$lock"
 check "a symlinked state directory is refused" '[ "$(rc)" = 3 ] && grep -q "refusing to use it" "$work/err" && [ -z "$(ls -A "$work/evil-target")" ]'
 
+# A stale record (its process died without down) must not kill whatever now has the serial.
+mkdir -p "$work/run/verify-change"; sh -c 'exit 0' & dead=$!; wait "$dead"
+echo "$dead" > "$work/run/verify-change/emulator-5572.pid"; : > "$work/adb.log"
+emu down --port 5572
+check "down with a stale record doesn't send emu kill to the serial" '[ "$(last)" = STATUS=STOPPED ] && ! grep -q "emu kill" "$work/adb.log"'
+
 # --- android-ui.py --------------------------------------------------------------
 cat > "$work/ui.xml" <<'EOF'
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
