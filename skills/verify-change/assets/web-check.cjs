@@ -58,8 +58,11 @@ function usage() {
     // never goes idle and mustn't fail for that alone.
     // Playwright reads timeout 0 as "no timeout", so --settle 0 skips the wait instead.
     if (settle > 0) {
-      await page.waitForLoadState("networkidle", { timeout: settle }).catch(() =>
-        console.log(`note: network still busy after ${settle} ms (a persistent connection?); reporting errors seen so far`));
+      // Only a timeout means "still busy"; a crashed page or a closed browser is a failure.
+      await page.waitForLoadState("networkidle", { timeout: settle }).catch((e) => {
+        if (e.name !== "TimeoutError") throw e;
+        console.log(`note: network still busy after ${settle} ms (a persistent connection?); reporting errors seen so far`);
+      });
     }
     if (screenshot) {
       await page.screenshot({ path: screenshot, fullPage: true });

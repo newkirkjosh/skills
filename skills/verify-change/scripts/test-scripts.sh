@@ -348,7 +348,8 @@ exports.chromium = { launch: async () => ({
       waitForLoadState: async (state, options) => {
         assert.equal(state, 'networkidle');
         assert.equal(options.timeout, 1234);
-        if (process.env.WEB_NEVER_IDLE) throw new Error('Timeout 1234ms exceeded.');
+        if (process.env.WEB_NEVER_IDLE) throw Object.assign(new Error('Timeout 1234ms exceeded.'), {name: 'TimeoutError'});
+        if (process.env.WEB_CRASH) throw new Error('Target page, context or browser has been closed');
         await new Promise(resolve => setTimeout(resolve, 5));
         if (process.env.WEB_LATE_ERROR) handlers.response({status: () => 500, url: () => 'http://example.com/late'});
       }
@@ -368,6 +369,9 @@ check "web: a page that never goes idle (persistent connection) still passes" '[
 WEB_NEVER_IDLE=1 NODE_PATH="$work/modules" timeout 10 node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 0 > "$work/web.out" 2>&1
 web_rc=$?
 check "web: --settle 0 skips the idle wait instead of waiting forever" '[ "$web_rc" = 0 ] && ! grep -q "network still busy" "$work/web.out"'
+WEB_CRASH=1 NODE_PATH="$work/modules" node "$here/../assets/web-check.cjs" http://example.com --expect Ready --settle 1234 > "$work/web.out" 2>&1
+web_rc=$?
+check "web: a page crash during the settle window fails, not 'still busy'" '[ "$web_rc" = 1 ] && grep -q "FAIL  Target page" "$work/web.out" && ! grep -q "network still busy" "$work/web.out"'
 
 echo
 echo "$pass passed, $fail failed"
