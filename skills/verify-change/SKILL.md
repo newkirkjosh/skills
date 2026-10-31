@@ -54,6 +54,8 @@ bash $S/android-emulator.sh down                     # always, even after a fail
 - A booted device is reused only for the same recorded lock path and AVD; another lock or AVD, or a device still booting, returns `BUSY`. Ownership records are published only after acquiring the device lock.
 - `down` stops the emulator and its whole process group, and returns `STOPPED` only once the lock is free.
 
+The UI helper requires `--serial` or `ANDROID_SERIAL` and a matching live emulator PID record from `android-emulator.sh`. To target an unmanaged device, pass `--serial <serial> --device` before the command; a physical device needs the user’s explicit say-so. `type` rejects control characters and literal `%s` because Android would change the latter into a space.
+
 The UI helper commands are `dump`, `find QUERY`, `tap QUERY`, `wait QUERY`, `gone QUERY`, `type TEXT`, `clear`, `key KEYCODE`, `screenshot FILE`, and `launch PACKAGE`. `find` and `tap` accept `--nth N` (1-based document order), `--last`, and `--below QUERY` (top edge below the first anchor's bottom). Without an explicit position, `tap` prefers a clickable match. `find`, `wait`, `gone`, and `tap` skip editable nodes unless `--include-editable` is given; use it with a resource-id or exact hint text to target a field. `dump` prints the short class and flags C clickable, F focused, K checked, S selected, E editable. `clear` uses CTRL+A then Delete on Android 12+; if keycombination fails, it moves to the end and sends 50 Deletes, so longer input may need another clear.
 
 ### Desktop (Kotlin Multiplatform, Compose for Desktop)

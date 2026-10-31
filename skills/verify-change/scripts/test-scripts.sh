@@ -19,6 +19,11 @@ cat > "$work/bin/emulator" <<'EOF'
 [ "${1:-}" = -list-avds ] && { printf '%b' "${STUB_AVDS:-one-avd\n}"; exit 0; }
 printf '%s\n' "$@" > "$STUB/emulator.args"
 [ -n "${STUB_EMU_DIE:-}" ] && { echo "emulator: boom" >&2; exit 1; }
+if [ -n "${STUB_HELPER:-}" ]; then
+  # Retains fd 9 in the emulator group and ignores TERM, requiring KILL.
+  bash -c 'trap "" TERM; exec sleep 12345' &
+  echo $! > "$STUB/helper.pid"
+fi
 # Like the real thing: a long-running process that holds the inherited lock fd.
 while :; do sleep 0.2; done
 EOF
@@ -79,6 +84,20 @@ group="$(cat "$work/run/verify-change/emulator-5564.pid")"
 STUB_NO_EMU_KILL=1 emu down --port 5564
 check "down: an emulator ignoring emu kill is stopped with its whole group" '[ "$(last)" = STATUS=STOPPED ] && flock -n "$lock" true && group_stopped'
 
+for leader_state in exits-on-adb already-exited; do
+  STUB_HELPER=1 emu up --avd x --port 5568 --lock "$lock"
+  group="$(cat "$work/run/verify-change/emulator-5568.pid")"
+  helper="$(cat "$work/helper.pid")"
+  check "helper: inherits the recorded group and holds lock" '[ "$(ps -o pgid= -p "$helper" | tr -d " ")" = "$group" ] && ! flock -n "$lock" true'
+  if [ "$leader_state" = already-exited ]; then
+    kill "$group"
+    for _ in $(seq 1 50); do kill -0 "$group" 2>/dev/null || break; sleep 0.1; done
+    check "helper: survives after leader exits" '! kill -0 "$group" 2>/dev/null && kill -0 "$helper" 2>/dev/null'
+  fi
+  emu down --port 5568
+  check "down: cleans surviving helper ($leader_state)" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=STOPPED ] && group_stopped && flock -n "$lock" true'
+done
+
 # Hold the first run in its boot poll while competing callers try the same port.
 echo 0 > "$work/booted"
 STUB_BOOT_FILE="$work/booted" bash "$here/android-emulator.sh" up --avd x --port 5566 --lock "$lock" --timeout 15 > "$work/first.out" 2> "$work/first.err" &
@@ -120,6 +139,10 @@ kill "$holder"; holder=""
 emu up --port 5555 --lock "$lock"
 check "an odd port is refused" '[ "$(rc)" = 3 ]'
 
+mkdir -p "$work/evil-target" "$work/evilrun"; ln -s "$work/evil-target" "$work/evilrun/verify-change"
+XDG_RUNTIME_DIR="$work/evilrun" emu up --avd x --port 5570 --lock "$lock"
+check "a symlinked state directory is refused" '[ "$(rc)" = 3 ] && grep -q "refusing to use it" "$work/err" && [ -z "$(ls -A "$work/evil-target")" ]'
+
 # --- android-ui.py --------------------------------------------------------------
 cat > "$work/ui.xml" <<'EOF'
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
@@ -139,6 +162,27 @@ cat > "$work/ui.xml" <<'EOF'
 EOF
 ui() { python3 -I "$here/android-ui.py" --serial emulator-5554 "$@" > "$work/out" 2> "$work/err"; echo $? > "$work/rc"; }
 : > "$work/adb.log"
+
+# Guard failures must issue no adb commands, even for mutating commands.
+ANDROID_SERIAL= python3 -I "$here/android-ui.py" key HOME > "$work/out" 2> "$work/err"; echo $? > "$work/rc"
+check "ui: missing serial is rejected before adb" '[ "$(rc)" = 2 ] && grep -q -- "--serial or ANDROID_SERIAL" "$work/err" && [ ! -s "$work/adb.log" ]'
+ui key HOME
+check "ui: unowned emulator serial is rejected" '[ "$(rc)" = 2 ] && grep -q "not started" "$work/err" && [ ! -s "$work/adb.log" ]'
+echo 99999999 > "$work/run/verify-change/emulator-5554.pid"
+ui key HOME
+check "ui: stale PID record is rejected" '[ "$(rc)" = 2 ] && [ ! -s "$work/adb.log" ]'
+# Synthetic live ownership record isolates UI tests from SDK processes.
+echo $$ > "$work/run/verify-change/emulator-5554.pid"
+ANDROID_SERIAL=emulator-5554 python3 -I "$here/android-ui.py" key HOME > "$work/out" 2> "$work/err"; echo $? > "$work/rc"
+check "ui: ANDROID_SERIAL selects a managed device explicitly" '[ "$(rc)" = 0 ] && grep -q -- "-s emulator-5554 shell input keyevent KEYCODE_HOME" "$work/adb.log"'
+: > "$work/adb.log"
+python3 -I "$here/android-ui.py" --serial physical-test key HOME > "$work/out" 2> "$work/err"; echo $? > "$work/rc"
+check "ui: unmanaged physical serial requires opt-in" '[ "$(rc)" = 2 ] && [ ! -s "$work/adb.log" ]'
+python3 -I "$here/android-ui.py" --device --serial physical-test key HOME > "$work/out" 2> "$work/err"; echo $? > "$work/rc"
+check "ui: explicit device opt-in targets the requested serial" '[ "$(rc)" = 0 ] && grep -q -- "-s physical-test shell input keyevent KEYCODE_HOME" "$work/adb.log"'
+: > "$work/adb.log"
+ANDROID_SERIAL= python3 -I "$here/android-ui.py" --device key HOME > "$work/out" 2> "$work/err"; echo $? > "$work/rc"
+check "ui: device opt-in still requires a serial" '[ "$(rc)" = 2 ] && [ ! -s "$work/adb.log" ]'
 
 ui find "Sign in"
 check "ui find: exact text" '[ "$(rc)" = 0 ] && grep -q "^Sign in |" "$work/out"'
@@ -199,6 +243,9 @@ for control in $'hello\ninput keyevent HOME' $'hello\tworld' $'hello\rworld' $'h
   ui type "$control"
   check "ui type: rejects control characters before any adb call" '[ "$(rc)" = 2 ] && grep -q "control characters" "$work/err" && [ ! -s "$work/adb.log" ]'
 done
+ : > "$work/adb.log"
+ui type 'abc%sdef'
+check "ui type: rejects literal percent-s before adb" '[ "$(rc)" = 2 ] && grep -q "literal %s" "$work/err" && [ ! -s "$work/adb.log" ]'
 ui key back
 check "ui key: BACK maps to KEYCODE_BACK" '[ "$(rc)" = 0 ] && grep -q "input keyevent KEYCODE_BACK" "$work/adb.log"'
 printf '\x89PNGrest' > "$work/screen"; ui screenshot "$work/shot.png"

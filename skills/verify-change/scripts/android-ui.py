@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drive an Android app's UI through adb and uiautomator, by what's on screen.
 
-usage: python3 -I android-ui.py [--serial S] COMMAND ...
+usage: python3 -I android-ui.py [--serial S] [--device] COMMAND ...
   dump                       print each visible node: text | content-desc | resource-id | bounds | class | flags
   find QUERY                 print the first matching node, exit 1 if none
   tap QUERY                  tap the first clickable match, else the first match
@@ -12,6 +12,12 @@ usage: python3 -I android-ui.py [--serial S] COMMAND ...
   key KEYCODE                send a key event (BACK, ENTER, HOME, or a KEYCODE_* name)
   screenshot FILE            save a PNG of the screen
   launch PACKAGE             start the app's launcher activity, cold
+
+An explicit --serial or ANDROID_SERIAL is required. By default its live PID
+record must exist under $XDG_RUNTIME_DIR/verify-change (or ~/.cache/verify-change),
+created by android-emulator.sh. --device permits an unmanaged target; use it
+for a physical device only with the user's say-so.
+type rejects control characters and literal %s (Android converts it to a space).
 
 QUERY matches a node's text, content-desc or resource-id exactly; prefix it
 with ~ for a case-insensitive substring match ("~sign in"). Compose test tags
@@ -44,7 +50,7 @@ def fail(msg, code=2):
 
 
 def adb(serial, *args, binary=False, allow_failure=False):
-    cmd = [ADB] + (["-s", serial] if serial else []) + list(args)
+    cmd = [ADB, "-s", serial] + list(args)
     r = subprocess.run(cmd, capture_output=True, timeout=60)
     if allow_failure:
         return r.returncode == 0
@@ -126,10 +132,32 @@ def wait_for(serial, query, timeout, present=True, **selection):
 
 def main(argv):
     serial = os.environ.get("ANDROID_SERIAL", "")
-    if argv[:1] == ["--serial"]:
-        if len(argv) < 2:
-            fail("--serial needs a value")
-        serial, argv = argv[1], argv[2:]
+    device = False
+    while argv and argv[0] in ("--serial", "--device"):
+        if argv[0] == "--device":
+            device, argv = True, argv[1:]
+        else:
+            if len(argv) < 2:
+                fail("--serial needs a value")
+            serial, argv = argv[1], argv[2:]
+    if not serial:
+        fail("an explicit --serial or ANDROID_SERIAL is required")
+    if not device:
+        owned = False
+        if re.fullmatch(r"emulator-[0-9]+", serial):
+            record = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache"),
+                                  "verify-change", serial + ".pid")
+            try:
+                with open(record) as f:
+                    pid = int(f.read().strip())
+                if pid > 0:
+                    os.kill(pid, 0)
+                    owned = True
+            except (OSError, ValueError):
+                pass
+        if not owned:
+            fail("serial was not started by android-emulator.sh; "
+                 "--device requires explicit permission for a physical device")
     if not argv:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -201,6 +229,8 @@ def main(argv):
     if cmd == "type" and len(args) == 1:
         if any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in args[0]):
             fail("type does not support control characters (including newlines and tabs)")
+        if "%s" in args[0]:
+            fail("type does not support literal %s (Android converts it to a space)")
         # input text needs spaces as %s and shell metacharacters escaped.
         escaped = re.sub(r"([\\'\"`$&|;<>()*?!#~])", r"\\\1", args[0]).replace(" ", "%s")
         adb(serial, "shell", "input", "text", escaped)

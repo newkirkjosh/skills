@@ -28,7 +28,8 @@ die() { echo "android-emulator: $*" >&2; exit 3; }
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
 emulator="${EMULATOR_BIN:-$sdk/emulator/emulator}"
 adb="${ADB_BIN:-$(command -v adb || echo "$sdk/platform-tools/adb")}"
-state="${XDG_RUNTIME_DIR:-/tmp}/verify-change"
+# Per-user state only: never a shared /tmp path another user could plant symlinks in.
+state="${XDG_RUNTIME_DIR:-$HOME/.cache}/verify-change"
 
 cmd="${1:-}"; shift || true
 avd="${VERIFY_AVD:-}" port=5554 lock="" timeout=300
@@ -46,7 +47,9 @@ serial="emulator-$port" pidfile="$state/emulator-$port.pid" lockref="$state/emul
 avdref="$state/emulator-$port.avd"
 
 # Serialize ownership publication and shutdown for this port, even across locks.
-mkdir -p "$state" || die "can't create state directory"
+mkdir -p -m 0700 "$state" || die "can't create state directory $state"
+[ -d "$state" ] && [ ! -L "$state" ] && [ "$(stat -c %u "$state")" = "$(id -u)" ] \
+  || die "state directory $state isn't a directory owned by you (or is a symlink); refusing to use it"
 exec 8>"$state/emulator-$port.guard"
 flock -n 8 || { status=BUSY; exit 4; }
 
@@ -111,14 +114,16 @@ case "$cmd" in
     echo "serial=$serial pid=$(cat "$pidfile") avd=$avd boot_s=$((SECONDS - start)) log=$log"
     status=READY ;;
   down)
-    if alive; then
+    if [ -f "$pidfile" ]; then
       pid="$(cat "$pidfile")"
+      [[ $pid =~ ^[1-9][0-9]*$ ]] || die "invalid recorded process group"
       "$adb" -s "$serial" emu kill >/dev/null 2>&1 || :
       for _ in $(seq 1 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
       # Signal the whole group so emulator helpers cannot keep the lock held.
-      if kill -0 "$pid" 2>/dev/null; then kill -TERM -- "-$pid" 2>/dev/null; sleep 3; fi
-      if kill -0 "$pid" 2>/dev/null; then kill -KILL -- "-$pid" 2>/dev/null; sleep 1; fi
-      kill -0 "$pid" 2>/dev/null && die "emulator group $pid didn't stop"
+      if kill -0 -- "-$pid" 2>/dev/null; then kill -TERM -- "-$pid" 2>/dev/null; sleep 3; fi
+      if kill -0 -- "-$pid" 2>/dev/null; then kill -KILL -- "-$pid" 2>/dev/null; sleep 1; fi
+      # Orphaned zombies can still answer kill -0; the lock wait below proves
+      # no surviving helper retains the device lock after group escalation.
     fi
     # STOPPED means the next run can take the device: wait for the lock itself,
     # since a helper the emulator started can hold it briefly after the main process exits.
