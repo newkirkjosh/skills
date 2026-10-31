@@ -27,6 +27,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `pr` | PR title, body and issue link; the other model reviews it (Codex from Claude Code, Claude from Codex), then CodeRabbit where configured. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
 | `repo-setup` | Brings a repository up to the standard the workflow skills expect, and upgrades it when that changes. |
+| `resolve-pr-feedback` | One round of review-bot threads: triage, one fix push, reply and resolve. |
 | `gh-issues` | Turns a change folder into a GitHub epic and sub-issues. |
 | `github` | Reference for `gh` and the GitHub APIs. |
 | `linear` | Reference for Linear through its MCP server. |

@@ -65,7 +65,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 2. Read `<change>/proposal.md` for PR body content
 3. Verify branch name matches convention — rename and re-push if needed
 4. Create PR with formatted title and body
-5. Post the cross-model review's final pass with `gh pr comment <n> --body-file <file>` (invoking `pr`, or `dev`, which calls it, is the request for this comment on the PR it opened) (running it first if `dev` didn't), then wait for CodeRabbit and settle every comment: fix it, or reply with why it doesn't apply
+5. Post the cross-model review's final pass with `gh pr comment <n> --body-file <file>` (invoking `pr`, or `dev`, which calls it, is the request for this comment on the PR it opened) (running it first if `dev` didn't), then wait for CodeRabbit (the github skill's `wait-for-coderabbit.sh`) and settle its threads with `resolve-pr-feedback`: each fixed, or answered with why it doesn't apply
 6. Consolidate all findings and present before merge
 7. On merge: move the sub-issue on the repository's board as its `AGENTS.md` says (the github skill's projects reference)
 
@@ -75,7 +75,7 @@ Note: steps 1-2 are elaborations not in the spec — they are required reads to 
 - Never skip the cross-model review, except `dev`'s recorded skip for a `narrow` docs-only change; use `pr-review-toolkit` agents only as the fallback above (cost)
 - Squash merge only — reject merge commit and rebase merge
 - Always read `issues.md` for sub-issue number — never ask the user
-- `comment-analyzer` only runs if significant documentation (docstrings, README changes, inline explanations) was added
+- Comment-accuracy review only runs if significant documentation (docstrings, README changes, inline explanations) was added
 - Post findings as PR comments (`gh pr comment`); never approve or request changes on the user's behalf
 - Merge only on a green CI run for the PR's head commit. A red job may be rerun once (`gh run rerun --job`) only when its failure matches an already-filed flake issue; cite the issue in the PR
 

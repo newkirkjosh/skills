@@ -88,7 +88,7 @@ Skills follow the open Agent Skills format (https://github.com/agentskills/agent
 
 `scripts/install.sh` symlinks every skill into `~/.claude/skills` (Claude Code) and `~/.agents/skills` (Codex); pass directories as arguments to link elsewhere instead. Links point into this checkout, so an edit takes effect on the next skill load: there is no version to bump and nothing to sync.
 
-Re-run it after adding, renaming or deleting a skill. It links new skills and removes links into this catalog that no longer resolve; it never touches a real directory or a link to somewhere else. The dotfiles repo runs it on a fresh machine (`run_onchange_after_install-skills.sh.tmpl`).
+Re-run it after adding, renaming or deleting a skill, **from the main checkout only**, once the change is merged. Run from a worktree, it would repoint every installed link at that worktree's unmerged copy, so it refuses and exits non-zero (`scripts/test-install.sh`). It links new skills and removes links into this catalog that no longer resolve; it never touches a real directory or a link to somewhere else. The dotfiles repo runs it on a fresh machine (`run_onchange_after_install-skills.sh.tmpl`).
 
 **Change skills in a worktree, not on `main`.** The installed links point at this checkout's `main`, so an edit there changes every running session on its next skill load, mid-task included. Create one with `wt switch --create <type>/<change> --no-cd` (worktrunk), test a changed skill by pointing the session at the worktree copy's path, and merge to `main` to release it.
 
@@ -127,7 +127,7 @@ scripts/check-refs.sh   # bundled files and skill references resolve
 scripts/check-private.sh   # no private terms in tracked files
 grep -rn '<renamed-skill>' skills/
 bash -n scripts/*.sh skills/*/scripts/*.sh 2>/dev/null
-for t in skills/*/scripts/test-*.sh; do bash "$t"; done   # bundled script tests
+for t in scripts/test-*.sh skills/*/scripts/test-*.sh; do bash "$t"; done   # script tests
 ```
 
 A skill that bundles shell scripts with any logic (secret handling, guards, argument checks) ships a `scripts/test-<name>.sh` beside them: stub external commands on `PATH`, need no network, exit non-zero on failure. CI runs every `skills/*/scripts/test-*.sh`.

@@ -27,19 +27,20 @@ A review counts for the head only when `commit.oid == headRefOid`.
 
 ## Review threads
 
-List unresolved threads with their first comment:
+List unresolved threads with their first comment. A page holds at most 100 threads, and a long review cycle exceeds that, so always paginate: one page silently drops the rest and every count after it is wrong while still looking complete.
 
 ```bash
-gh api graphql -F pr=<n> -f owner=<owner> -f repo=<repo> -f query='
-query($owner: String!, $repo: String!, $pr: Int!) {
+gh api graphql --paginate --slurp -F pr=<n> -f owner=<owner> -f repo=<repo> -f query='
+query($owner: String!, $repo: String!, $pr: Int!, $endCursor: String) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $pr) {
-      reviewThreads(first: 100) {
-        nodes { id isResolved path line comments(first: 1) { nodes { author { login } body } } }
+      reviewThreads(first: 100, after: $endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id isResolved isOutdated path line comments(first: 1) { nodes { author { login } body } } }
       }
     }
   }
-}' --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)'
+}' | jq '[.[].data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)]'
 ```
 
 Reply, then resolve, only with the user's go-ahead:
