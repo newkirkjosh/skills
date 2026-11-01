@@ -274,20 +274,34 @@ if grep -qiE "$verify_instruction" <<< "$verification"; then
       # "### Android") with facts after it: on the bullet's own line, or under
       # the subheading before the next heading. A passing mention or a bare
       # label is not coverage.
-      if ! awk -v pattern="^($pattern)([^[:alnum:]_]|$)" '
+      if ! awk -v pattern="^($pattern)([^[:alnum:]_]|$)" -v any='^(android|desktop|web|browser|ios)([^[:alnum:]_]|$)' '
+        # Text after a label: drop the label word and its markup ("**Web:**").
         function rest(text) { sub(/^[^[:alnum:]_]*[[:alnum:]_]+/, "", text); return text }
+        function indent(text) { match(text, /^[[:space:]]*/); return RLENGTH }
         {
           line = tolower($0)
           if (line ~ /^[[:space:]]*#+[[:space:]]+/) {
-            under = 0; label = line; sub(/^[[:space:]]*#+[[:space:]]+/, "", label)
-            if (label ~ pattern) under = 1
+            match(line, /#+/); level = RLENGTH
+            label = line; sub(/^[[:space:]]*#+[[:space:]]+/, "", label)
+            bullet = 0
+            if (under && level <= depth) under = 0
+            if (!under && label ~ pattern) { under = 1; depth = level }
             next
           }
-          if (under && line ~ /[[:alnum:]]/) { found = 1; exit }
-          if (line ~ /^[[:space:]]*[-*+][[:space:]]+/) {
-            label = line; sub(/^[[:space:]]*[-*+][[:space:]]+(\*\*)?/, "", label)
-            if (label ~ pattern && rest(label) ~ /[[:alnum:]]/) { found = 1; exit }
+          is_bullet = line ~ /^[[:space:]]*[-*+][[:space:]]+/
+          label = line; sub(/^[[:space:]]*[-*+][[:space:]]+(\*\*)?/, "", label)
+          if (is_bullet && bullet && indent(line) <= bullet_indent) bullet = 0
+          if (bullet && line ~ /[[:alnum:]]/ && indent(line) > bullet_indent) { found = 1; exit }
+          if (is_bullet && label ~ any) {
+            # Another target'"'"'s bullet is never this target'"'"'s facts.
+            if (label ~ pattern) {
+              if (rest(label) ~ /[[:alnum:]]/) { found = 1; exit }
+              bullet = 1; bullet_indent = indent(line)
+            }
+            next
           }
+          if (bullet && line !~ /^[[:space:]]*$/ && indent(line) <= bullet_indent) bullet = 0
+          if (under && line ~ /[[:alnum:]]/) { found = 1; exit }
         }
         END { exit !found }
       ' <<< "$verification"; then

@@ -383,6 +383,22 @@ adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'### Web\n\n### Notes\nServe the client.'; run
 check "an empty target subheading is not coverage" 'has decide verify-section && grep -q "detected targets: web;" "$work/out"'
 
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n#### Build\nRun npm run dev.'; run
+check "facts under a nested heading of a target subheading count" 'has ok verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"; mkdir -p "$work/r/app"; touch "$work/r/app/AndroidManifest.xml"
+verification_facts $'### Android\n- Web: run npm start'; run
+check "another target's bullet is not this target's facts" 'has decide verify-section && grep -q "detected targets: android;" "$work/out"'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'- **Web:**\n  Run npm run dev.'; run
+check "an indented continuation line under a target bullet counts" 'has ok verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'- **Web:**\nServe the client from the docs.'; run
+check "an unindented line after an empty bullet is not its facts" 'has decide verify-section'
+
 for source in manifest module package static; do
   adopted
   case "$source" in
