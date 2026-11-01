@@ -220,6 +220,9 @@ check "a verification section that only mentions verify-change is not ok" '! has
 adopted; printf '\n## Verifying the app\n**You MUST load the `verify-change` skill before verifying a change in the running app.**\n' >> "$work/r/AGENTS.md"; run
 check "bold instruction alone still needs facts" 'has decide verify-section'
 
+adopted; printf '\n## Verifying the app\nLoad the `verify-change` skill before verifying a change in the running app. Launch with npm run dev.\n' >> "$work/r/AGENTS.md"; run
+check "facts on the instruction's own line count" 'has ok verify-section'
+
 adopted; printf '\n## Verifying the app\nDo not load the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
 check "a negated full verify-change sentence is not ok" '! has ok verify-section'
 

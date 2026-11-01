@@ -172,7 +172,9 @@ fi
 verification="$(section 'Verifying the app')"
 verify_instruction="$load_prefix"' `verify-change` skill before verifying a change in the running app'
 if grep -qiE "$verify_instruction" <<< "$verification"; then
-  if grep -viE "$verify_instruction" <<< "$verification" | grep -qE '^[[:space:]]*[^#[:space:]]'; then
+  # Facts may share the instruction's line; remove only the instruction sentence.
+  if sed -E 's/(you must )?load the `verify-change` skill before verifying a change in the running app[.]?//I' <<< "$verification" \
+      | grep -v '^#' | grep -q '[[:alnum:]]'; then
     say ok verify-section "Verifying the app loads verify-change before verifying a change"
   else
     say decide verify-section "Verifying the app needs repository verification facts after the load instruction"
