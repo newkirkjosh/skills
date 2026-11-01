@@ -433,6 +433,10 @@ adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'```sh\n# start the backend\nnpm run dev\n```\n- **Web:** serve with npm run dev.'; run
 check "a shell comment in a fenced block does not end the section" 'has ok verify-section'
 
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'````md\n```\n# start the backend\n```\n````\n~~~\n```\n# stop it\n~~~\n- **Web:** serve with npm run dev.'; run
+check "fences close only on a matching delimiter" 'has ok verify-section'
+
 for source in manifest module package static; do
   adopted
   case "$source" in
