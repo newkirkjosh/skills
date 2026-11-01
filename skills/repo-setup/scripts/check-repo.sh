@@ -179,7 +179,8 @@ if heading 'Tracker([[:space:]]|$)'; then
   tracker="$(section Tracker)"
   # Infer the tracker from prose, removing only the load clause itself
   # (which may share a line or sentence with the prose).
-  prose="$(sed -E 's/(you must )?load the `[a-z-]+` skill before creating, changing or closing an? [a-z ]*issue//Ig' <<< "$tracker")"
+  # Lowercased first: sed's I flag isn't portable to BSD sed.
+  prose="$(tr '[:upper:]' '[:lower:]' <<< "$tracker" | sed -E 's/(you must )?load the `[a-z-]+` skill before creating, changing or closing an? [a-z ]*issue//g')"
   want=""
   if grep -qi 'linear' <<< "$prose"; then want=linear
   elif grep -qi 'github' <<< "$prose"; then want=github
@@ -236,8 +237,14 @@ for entry in index.html public/index.html web/index.html src/index.html; do
   [ ! -f "$entry" ] || { app=1; web=1; }
 done
 while IFS= read -r entry; do
-  app=1
-  case "$entry" in */AndroidManifest.xml|*/androidApp/*) android=1 ;; esac
+  case "$entry" in
+    # Library modules and KMP androidMain have manifests too: only a launcher
+    # activity makes one an app.
+    */AndroidManifest.xml) android=1
+      grep -q 'android.intent.category.LAUNCHER' "$entry" && app=1 ;;
+    */androidApp/*) android=1; app=1 ;;
+    *) app=1 ;;
+  esac
 done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
   -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
   -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
@@ -278,7 +285,7 @@ verification="$(section 'Verifying the app')"
 verify_instruction="$load_prefix"' `verify-change` skill before verifying a change in the running app'
 if grep -qiE "$verify_instruction" <<< "$verification"; then
   # Facts may share the instruction's line; remove only the instruction sentence.
-  if sed -E 's/(you must )?load the `verify-change` skill before verifying a change in the running app[.]?//I' <<< "$verification" \
+  if tr '[:upper:]' '[:lower:]' <<< "$verification" | sed -E 's/(you must )?load the `verify-change` skill before verifying a change in the running app[.]?//' \
       | grep -v '^#' | grep -q '[[:alnum:]]'; then
     missing_targets=()
     for target in android desktop web ios; do
@@ -295,7 +302,16 @@ if grep -qiE "$verify_instruction" <<< "$verification"; then
         function indent(text) { match(text, /^[[:space:]]*/); return RLENGTH }
         {
           line = tolower($0)
-          if (line ~ /^[[:space:]]*#+[[:space:]]+/) {
+          # Fences use section()'"'"'s rules; a marker is never a fact, and a "#"
+          # line inside one is code, not a heading.
+          if (line ~ /^[[:space:]]*(```|~~~)/) {
+            match(line, /(`+|~+)/); run = substr(line, RSTART, RLENGTH)
+            if (!fenced) { fenced = 1; fence = run }
+            else if (substr(run, 1, 1) == substr(fence, 1, 1) && length(run) >= length(fence) &&
+                substr(line, RSTART + RLENGTH) ~ /^[[:space:]]*$/) fenced = 0
+            next
+          }
+          if (!fenced && line ~ /^[[:space:]]*#+[[:space:]]+/) {
             match(line, /#+/); level = RLENGTH
             label = line; sub(/^[[:space:]]*#+[[:space:]]+/, "", label)
             bullet = 0; skip = -1

@@ -186,7 +186,7 @@ check "declared Gradle app module needs verification facts" 'has decide verify-s
 adopted; printf "include ':androidApp'\n" > "$work/r/settings.gradle"; run
 check "Groovy app module declaration needs verification facts" 'has decide verify-section'
 
-adopted; mkdir -p "$work/r/client/src/main"; touch "$work/r/client/src/main/AndroidManifest.xml"; run
+adopted; mkdir -p "$work/r/client/src/main"; printf '<category android:name="android.intent.category.LAUNCHER"/>\n' > "$work/r/client/src/main/AndroidManifest.xml"; run
 check "Android manifest needs verification facts" 'has decide verify-section'
 
 for script in dev start; do
@@ -440,6 +440,20 @@ check "fences close only on a matching delimiter" 'has ok verify-section'
 adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'```\n```example\n# start the backend\n```\n- **Web:** serve with npm run dev.'; run
 check "a fence with an info string inside a block does not close it" 'has ok verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n```\n# start the backend\nnpm run dev\n```'; run
+check "a fenced shell comment under a target subheading keeps its facts" 'has ok verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n```sh\n```\n### Notes\nServe the client.'; run
+check "a fence marker with an info string is not a fact" 'has decide verify-section'
+
+adopted; mkdir -p "$work/r/lib/src/androidMain"; printf '<manifest package="com.example.lib"/>\n' > "$work/r/lib/src/androidMain/AndroidManifest.xml"; run
+check "a library manifest alone is not an app" 'has n/a verify-section'
+
+adopted; mkdir -p "$work/r/app"; printf '<manifest><application><activity><intent-filter><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>\n' > "$work/r/app/AndroidManifest.xml"; run
+check "a launcher manifest is an app" 'has decide verify-section'
 
 for source in manifest module package static; do
   adopted
