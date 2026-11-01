@@ -219,6 +219,12 @@ check "a verification section that only mentions verify-change is not ok" '! has
 adopted; printf '\n## Verifying the app\n**You MUST load the `verify-change` skill before verifying a change in the running app.**\n' >> "$work/r/AGENTS.md"; run
 check "the task-scoped verify-change line is ok" 'has ok verify-section'
 
+adopted; printf '\n## Verifying the app\nDo not load the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
+check "a negated full verify-change sentence is not ok" '! has ok verify-section'
+
+adopted; set_tracker "Linear. Don't load the \`linear\` skill before creating, changing or closing a tracker issue."; run
+check "a negated tracker load line is missing, not ok" 'has missing skill-lines'
+
 echo
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

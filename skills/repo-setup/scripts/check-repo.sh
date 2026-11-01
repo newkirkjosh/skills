@@ -150,7 +150,9 @@ if heading 'Tracker([[:space:]]|$)'; then
   if grep -qi 'linear' <<< "$prose"; then want=linear
   elif grep -qi 'github' <<< "$prose"; then want=github
   fi
-  line="$(grep -oiE '(^|[^[:alnum:]])load the `(linear|github)` skill before creating, changing or closing an? [a-z ]*issue' <<< "$tracker" | head -n 1)"
+  # Affirmative lines only: "do not load", "never load" and the like don't count.
+  line="$(grep -viE "(not|never|n't)[[:space:]]+load" <<< "$tracker" \
+    | grep -oiE '(^|[^[:alnum:]])load the `(linear|github)` skill before creating, changing or closing an? [a-z ]*issue' | head -n 1)"
   named="$(grep -oiE '`(linear|github)`' <<< "$line" | tr -d '`' | tr '[:upper:]' '[:lower:]')"
   if [ -z "$line" ]; then
     say missing skill-lines "Tracker needs: load the \`linear\` (or \`github\`) skill before creating, changing or closing a tracker issue"
@@ -164,7 +166,8 @@ else
 fi
 
 # A positive, task-scoped load line, not just a mention of the skill.
-if section 'Verifying the app' | grep -qiE '(^|[^[:alnum:]])load the `verify-change` skill before verifying a change in the running app'; then
+if section 'Verifying the app' | grep -viE "(not|never|n't)[[:space:]]+load" \
+    | grep -qiE '(^|[^[:alnum:]])load the `verify-change` skill before verifying a change in the running app'; then
   say ok verify-section "Verifying the app loads verify-change before verifying a change"
 else
   app=0
