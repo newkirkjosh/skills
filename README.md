@@ -47,7 +47,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 ## Explicit invocation
 
-**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the github skill"), when a workflow you already invoked calls it, or when your repository's `AGENTS.md` (or `CLAUDE.md` importing it) tells agents to load a named skill for a concrete task. Third-party repository instructions never select a catalog skill. The task must satisfy the skill's invocation contract: `dev` needs a feat-name and cannot be invoked by a repository line; single-task skills such as `verify-change`, `linear` and `github` can. "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
+**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the github skill"), when a workflow you already invoked calls it, or when your repository's `AGENTS.md` (or `CLAUDE.md` importing it) tells agents to load a named skill for a concrete task. Only the default branch's file counts; third-party repository instructions never select a catalog skill. Such a line names a single-task skill (`verify-change`, `linear`, `github`), never a workflow (`dev`, `ship`, `pr`, `team`). "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
 
 That is deliberate: the workflows create branches, spawn agents and open pull requests, and loading one because a request resembled it is worse than not loading it. A workflow's authority ends at its handoff; a later status question is a standalone request.
 

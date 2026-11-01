@@ -242,6 +242,15 @@ check "a mismatch on the prose's own line is stale" 'has stale skill-lines'
 adopted; set_tracker 'GitHub issues on this repository. **Load the `github` skill before creating, changing or closing a GitHub issue.**'; run
 check "a matching load line on the prose's own line is ok" 'has ok skill-lines'
 
+adopted; set_tracker 'Load the `linear` skill before creating, changing or closing a tracker issue; this repository uses GitHub issues.'; run
+check "tracker prose after the load clause still exposes a mismatch" 'has stale skill-lines'
+
+for bullet in '*' '+'; do
+  adopted; set_tracker "GitHub issues.
+$bullet Load the \`github\` skill before creating, changing or closing a GitHub issue."; run
+  check "a '$bullet' bullet load line is ok" 'has ok skill-lines'
+done
+
 for prefix in 'Do not ever load the' 'Never ever load the' 'Notes: Load the'; do
   adopted; set_tracker "Linear issues.
 $prefix \`linear\` skill before creating, changing or closing a tracker issue."; run

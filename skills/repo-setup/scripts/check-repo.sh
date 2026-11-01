@@ -128,7 +128,7 @@ if heading 'Merge policy'; then say ok merge-policy "AGENTS.md has a Merge polic
 
 # Affirmative instructions may be bold or list items, but must start the line
 # or a sentence.
-load_prefix='(^[[:space:]]*(-[[:space:]]+)?|[.!?][[:space:]]+)(\*\*)?[[:space:]]*(You MUST load the|Load the)'
+load_prefix='(^[[:space:]]*([-*+][[:space:]]+)?|[.!?][[:space:]]+)(\*\*)?[[:space:]]*(You MUST load the|Load the)'
 
 # Explicit skill invocations belong to the task's own section.
 # Print a section's body, at any heading level (## Tracker, or ### Tracker under
@@ -148,9 +148,9 @@ if heading 'Tracker([[:space:]]|$)'; then
   # changing or closing a ... issue"), not a mention or a topic, and name the
   # skill for the tracker this section describes.
   tracker="$(section Tracker)"
-  # Infer the tracker from prose, removing only the load instruction itself
-  # (which may share a line with the prose).
-  prose="$(sed -E 's/(you must )?load the `[a-z-]+` skill before [^.*]*//Ig' <<< "$tracker")"
+  # Infer the tracker from prose, removing only the load clause itself
+  # (which may share a line or sentence with the prose).
+  prose="$(sed -E 's/(you must )?load the `[a-z-]+` skill before creating, changing or closing an? [a-z ]*issue//Ig' <<< "$tracker")"
   want=""
   if grep -qi 'linear' <<< "$prose"; then want=linear
   elif grep -qi 'github' <<< "$prose"; then want=github
