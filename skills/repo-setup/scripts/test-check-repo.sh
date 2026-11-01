@@ -241,6 +241,9 @@ check "a Compose Desktop build needs a verification section" 'has decide verify-
 adopted; mkdir -p "$work/r/shared"; printf 'kotlin {\n  jvm("desktop")\n}\n' > "$work/r/shared/build.gradle.kts"; run
 check "a library's jvm(\"desktop\") target alone is not an app" 'has n/a verify-section'
 
+adopted; mkdir -p "$work/r/ui"; printf 'dependencies {\n  implementation(compose.desktop.currentOs)\n}\n// compose.desktop {\n' > "$work/r/ui/build.gradle.kts"; run
+check "a compose.desktop dependency or comment is not an app" 'has n/a verify-section'
+
 adopted; printf '\n## Verifying the app\nDo not load the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
 check "a negated full verify-change sentence is not ok" '! has ok verify-section'
 
