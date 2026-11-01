@@ -184,6 +184,10 @@ reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"' 9)"
 WAIT_AFTER_RUN=7 run "$wcr" 7 1 example/repo
 check "coderabbit: a newer skipped run is a second PAUSED" '[ "$(rc)" = 7 ] && out | grep -q "run=9"'
 
+reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"' 7)"; checks 2 "$(cr in_progress null 7)"; checks 3 "$(cr completed '"skipped"' 7)"
+WAIT_AFTER_RUN=7 run "$wcr" 7 1 example/repo
+check "coderabbit: the same run skipped again after a retry is PAUSED" '[ "$(rc)" = 7 ] && out | grep -q "run=7"'
+
 reset; heads 1 "$H1"; checks 1 "$(cr completed '"success"')"; WAIT_AFTER_RUN=abc run "$wcr" 7 1 example/repo
 check "coderabbit: a non-numeric WAIT_AFTER_RUN is a usage error" '[ "$(rc)" = 2 ]'
 

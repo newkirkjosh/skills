@@ -55,7 +55,10 @@ while :; do
     status=$(jq -r '.status // empty' <<< "${run:-null}") conclusion=$(jq -r '.conclusion // empty' <<< "${run:-null}")
     run_id=$(jq -r '.id // empty' <<< "${run:-null}")
     # The pause this rerun was started to clear is still pending, not a second pause.
-    [ -n "$after_run" ] && [ "$run_id" = "$after_run" ] && [ "$conclusion" = skipped ] && status=pending
+    # Once that run changes at all, the marker is spent: a later skip is a new pause.
+    if [ -n "$after_run" ] && [ "$run_id" = "$after_run" ]; then
+      if [ "$status" = completed ] && [ "$conclusion" = skipped ]; then status=pending; else after_run=""; fi
+    fi
     if [ "$status" = completed ]; then
       case $conclusion in
         success|neutral) echo "STATUS=PASS conclusion=$conclusion sha=$head"; exit 0 ;;
