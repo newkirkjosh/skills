@@ -74,10 +74,12 @@ NODE_PATH="$(npm root -g)" node <skill-dir>/assets/web-check.cjs http://localhos
 Without a workspace, install a pinned Playwright into a throwaway directory, never a bare `npx playwright` (that runs whatever release is current), and point both the browser install and the script at it. Use the version the workspace image pins (1.64.1 when this was written):
 
 ```bash
-pw="$(mktemp -d)" && npm install --prefix "$pw" --no-save playwright@1.64.1
-"$pw/node_modules/.bin/playwright" install chromium
-NODE_PATH="$pw/node_modules" node <skill-dir>/assets/web-check.cjs http://localhost:<port>/ --expect "<text>"
-rm -rf "$pw"
+( # a subshell, so the block's status is web-check's verdict, not rm's
+  pw="$(mktemp -d)" && npm install --prefix "$pw" --no-save playwright@1.64.1 \
+    && "$pw/node_modules/.bin/playwright" install chromium \
+    && NODE_PATH="$pw/node_modules" node <skill-dir>/assets/web-check.cjs http://localhost:<port>/ --expect "<text>"
+  rc=$?; rm -rf "$pw"; exit "$rc"
+)
 ```
 
 ## Report
