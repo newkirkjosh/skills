@@ -9,19 +9,23 @@
 #   WAIT_APPEAR_MIN  minutes to wait for the CodeRabbit check to appear (default 15:
 #                    with several PRs open at once it can take over 5)
 #   WAIT_INTERVAL    seconds between polls (default 30)
+#   WAIT_AFTER_RUN   check-run id a PAUSED result printed: that same skipped run
+#                    counts as pending, so a rerun after requesting a review waits
+#                    for the new review instead of returning PAUSED again
 # Exit: 0 PASS, 1 FAIL, 3 TIMEOUT (also when GitHub couldn't be read), 4
 # NOT_CONFIGURED (no CodeRabbit check on the head: terminal, don't retry), 5
 # RATE_LIMITED (don't wait out the cooldown), 6 HEAD_MOVED (a push landed
-# mid-wait: rerun for the new head), 2 usage
+# mid-wait: rerun for the new head), 7 PAUSED (request a review and rerun), 2 usage
 set -uo pipefail
 
 pr=${1:-}
-[[ $pr =~ ^[0-9]+$ ]] || { sed -n '2,15p' "$0" >&2; exit 2; }
+[[ $pr =~ ^[0-9]+$ ]] || { sed -n '2,18p' "$0" >&2; exit 2; }
 timeout_min=${2:-20}
 [[ $timeout_min =~ ^[0-9]+$ ]] || { echo "timeout must be whole minutes" >&2; exit 2; }
 nwo=${3:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}
 [[ $nwo =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "bad owner/repo: $nwo" >&2; exit 2; }
-interval=${WAIT_INTERVAL:-30} appear_min=${WAIT_APPEAR_MIN:-15}
+interval=${WAIT_INTERVAL:-30} appear_min=${WAIT_APPEAR_MIN:-15} after_run=${WAIT_AFTER_RUN:-}
+[[ -z $after_run || $after_run =~ ^[0-9]+$ ]] || { echo "WAIT_AFTER_RUN must be a check-run id" >&2; exit 2; }
 
 head_of() { gh pr view "$pr" -R "$nwo" --json headRefOid -q .headRefOid; }
 head=$(head_of) || { echo "cannot read PR $pr in $nwo" >&2; exit 2; }
@@ -46,12 +50,21 @@ while :; do
   # The check is read for this exact SHA, so a push mid-poll can't lend this head another commit's result.
   read_ok=0
   if run=$(gh api "repos/$nwo/commits/$head/check-runs?check_name=CodeRabbit" \
-      --jq '[.check_runs[] | {status, conclusion}] | first // empty' 2> "$err"); then
+      --jq '[.check_runs[] | {id, status, conclusion}] | sort_by(.id) | last // empty' 2> "$err"); then
     read_ok=1
     status=$(jq -r '.status // empty' <<< "${run:-null}") conclusion=$(jq -r '.conclusion // empty' <<< "${run:-null}")
+    run_id=$(jq -r '.id // empty' <<< "${run:-null}")
+    # The pause this rerun was started to clear is still pending, not a second pause.
+    # Once that run changes at all, the marker is spent: a later skip is a new pause.
+    if [ -n "$after_run" ] && [ "$run_id" = "$after_run" ]; then
+      if [ "$status" = completed ] && [ "$conclusion" = skipped ]; then status=pending; else after_run=""; fi
+    fi
     if [ "$status" = completed ]; then
       case $conclusion in
-        success|neutral|skipped) echo "STATUS=PASS conclusion=$conclusion sha=$head"; exit 0 ;;
+        success|neutral) echo "STATUS=PASS conclusion=$conclusion sha=$head"; exit 0 ;;
+        skipped)
+          echo "Hint: gh pr comment $pr -R $nwo --body '@coderabbitai review' (or '@coderabbitai full review' if declined), then rerun with WAIT_AFTER_RUN=$run_id."
+          echo "STATUS=PAUSED conclusion=$conclusion sha=$head run=$run_id"; exit 7 ;;
         *) echo "STATUS=FAIL conclusion=$conclusion sha=$head"; exit 1 ;;
       esac
     fi
