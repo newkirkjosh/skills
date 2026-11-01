@@ -140,17 +140,32 @@ section() {
   ' AGENTS.md
 }
 if heading 'Tracker([[:space:]]|$)'; then
-  if section Tracker | grep -qiE 'load the `(linear|github)` skill'; then
-    say ok skill-lines "Tracker names its issue skill with Load the"
+  # The line must be the task-scoped form ("load the X skill before creating,
+  # changing or closing a ... issue"), not a mention or a topic, and name the
+  # skill for the tracker this section describes.
+  tracker="$(section Tracker)"
+  # Which tracker the prose describes, ignoring backticked skill names in the load line itself.
+  prose="$(sed 's/`[^`]*`//g' <<< "$tracker")"
+  want=""
+  if grep -qi 'linear' <<< "$prose"; then want=linear
+  elif grep -qi 'github' <<< "$prose"; then want=github
+  fi
+  line="$(grep -oiE '(^|[^[:alnum:]])load the `(linear|github)` skill before creating, changing or closing an? [a-z ]*issue' <<< "$tracker" | head -n 1)"
+  named="$(grep -oiE '`(linear|github)`' <<< "$line" | tr -d '`' | tr '[:upper:]' '[:lower:]')"
+  if [ -z "$line" ]; then
+    say missing skill-lines "Tracker needs: load the \`linear\` (or \`github\`) skill before creating, changing or closing a tracker issue"
+  elif [ -n "$want" ] && [ "$named" != "$want" ]; then
+    say stale skill-lines "Tracker describes $want but its load line names \`$named\`"
   else
-    say missing skill-lines "Tracker needs a task-specific Load the instruction naming linear or github"
+    say ok skill-lines "Tracker loads \`$named\` before changing an issue"
   fi
 else
   say n/a skill-lines "no Tracker section"
 fi
 
-if section 'Verifying the app' | grep -q '`verify-change`'; then
-  say ok verify-section "Verifying the app names verify-change"
+# A positive, task-scoped load line, not just a mention of the skill.
+if section 'Verifying the app' | grep -qiE '(^|[^[:alnum:]])load the `verify-change` skill before verifying a change in the running app'; then
+  say ok verify-section "Verifying the app loads verify-change before verifying a change"
 else
   app=0
   # Gradle module directories or declarations, including modules not at the root.

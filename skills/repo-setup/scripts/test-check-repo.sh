@@ -26,6 +26,12 @@ adopted() {
   printf 'on:\n  push:\n  pull_request:\njobs:\n  secrets:\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - run: gitleaks git --log-opts="--all --full-history -m" --redact --no-banner .\n' > "$work/r/.github/workflows/ci.yml"
 }
 
+# Replace the fixture's Tracker body with $1, keeping the heading.
+set_tracker() {
+  awk -v body="$1" '/^## Tracker$/ { print; print body; skip = 1; next } skip && /^## / { skip = 0 } !skip { print }' \
+    "$work/r/AGENTS.md" > "$work/agents.tmp" && mv "$work/agents.tmp" "$work/r/AGENTS.md"
+}
+
 adopted; run
 check "adopted private repo: exit 0" '[ "$(rc)" = 0 ]'
 check "adopted private repo: every item ok or n/a" '! grep -qvE "^(ok|n/a) " "$work/out"'
@@ -148,7 +154,7 @@ adopted; run
 check "Tracker loads linear" 'has ok skill-lines'
 check "no app needs no verification section" 'has n/a verify-section'
 
-adopted; sed -i 's/`linear`/`github`/g' "$work/r/AGENTS.md"; run
+adopted; set_tracker 'GitHub issues on this repository. Load the `github` skill before creating, changing or closing a GitHub issue.'; run
 check "Tracker loads github" 'has ok skill-lines'
 
 adopted; sed -i '/Load the/d' "$work/r/AGENTS.md"; run
@@ -200,6 +206,18 @@ check "fx-style 'You MUST load the' wording satisfies skill-lines" 'has ok skill
 
 adopted; sed -i 's/^## Tracker$/## Project Conventions\n### Tracker\n**You MUST load the `linear` skill before creating, changing or closing a tracker issue.**\n### Other/' "$work/r/AGENTS.md"; run
 check "skill-lines finds a ### Tracker nested under another section" 'has ok skill-lines'
+
+adopted; set_tracker 'Linear. Load the `linear` skill for all tracker work.'; run
+check "a topic-scoped tracker line is not accepted" 'has missing skill-lines'
+
+adopted; set_tracker 'GitHub issues. Load the `linear` skill before creating, changing or closing a tracker issue.'; run
+check "a load line naming the wrong tracker is stale" 'has stale skill-lines'
+
+adopted; printf '\n## Verifying the app\nDo not load `verify-change` here.\n' >> "$work/r/AGENTS.md"; run
+check "a verification section that only mentions verify-change is not ok" '! has ok verify-section'
+
+adopted; printf '\n## Verifying the app\n**You MUST load the `verify-change` skill before verifying a change in the running app.**\n' >> "$work/r/AGENTS.md"; run
+check "the task-scoped verify-change line is ok" 'has ok verify-section'
 
 echo
 echo "$pass passed, $fail failed"
