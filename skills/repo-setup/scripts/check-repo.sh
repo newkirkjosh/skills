@@ -99,7 +99,7 @@ scan_job() {
         gl[job] = 1
     }
     END { if (gl[job] && fd[job] && !off[job]) hit = 1; exit !(hit && trig) }
-  ' "$1"
+  ' mask="${2:-0}" "$1"
 }
 scan=""
 for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
@@ -198,10 +198,10 @@ gradle_code() {
           if (pair == "/*") { depth++; i++ }
           else if (pair == "*/") { depth--; i++; out = out " " }
         } else if (quote != "") {
-          out = out c
           if (escaped) escaped = 0
           else if (c == "\\") escaped = 1
           else if (c == quote) quote = ""
+          if (!mask || quote == "") out = out c
         } else if (pair == "//") { break }
         else if (pair == "/*") { depth++; i++; out = out " " }
         else if (substr($0, i, 3) == "\"\"\"") { out = out "\"\"\""; i += 2; raw = 1 }
@@ -212,7 +212,7 @@ gradle_code() {
       }
       print out
     }
-  ' "$1"
+  ' mask="${2:-0}" "$1"
 }
 
 # Detect targets even when verification instructions already exist.
@@ -228,7 +228,8 @@ done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -p
   -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
   -path '*/androidApp/build.gradle.kts' \) -print)
 while IFS= read -r build; do
-  code="$(gradle_code "$build")"
+  # String contents are masked: an example in quotes is not a declaration.
+  code="$(gradle_code "$build" 1)"
   if grep -qE '^[[:space:]]*compose\.desktop(\.application)?[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
   # The nested form: compose { desktop { application { ... } } }.
   if grep -qE '(^|[^[:alnum:]_.])compose[[:space:]]*\{' <<< "$code" &&
@@ -270,8 +271,26 @@ if grep -qiE "$verify_instruction" <<< "$verification"; then
       pattern=$target
       [ "$target" != web ] || pattern='web|browser'
       # A target counts only as a bullet or subheading label ("- **Desktop:**",
-      # "### Android"), not a passing mention in the instruction sentence.
-      if ! grep -qiE "^[[:space:]]*([-*+][[:space:]]+(\*\*)?|#+[[:space:]]+)($pattern)([^[:alnum:]_]|$)" <<< "$verification"; then
+      # "### Android") with facts after it: on the bullet's own line, or under
+      # the subheading before the next heading. A passing mention or a bare
+      # label is not coverage.
+      if ! awk -v pattern="^($pattern)([^[:alnum:]_]|$)" '
+        function rest(text) { sub(/^[^[:alnum:]_]*[[:alnum:]_]+/, "", text); return text }
+        {
+          line = tolower($0)
+          if (line ~ /^[[:space:]]*#+[[:space:]]+/) {
+            under = 0; label = line; sub(/^[[:space:]]*#+[[:space:]]+/, "", label)
+            if (label ~ pattern) under = 1
+            next
+          }
+          if (under && line ~ /[[:alnum:]]/) { found = 1; exit }
+          if (line ~ /^[[:space:]]*[-*+][[:space:]]+/) {
+            label = line; sub(/^[[:space:]]*[-*+][[:space:]]+(\*\*)?/, "", label)
+            if (label ~ pattern && rest(label) ~ /[[:alnum:]]/) { found = 1; exit }
+          }
+        }
+        END { exit !found }
+      ' <<< "$verification"; then
         missing_targets+=("$target")
       fi
     done

@@ -371,6 +371,18 @@ adopted; printf 'compose {\n  desktop {\n    application { mainClass = "MainKt" 
 verification_facts '- **Android:** launch with the repository script.'; run
 check "a nested compose desktop application needs a Desktop bullet" 'has decide verify-section && grep -q "detected targets: desktop;" "$work/out"'
 
+adopted; printf 'compose.desktop {\n}\nval note = "iosArm64()"\n' > "$work/r/build.gradle.kts"
+verification_facts '- **Desktop:** launch with the repository script.'; run
+check "a quoted iOS example is not a declared target" 'has ok verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'Serve the client.\n- Web:'; run
+check "a bare target label is not coverage" 'has decide verify-section && grep -q "detected targets: web;" "$work/out"'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n\n### Notes\nServe the client.'; run
+check "an empty target subheading is not coverage" 'has decide verify-section && grep -q "detected targets: web;" "$work/out"'
+
 for source in manifest module package static; do
   adopted
   case "$source" in
