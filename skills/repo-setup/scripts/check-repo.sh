@@ -230,6 +230,10 @@ done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -p
 while IFS= read -r build; do
   code="$(gradle_code "$build")"
   if grep -qE '^[[:space:]]*compose\.desktop(\.application)?[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
+  # The nested form: compose { desktop { application { ... } } }.
+  if grep -qE '(^|[^[:alnum:]_.])compose[[:space:]]*\{' <<< "$code" &&
+      grep -qE '(^|[^[:alnum:]_.])desktop[[:space:]]*\{' <<< "$code" &&
+      grep -qE '(^|[^[:alnum:]_.])application[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
   # A KMP library can declare Android or browser targets too: they name the
   # target, and only an executable browser binary also implies an app.
   if grep -qE '(^|[^[:alnum:]_])(androidTarget|android)[[:space:]]*(\(|\{)' <<< "$code"; then android=1; fi

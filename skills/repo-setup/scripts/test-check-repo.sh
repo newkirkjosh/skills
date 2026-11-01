@@ -367,6 +367,10 @@ check "a multiline raw string does not hide a later desktop block" 'has decide v
 adopted; printf 'val doc = """\n// not a comment\ncompose.desktop {\n"""\n' > "$work/r/build.gradle.kts"; run
 check "a desktop block inside a raw string is not an app" 'has n/a verify-section'
 
+adopted; printf 'compose {\n  desktop {\n    application { mainClass = "MainKt" }\n  }\n}\n' > "$work/r/build.gradle.kts"
+verification_facts '- **Android:** launch with the repository script.'; run
+check "a nested compose desktop application needs a Desktop bullet" 'has decide verify-section && grep -q "detected targets: desktop;" "$work/out"'
+
 for source in manifest module package static; do
   adopted
   case "$source" in
