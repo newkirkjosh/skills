@@ -151,7 +151,7 @@ wcr="$here/wait-for-coderabbit.sh"
 H1=1111111111111111111111111111111111111111 H2=2222222222222222222222222222222222222222
 heads()  { echo "$2" > "$STUB/head.$1"; }
 checks() { echo "$2" > "$STUB/checks.$1.json"; }
-cr() { echo "{\"check_runs\":[{\"name\":\"CodeRabbit\",\"status\":\"$1\",\"conclusion\":${2:-null}}]}"; }
+cr() { echo "{\"check_runs\":[{\"id\":${3:-7},\"name\":\"CodeRabbit\",\"status\":\"$1\",\"conclusion\":${2:-null}}]}"; }
 none='{"check_runs":[]}'
 comment() { echo "[{\"user\":{\"login\":\"coderabbitai[bot]\"},\"updated_at\":\"$1\",\"body\":\"$2\"}]" > "$STUB/comments.json"; }
 export WAIT_INTERVAL=0
@@ -169,8 +169,23 @@ for conclusion in success neutral; do
 done
 
 reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"')"; run "$wcr" 7 1 example/repo
-check "coderabbit: skipped exits 7 PAUSED" '[ "$(rc)" = 7 ] && out | grep -qx "STATUS=PAUSED conclusion=skipped sha=$H1"'
-check "coderabbit: PAUSED hints at review once and full review if declined" 'out | grep -q "post @coderabbitai review.*once.*if CodeRabbit declines it.*post @coderabbitai full review.*rerun the waiter"'
+check "coderabbit: skipped exits 7 PAUSED with its run id" '[ "$(rc)" = 7 ] && out | grep -qx "STATUS=PAUSED conclusion=skipped sha=$H1 run=7"'
+check "coderabbit: PAUSED hints at the same repo, full review if declined, and WAIT_AFTER_RUN" 'out | grep -q "gh pr comment 7 -R example/repo.*@coderabbitai review.*@coderabbitai full review.*WAIT_AFTER_RUN=7"'
+
+reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"' 7)"; checks 2 "$(cr in_progress null 7)"; checks 3 "$(cr completed '"success"' 7)"
+WAIT_AFTER_RUN=7 run "$wcr" 7 1 example/repo
+check "coderabbit: WAIT_AFTER_RUN treats the old skipped run as pending until the review lands" '[ "$(rc)" = 0 ] && out | grep -qx "STATUS=PASS conclusion=success sha=$H1"'
+
+reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"' 7)"; checks 2 "$(cr completed '"success"' 9)"
+WAIT_AFTER_RUN=7 run "$wcr" 7 1 example/repo
+check "coderabbit: WAIT_AFTER_RUN passes on a newer run" '[ "$(rc)" = 0 ]'
+
+reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"' 9)"
+WAIT_AFTER_RUN=7 run "$wcr" 7 1 example/repo
+check "coderabbit: a newer skipped run is a second PAUSED" '[ "$(rc)" = 7 ] && out | grep -q "run=9"'
+
+reset; heads 1 "$H1"; checks 1 "$(cr completed '"success"')"; WAIT_AFTER_RUN=abc run "$wcr" 7 1 example/repo
+check "coderabbit: a non-numeric WAIT_AFTER_RUN is a usage error" '[ "$(rc)" = 2 ]'
 
 reset; heads 1 "$H1"; checks 1 "$(cr completed '"failure"')"; run "$wcr" 7 1 example/repo
 check "coderabbit: a failed check exits 1" '[ "$(rc)" = 1 ] && out | grep -q "^STATUS=FAIL conclusion=failure"'
