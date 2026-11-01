@@ -133,8 +133,22 @@ load_prefix='(^[[:space:]]*([-*+][[:space:]]+)?|[.!?][[:space:]]+)(\*\*)?[[:spac
 # Explicit skill invocations belong to the task's own section.
 # Print a section's body, at any heading level (## Tracker, or ### Tracker under
 # another section), up to the next heading of the same or a higher level.
+# HTML comments, single or multiline, are not instructions and are dropped.
 section() {
   [ -f AGENTS.md ] && awk -v title="$1" '
+    {
+      line = ""
+      while (length($0)) {
+        if (incomment) {
+          end = index($0, "-->"); if (!end) { $0 = ""; break }
+          $0 = substr($0, end + 3); incomment = 0
+        } else {
+          start = index($0, "<!--"); if (!start) { line = line $0; break }
+          line = line substr($0, 1, start - 1); $0 = substr($0, start + 4); incomment = 1
+        }
+      }
+      $0 = line
+    }
     /^#+ / {
       level = match($0, /[^#]/) - 1; text = substr($0, level + 2)
       if (active && level <= depth) active = 0
@@ -189,6 +203,10 @@ else
       -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
       -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
       -path '*/androidApp/build.gradle.kts' \) -print | grep . > /dev/null; then app=1; fi
+  # A Compose Multiplatform desktop target in any Gradle build file.
+  if find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+      -type f \( -name build.gradle -o -name build.gradle.kts \) -print0 \
+      | xargs -0 -r grep -lE 'compose\.desktop|jvm\("desktop"\)' 2> /dev/null | grep -q .; then app=1; fi
   while IFS= read -r settings; do
     if grep -qE "include.*['\":](composeApp|androidApp)['\"]" "$settings"; then app=1; fi
   done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
