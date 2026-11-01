@@ -318,7 +318,7 @@ for target in android desktop web ios; do
   case "$target" in
     android) printf 'kotlin { androidTarget() }\n' ;;
     desktop) printf 'compose.desktop.application { mainClass = "MainKt" }\n' ;;
-    web) printf 'kotlin { wasmJs { browser() } }\n' | sed 's/wasmJs {/wasmJs() {/' ;;
+    web) printf 'kotlin { wasmJs { browser() } }\n' ;;
     ios) printf 'kotlin { iosArm64() }\n' ;;
   esac > "$work/r/build.gradle.kts"
   verification_facts 'Launch with the repository script.'; run
@@ -357,6 +357,15 @@ check "all detected targets mentioned is ok" 'has ok verify-section'
 adopted; printf 'compose.desktop { }\n' > "$work/r/build.gradle.kts"
 verification_facts 'It owns the emulator, desktop and web mechanics. Launch with the repository script.'; run
 check "a passing mention of desktop is not a target bullet" 'has decide verify-section && grep -q "detected targets: desktop;" "$work/out"'
+
+adopted; printf 'kotlin { wasmJs { browser(); binaries.executable() } }\n' > "$work/r/build.gradle.kts"; run
+check "a trailing-lambda wasmJs executable is an app" 'has decide verify-section'
+
+adopted; printf 'val banner = """\nMETA-INF/*\n"""\ncompose.desktop {\n}\n' > "$work/r/build.gradle.kts"; run
+check "a multiline raw string does not hide a later desktop block" 'has decide verify-section'
+
+adopted; printf 'val doc = """\n// not a comment\ncompose.desktop {\n"""\n' > "$work/r/build.gradle.kts"; run
+check "a desktop block inside a raw string is not an app" 'has n/a verify-section'
 
 for source in manifest module package static; do
   adopted

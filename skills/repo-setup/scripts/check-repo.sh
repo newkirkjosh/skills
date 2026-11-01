@@ -183,14 +183,18 @@ else
 fi
 
 # Strip Gradle comments while preserving quoted strings (including URL slashes).
-# Block depth handles Kotlin's nested block comments across lines.
+# Raw string contents are dropped: they hold text, never declarations.
+# Block depth handles Kotlin's nested block comments across lines, and raw
+# (triple-quoted) strings keep their state across lines too.
 gradle_code() {
   awk '
     {
       out = ""; quote = ""; escaped = 0
       for (i = 1; i <= length($0); i++) {
         c = substr($0, i, 1); pair = substr($0, i, 2)
-        if (depth) {
+        if (raw) {
+          if (substr($0, i, 3) == "\"\"\"") { out = out "\"\"\""; i += 2; raw = 0 }
+        } else if (depth) {
           if (pair == "/*") { depth++; i++ }
           else if (pair == "*/") { depth--; i++; out = out " " }
         } else if (quote != "") {
@@ -200,6 +204,7 @@ gradle_code() {
           else if (c == quote) quote = ""
         } else if (pair == "//") { break }
         else if (pair == "/*") { depth++; i++; out = out " " }
+        else if (substr($0, i, 3) == "\"\"\"") { out = out "\"\"\""; i += 2; raw = 1 }
         else {
           out = out c
           if (c == "\"" || c == "\047") quote = c
@@ -227,14 +232,14 @@ while IFS= read -r build; do
   if grep -qE '^[[:space:]]*compose\.desktop(\.application)?[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
   # A KMP library can declare Android or browser targets too: they name the
   # target, and only an executable browser binary also implies an app.
-  if grep -qE '(^|[^[:alnum:]_])(androidTarget|android)[[:space:]]*\(' <<< "$code"; then android=1; fi
-  if grep -qE '(^|[^[:alnum:]_])(wasmJs|js)[[:space:]]*\(' <<< "$code" &&
+  if grep -qE '(^|[^[:alnum:]_])(androidTarget|android)[[:space:]]*(\(|\{)' <<< "$code"; then android=1; fi
+  if grep -qE '(^|[^[:alnum:]_])(wasmJs|js)[[:space:]]*(\(|\{)' <<< "$code" &&
       grep -qE '(^|[^[:alnum:]_])browser[[:space:]]*(\(|\{)' <<< "$code"; then
     web=1
     if grep -qE 'binaries\.executable[[:space:]]*\(' <<< "$code"; then app=1; fi
   fi
   # iOS is a declared target, but alone does not imply a runnable app here.
-  if grep -qE '(^|[^[:alnum:]_])(iosX64|iosArm64|iosSimulatorArm64)[[:space:]]*\(' <<< "$code"; then ios=1; fi
+  if grep -qE '(^|[^[:alnum:]_])(iosX64|iosArm64|iosSimulatorArm64)[[:space:]]*(\(|\{)' <<< "$code"; then ios=1; fi
 done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
   -type f \( -name build.gradle -o -name build.gradle.kts \) -print)
 while IFS= read -r settings; do
