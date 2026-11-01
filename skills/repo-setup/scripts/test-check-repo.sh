@@ -19,7 +19,7 @@ has() { grep -q "^$1 $2 " "$work/out"; }
 adopted() {
   new
   echo "@AGENTS.md" > "$work/r/CLAUDE.md"
-  printf '# P\n\n## Layers\n:a\n\n## Tracker\nLinear\n\n## Pull requests\nlabels\n\n## Merge policy\nnone\n\n## Code Review Rules\n\nRead `REVIEW.md` and apply it.\n\n## Testing\nx\n' > "$work/r/AGENTS.md"
+  printf '# P\n\n## Layers\n:a\n\n## Tracker\nLinear\nLoad the `linear` skill before creating, changing or closing a tracker issue.\n\n## Pull requests\nlabels\n\n## Merge policy\nnone\n\n## Code Review Rules\n\nRead `REVIEW.md` and apply it.\n\n## Testing\nx\n' > "$work/r/AGENTS.md"
   echo "# PR Review" > "$work/r/REVIEW.md"
   printf 'knowledge_base:\n  code_guidelines:\n    enabled: true\n    filePatterns:\n      - "**/REVIEW.md"\n' > "$work/r/.coderabbit.yaml"
   mkdir -p "$work/r/.github/workflows"
@@ -142,6 +142,64 @@ check "unknown visibility asks rather than guessing" 'has decide privacy'
 
 REPO_VISIBILITY=PRIVATE bash "$here/check-repo.sh" "$work/nope" > /dev/null 2>&1; r=$?
 check "not a repository exits 2" '[ "$r" = 2 ]'
+
+# Named skills are scoped to the section that owns the task.
+adopted; run
+check "Tracker loads linear" 'has ok skill-lines'
+check "no app needs no verification section" 'has n/a verify-section'
+
+adopted; sed -i 's/`linear`/`github`/g' "$work/r/AGENTS.md"; run
+check "Tracker loads github" 'has ok skill-lines'
+
+adopted; sed -i '/Load the/d' "$work/r/AGENTS.md"; run
+check "Tracker without a load line is missing" 'has missing skill-lines && [ "$(rc)" = 1 ]'
+printf '\n## Notes\nLoad the `linear` skill before creating a tracker issue.\n' >> "$work/r/AGENTS.md"; run
+check "a load line outside Tracker does not count" 'has missing skill-lines'
+
+adopted; sed -i 's/## Tracker/## Tracking/' "$work/r/AGENTS.md"; run
+check "no Tracker section makes skill-lines n/a" 'has n/a skill-lines'
+
+adopted
+printf '\n## Verifying the app\nLoad the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
+check "verification section with named skill is ok" 'has ok verify-section'
+
+adopted; mkdir -p "$work/r/composeApp"; touch "$work/r/composeApp/build.gradle.kts"; run
+check "Compose app needs verification facts" 'has decide verify-section && [ "$(rc)" = 0 ]'
+printf '\n## Verifying the app\nUse the app.\n' >> "$work/r/AGENTS.md"; run
+check "verification heading without skill still needs a decision" 'has decide verify-section'
+sed -i 's/Use the app./Load the `verify-change` skill before verifying a change in the running app./' "$work/r/AGENTS.md"; run
+check "app with verification skill is ok" 'has ok verify-section'
+
+adopted; mkdir -p "$work/r/androidApp"; touch "$work/r/androidApp/build.gradle"; run
+check "Android Gradle module needs verification facts" 'has decide verify-section'
+
+adopted; printf 'include(":composeApp")\n' > "$work/r/settings.gradle.kts"; run
+check "declared Gradle app module needs verification facts" 'has decide verify-section'
+
+adopted; printf "include ':androidApp'\n" > "$work/r/settings.gradle"; run
+check "Groovy app module declaration needs verification facts" 'has decide verify-section'
+
+adopted; mkdir -p "$work/r/client/src/main"; touch "$work/r/client/src/main/AndroidManifest.xml"; run
+check "Android manifest needs verification facts" 'has decide verify-section'
+
+for script in dev start; do
+  adopted; mkdir -p "$work/r/client"
+  printf '{"scripts":{"%s":"serve"}}\n' "$script" > "$work/r/client/package.json"; run
+  check "package $script script needs verification facts" 'has decide verify-section'
+done
+adopted; printf '{"scripts":{"test":"test"}}\n' > "$work/r/package.json"; run
+check "package without dev or start is not an app" 'has n/a verify-section'
+adopted; printf 'invalid json\n' > "$work/r/package.json"; run
+check "invalid package JSON does not imply an app" 'has n/a verify-section'
+adopted; mkdir -p "$work/r/node_modules/dependency"
+printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/node_modules/dependency/package.json"; run
+check "dependency app scripts do not imply a repository app" 'has n/a verify-section'
+
+adopted; sed -i 's/^## Tracker$/## Tracker\n**You MUST load the `linear` skill before creating, changing or closing a tracker issue.**/' "$work/r/AGENTS.md"; run
+check "fx-style 'You MUST load the' wording satisfies skill-lines" 'has ok skill-lines'
+
+adopted; sed -i 's/^## Tracker$/## Project Conventions\n### Tracker\n**You MUST load the `linear` skill before creating, changing or closing a tracker issue.**\n### Other/' "$work/r/AGENTS.md"; run
+check "skill-lines finds a ### Tracker nested under another section" 'has ok skill-lines'
 
 echo
 echo "$pass passed, $fail failed"

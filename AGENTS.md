@@ -59,9 +59,9 @@ Flat only. Skills install into one shared directory, and the installed name is t
 Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it.
 ```
 
-A skill may run only when the user names or invokes it (`/dev`, "use the github skill"), or when an already-active, explicitly invoked workflow calls it by name. Never write a description that auto-triggers on task semantics ("GitHub", "the Wi-Fi is slow", "open a PR"): no trigger-phrase lists, no "even when the user only says", no "auto-triggers", `MUST BE USED` or "automatically invoked". Loose descriptions once turned a status question into a full lifecycle run. `scripts/check-descriptions.sh` enforces this in CI.
+A skill may run only when the user names or invokes it (`/dev`, "use the github skill"), when an already-active, explicitly invoked workflow calls it by name, or when a repository's `AGENTS.md` (or `CLAUDE.md` importing it) tells agents to load it for a specific task. That line counts as the user naming it: the owner wrote the file. Name one skill by its bare name and one concrete task ("before verifying the running app", "before creating, changing or closing a tracker issue"), never a topic or a whole area of the codebase. The description opener stays unchanged; the instruction-file line is the explicit invocation. Never write a description that auto-triggers on task semantics ("GitHub", "the Wi-Fi is slow", "open a PR"): no trigger-phrase lists, no "even when the user only says", no "auto-triggers", `MUST BE USED` or "automatically invoked". Loose descriptions once turned a status question into a full lifecycle run. `scripts/check-descriptions.sh` enforces this in CI.
 
-**A workflow ends at its handoff.** Its rules apply to the request that invoked it and stop at its documented handoff (a merge-ready report, a stop for the user). A later standalone request (a status query, a branch sync, a PR tweak) is handled directly unless the user invokes the workflow again. Say so in the workflow skill itself, since this file isn't loaded at runtime.
+**A workflow ends at its handoff.** Its rules apply to the request that invoked it and stop at its documented handoff (a merge-ready report, a stop for the user). A later standalone request (a status query, a branch sync, a PR tweak) is handled directly unless the user or a task-specific repository instruction invokes the workflow again. Say so in the workflow skill itself, since this file isn't loaded at runtime.
 
 Internal delegation stays valid: `dev` calling `spec-writer`, `linear` or `pr` is part of its active run, and doesn't authorize those skills to load themselves for unrelated requests.
 
@@ -96,7 +96,7 @@ Don't use `npx skills add` for this catalog: it installs copies, not links to th
 
 ## Tracker
 
-GitHub issues on this repository.
+GitHub issues on this repository. **Load the `github` skill before creating, changing or closing a GitHub issue.**
 
 ## Layers
 

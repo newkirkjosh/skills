@@ -126,4 +126,51 @@ if heading 'Tracker'; then say ok tracker "AGENTS.md names the tracker"; else sa
 if heading '(Pull requests?|PRs?)([[:space:]]|$)'; then say ok pr-conventions "AGENTS.md has PR conventions"; else say decide pr-conventions "no Pull Request section (labels, project or board)"; fi
 if heading 'Merge policy'; then say ok merge-policy "AGENTS.md has a Merge policy"; else say decide merge-policy "no Merge policy: every PR stops at merge-ready, which is a valid choice"; fi
 
+# Explicit skill invocations belong to the task's own section.
+# Print a section's body, at any heading level (## Tracker, or ### Tracker under
+# another section), up to the next heading of the same or a higher level.
+section() {
+  [ -f AGENTS.md ] && awk -v title="$1" '
+    /^#+ / {
+      level = match($0, /[^#]/) - 1; text = substr($0, level + 2)
+      if (active && level <= depth) active = 0
+      if (text == title) { active = 1; depth = level; next }
+    }
+    active { print }
+  ' AGENTS.md
+}
+if heading 'Tracker([[:space:]]|$)'; then
+  if section Tracker | grep -qiE 'load the `(linear|github)` skill'; then
+    say ok skill-lines "Tracker names its issue skill with Load the"
+  else
+    say missing skill-lines "Tracker needs a task-specific Load the instruction naming linear or github"
+  fi
+else
+  say n/a skill-lines "no Tracker section"
+fi
+
+if section 'Verifying the app' | grep -q '`verify-change`'; then
+  say ok verify-section "Verifying the app names verify-change"
+else
+  app=0
+  # Gradle module directories or declarations, including modules not at the root.
+  if find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+      -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
+      -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
+      -path '*/androidApp/build.gradle.kts' \) -print | grep . > /dev/null; then app=1; fi
+  while IFS= read -r settings; do
+    if grep -qE "include.*['\":](composeApp|androidApp)['\"]" "$settings"; then app=1; fi
+  done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+    -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+  while IFS= read -r package; do
+    if jq -e '(.scripts // {}) | (.dev | type == "string") or (.start | type == "string")' "$package" > /dev/null 2>&1; then app=1; fi
+  done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+    -type f -name package.json -print)
+  if [ "$app" -eq 1 ]; then
+    say decide verify-section "app detected; add Verifying the app with verify-change and facts from repository evidence"
+  else
+    say n/a verify-section "no app detected"
+  fi
+fi
+
 exit "$todo"

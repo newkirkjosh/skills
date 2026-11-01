@@ -30,6 +30,8 @@ Each item says why it exists; an item a repository can't use is `n/a`, never for
 | `secrets-ci` | A CI job on push and pull_request runs the gitleaks CLI over the full history (`assets/secrets-job.yml`) | Catches what the user's local commit hook can't: web edits, other machines, a skipped hook. |
 | `privacy` | Public: `git config privacy.public true` in this clone. Private: `n/a` | Opts the clone into the user's private-term commit check. Local config, so it's set, not committed. |
 | `layers`, `tracker`, `pr-conventions`, `merge-policy` | `AGENTS.md` has a heading for each | `dev`, `spec-writer`, `pr`, `ship` and `linear` read them. These are `decide` items: the user supplies the content. |
+| `skill-lines` | The Tracker section says "Load the `linear` skill before creating, changing or closing a tracker issue." for Linear, or "Load the `github` skill before creating, changing or closing a GitHub issue." for GitHub issues | Invokes the tracker skill for issue changes, without loading it for unrelated requests. |
+| `verify-section` | Repositories with an Android, desktop or web client have `## Verifying the app`, starting "Load the `verify-change` skill before verifying a change in the running app.", followed by the repository's verification facts | A `decide` item: fill facts from the README, scripts and server docs, never invent them. |
 
 ## Steps
 
@@ -37,6 +39,7 @@ Each item says why it exists; an item a repository can't use is `n/a`, never for
 2. **Plan.** List each `missing` and `stale` item with the file it adds or changes, and each `decide` item with its question. Read `AGENTS.md` first: a section may exist under another heading (layers named in prose, say); offer to move it under the standard heading rather than adding a duplicate.
 3. **Decide from the evidence; ask only when there is none.** Fill each `decide` item from what the repository already shows, and say what you chose and why in the PR body:
    - **Tracker**: one the repository already names anywhere (its README, `AGENTS.md`, issue links); otherwise GitHub issues on that repository.
+   - **Verifying the app**: from the README, scripts and server docs: how to start the backend, the server URL each target uses, the AVD or device, and any sign-in or setup that gates screens. Record only supported facts; ask for missing facts needed to verify the app.
    - **Layers**: from the module or directory split the change folders already use; a repository that never runs `dev` gets "None".
    - **Pull requests**: conventional-commit titles, squash merge, and type labels that exist on the repository (`gh label list`); a project board only if one is already in use.
    - **Merge policy**: the agent may merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the cross-model review converged, every CodeRabbit comment settled and no thread open. Hand the merge back for anything that changes secrets handling, auth, a security guard **or what configures or switches it on**, CI itself, the review rules and their config (`REVIEW.md`, `.coderabbit.yaml`), the Merge policy itself or the Code Review Rules section, or content an outside party reviews (a published privacy policy).

@@ -47,7 +47,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 ## Explicit invocation
 
-**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the github skill") or when a workflow you already invoked calls it. "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
+**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the github skill"), when a workflow you already invoked calls it, or when your repository's `AGENTS.md` (or `CLAUDE.md` importing it) tells agents to load a named skill for a concrete task. "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
 
 That is deliberate: the workflows create branches, spawn agents and open pull requests, and loading one because a request resembled it is worse than not loading it. A workflow's authority ends at its handoff; a later status question is a standalone request.
 
