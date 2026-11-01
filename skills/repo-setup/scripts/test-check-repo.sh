@@ -437,6 +437,10 @@ adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'````md\n```\n# start the backend\n```\n````\n~~~\n```\n# stop it\n~~~\n- **Web:** serve with npm run dev.'; run
 check "fences close only on a matching delimiter" 'has ok verify-section'
 
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'```\n```example\n# start the backend\n```\n- **Web:** serve with npm run dev.'; run
+check "a fence with an info string inside a block does not close it" 'has ok verify-section'
+
 for source in manifest module package static; do
   adopted
   case "$source" in

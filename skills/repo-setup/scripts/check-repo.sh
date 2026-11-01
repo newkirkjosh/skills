@@ -151,11 +151,13 @@ section() {
       sub(/\r$/, "")
     }
     # In a fenced block, "# start the backend" is a shell comment, not a heading.
-    # A fence closes only on the same character, at least as long as it opened.
+    # A fence closes only on the same character, at least as long as it opened,
+    # with nothing but whitespace after it.
     /^[[:space:]]*(```|~~~)/ {
       match($0, /(`+|~+)/); run = substr($0, RSTART, RLENGTH)
       if (!fenced) { fenced = 1; fence = run }
-      else if (substr(run, 1, 1) == substr(fence, 1, 1) && length(run) >= length(fence)) fenced = 0
+      else if (substr(run, 1, 1) == substr(fence, 1, 1) && length(run) >= length(fence) &&
+          substr($0, RSTART + RLENGTH) ~ /^[[:space:]]*$/) fenced = 0
       if (active) print
       next
     }
