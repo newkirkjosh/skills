@@ -283,24 +283,30 @@ if grep -qiE "$verify_instruction" <<< "$verification"; then
           if (line ~ /^[[:space:]]*#+[[:space:]]+/) {
             match(line, /#+/); level = RLENGTH
             label = line; sub(/^[[:space:]]*#+[[:space:]]+/, "", label)
-            bullet = 0
+            bullet = 0; skip = -1
             if (under && level <= depth) under = 0
+            if (other && level <= other) other = 0
             if (!under && label ~ pattern) { under = 1; depth = level }
+            # A nested heading for a different target is that target'"'"'s content.
+            else if (under && !other && label ~ any) other = level
             next
           }
+          if (other) next
+          blank = line ~ /^[[:space:]]*$/
+          # Lines under another target'"'"'s bullet belong to that target.
+          if (skip >= 0 && !blank && indent(line) > skip) next
+          skip = -1
           is_bullet = line ~ /^[[:space:]]*[-*+][[:space:]]+/
           label = line; sub(/^[[:space:]]*[-*+][[:space:]]+(\*\*)?/, "", label)
-          if (is_bullet && bullet && indent(line) <= bullet_indent) bullet = 0
-          if (bullet && line ~ /[[:alnum:]]/ && indent(line) > bullet_indent) { found = 1; exit }
+          if (bullet && !blank && indent(line) <= bullet_indent) bullet = 0
           if (is_bullet && label ~ any) {
-            # Another target'"'"'s bullet is never this target'"'"'s facts.
-            if (label ~ pattern) {
+            if (label ~ pattern && !bullet) {
               if (rest(label) ~ /[[:alnum:]]/) { found = 1; exit }
               bullet = 1; bullet_indent = indent(line)
-            }
+            } else if (label !~ pattern) skip = indent(line)
             next
           }
-          if (bullet && line !~ /^[[:space:]]*$/ && indent(line) <= bullet_indent) bullet = 0
+          if (bullet && line ~ /[[:alnum:]]/) { found = 1; exit }
           if (under && line ~ /[[:alnum:]]/) { found = 1; exit }
         }
         END { exit !found }

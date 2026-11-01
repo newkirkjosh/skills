@@ -399,6 +399,22 @@ adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'- **Web:**\nServe the client from the docs.'; run
 check "an unindented line after an empty bullet is not its facts" 'has decide verify-section'
 
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'- **Web:**\n  - Android: run the emulator'; run
+check "a nested other-target bullet is not continuation facts" 'has decide verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n#### Android\nRun the emulator.'; run
+check "a nested other-target heading is not parent facts" 'has decide verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n- Android:\n  run the emulator'; run
+check "lines under another target's bullet are not this target's facts" 'has decide verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n#### Android\nRun the emulator.\n#### Build\nRun npm run dev.'; run
+check "a generic heading after another target's heading counts again" 'has ok verify-section'
+
 for source in manifest module package static; do
   adopted
   case "$source" in
