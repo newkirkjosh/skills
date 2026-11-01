@@ -288,13 +288,13 @@ if grep -qiE "$verify_instruction" <<< "$verification"; then
             if (other && level <= other) other = 0
             if (!under && label ~ pattern) { under = 1; depth = level }
             # A nested heading for a different target is that target'"'"'s content.
-            else if (under && !other && label ~ any) other = level
+            else if (under && !other && label ~ any && label !~ pattern) other = level
             next
           }
           if (other) next
           blank = line ~ /^[[:space:]]*$/
           # Lines under another target'"'"'s bullet belong to that target.
-          if (skip >= 0 && !blank && indent(line) > skip) next
+          if (skip >= 0 && (blank || indent(line) > skip)) next
           skip = -1
           is_bullet = line ~ /^[[:space:]]*[-*+][[:space:]]+/
           label = line; sub(/^[[:space:]]*[-*+][[:space:]]+(\*\*)?/, "", label)

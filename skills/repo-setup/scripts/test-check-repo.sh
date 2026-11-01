@@ -415,6 +415,14 @@ adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'### Web\n#### Android\nRun the emulator.\n#### Build\nRun npm run dev.'; run
 check "a generic heading after another target's heading counts again" 'has ok verify-section'
 
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n- Android:\n\n  Run the emulator.'; run
+check "a blank line inside another target's bullet keeps it excluded" 'has decide verify-section'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'### Web\n#### Browser\nRun npm run dev.'; run
+check "a nested heading for the same target's alias counts" 'has ok verify-section'
+
 for source in manifest module package static; do
   adopted
   case "$source" in
