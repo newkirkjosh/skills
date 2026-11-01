@@ -25,6 +25,7 @@ Don't write a version number into notes, scripts or answers unless the task depe
 | Inventory, config, and changes the official API supports | Official API through the cloud connector | Site Manager API key, created at unifi.ui.com |
 | Same, without the cloud hop | Official API on the console | Local API key, created in the Network app's integration settings |
 | Client signal, band, retries, roams, event log, 5-minute and hourly history, switch port counters | Web-UI API on the console | A local-only admin with the **View Only** role |
+| Firewall mode, zones and policies | Official API: `GET .../sites/{siteId}/firewall/zones` and `.../firewall/policies` | Either API key (verified through the cloud connector). A 400 `api.firewall.zone-based-firewall-not-configured` means the site is still on the legacy firewall; read its rules from `rest/firewallrule` on the web-UI API |
 | Shell-level data nothing else exposes | SSH | Root. Last resort, read-only commands, user approval per session |
 
 A Site Manager key works only through the cloud connector; the console rejects it locally with 401. The cloud connector path needs the console ID from `GET https://api.ui.com/v1/hosts`.
@@ -50,7 +51,9 @@ A Site Manager key works only through the cloud connector; the console rejects i
 
 ## Gotchas
 
-- An empty list from the web-UI API can be an error: check `meta.rc`. `api.err.NotFound` means the endpoint moved; rediscover it, don't conclude there is no data.
+- An empty list from the web-UI API can be an error: check `meta.rc`. `api.err.NotFound` means the endpoint moved; rediscover it, don't conclude there is no data. Some v2 paths (`firewall-policies`, `firewall/zone-matrix`) return a bare `[]` both when a feature is off and when nothing is configured, so an empty answer settles nothing. Ask the other access path before telling the user something can't be read or asking them to check the UI.
+- UniFi's client fingerprint fields (`dev_cat`, `dev_id`, `os_name`) are bare numbers, and there is no reliable lookup endpoint for them. To name unknown smart-home clients, browse mDNS from a machine on the same LAN (`avahi-browse -artp`, or `dns-sd -B` on macOS): Cast, Matter, Thread (`_trel`, `_meshcop`), AirPlay and Spotify Connect services carry model names. Thread border routers and Matter controllers found this way must stay on one VLAN with their devices.
+- A consumer router plugged into a switch port shows `mac_table_count` 1 on that port when it is in router mode: everything behind it is NATed and invisible to UniFi, but can still open connections into the LAN it sits on. Many MACs on the port mean it is acting as an access point.
 - The official API has no per-client signal, band or retry data and no event log. Don't infer radio health from it; use the web-UI API.
 - Channel numbers alone don't prove radar (DFS) trouble. Look for radar events in the log before blaming it.
 - Many networks re-pick channels every night, which shows up as channel changes and client reconnects at the same early-morning minute. Don't mistake them for the user's problem.
