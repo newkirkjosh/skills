@@ -42,6 +42,10 @@ These are shapes to try first, not a contract. Confirm each with a real call.
 | Wi-Fi network settings: fast roaming, BSS transition, band steering | `GET api/s/<site>/rest/wlanconf` |
 | Network and WAN settings, including smart queues | `GET api/s/<site>/rest/networkconf` |
 | Subsystem health | `GET api/s/<site>/stat/health` |
+| Controller version and console name | `GET api/s/<site>/stat/sysinfo` |
+| Site settings, one object per `key`: `global_network` (`default_security_posture`), `ips` (`ips_mode`), `mdns`, `usg` (UPnP), `guest_access` | `GET api/s/<site>/rest/setting` |
+| Legacy firewall rules, firewall groups, port forwards | `GET api/s/<site>/rest/firewallrule`, `GET api/s/<site>/rest/firewallgroup`, `GET api/s/<site>/rest/portforward` |
+| Switch ports: link, speed, PoE, and `mac_table_count` (MACs seen on the port) | `port_table` inside `GET api/s/<site>/stat/device` |
 | Event log: roams, disconnects, channel changes, radar, ISP latency | `POST v2/api/site/<site>/system-log/all` with `{"timestampFrom":<ms>,"timestampTo":<ms>,"pageSize":<n>,"pageNumber":0}` |
 | History per client or access point | `POST api/s/<site>/stat/report/<5minutes|hourly|daily>.<user|ap>` with `{"attrs":[...],"macs":[...],"start":<ms>,"end":<ms>}` |
 
