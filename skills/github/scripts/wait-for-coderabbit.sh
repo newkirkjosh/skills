@@ -12,7 +12,7 @@
 # Exit: 0 PASS, 1 FAIL, 3 TIMEOUT (also when GitHub couldn't be read), 4
 # NOT_CONFIGURED (no CodeRabbit check on the head: terminal, don't retry), 5
 # RATE_LIMITED (don't wait out the cooldown), 6 HEAD_MOVED (a push landed
-# mid-wait: rerun for the new head), 2 usage
+# mid-wait: rerun for the new head), 7 PAUSED (request a review and rerun), 2 usage
 set -uo pipefail
 
 pr=${1:-}
@@ -51,7 +51,10 @@ while :; do
     status=$(jq -r '.status // empty' <<< "${run:-null}") conclusion=$(jq -r '.conclusion // empty' <<< "${run:-null}")
     if [ "$status" = completed ]; then
       case $conclusion in
-        success|neutral|skipped) echo "STATUS=PASS conclusion=$conclusion sha=$head"; exit 0 ;;
+        success|neutral) echo "STATUS=PASS conclusion=$conclusion sha=$head"; exit 0 ;;
+        skipped)
+          echo "Hint: post @coderabbitai review on PR $pr once; if CodeRabbit declines it, post @coderabbitai full review instead; then rerun the waiter."
+          echo "STATUS=PAUSED conclusion=$conclusion sha=$head"; exit 7 ;;
         *) echo "STATUS=FAIL conclusion=$conclusion sha=$head"; exit 1 ;;
       esac
     fi

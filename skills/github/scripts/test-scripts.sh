@@ -163,6 +163,15 @@ reset; heads 1 "$H1"; checks 1 "$(cr in_progress)"; checks 2 "$(cr completed '"s
 check "coderabbit: waits through in_progress, then PASS" '[ "$(rc)" = 0 ] && out | grep -q "^STATUS=PASS conclusion=success sha=$H1"'
 check "coderabbit: reads the check for the exact head SHA" 'grep -q "commits/$H1/check-runs" "$STUB"/argv.*'
 
+for conclusion in success neutral; do
+  reset; heads 1 "$H1"; checks 1 "$(cr completed "\"$conclusion\"")"; run "$wcr" 7 1 example/repo
+  check "coderabbit: $conclusion exits 0 PASS" '[ "$(rc)" = 0 ] && out | grep -qx "STATUS=PASS conclusion=$conclusion sha=$H1"'
+done
+
+reset; heads 1 "$H1"; checks 1 "$(cr completed '"skipped"')"; run "$wcr" 7 1 example/repo
+check "coderabbit: skipped exits 7 PAUSED" '[ "$(rc)" = 7 ] && out | grep -qx "STATUS=PAUSED conclusion=skipped sha=$H1"'
+check "coderabbit: PAUSED hints at review once and full review if declined" 'out | grep -q "post @coderabbitai review.*once.*if CodeRabbit declines it.*post @coderabbitai full review.*rerun the waiter"'
+
 reset; heads 1 "$H1"; checks 1 "$(cr completed '"failure"')"; run "$wcr" 7 1 example/repo
 check "coderabbit: a failed check exits 1" '[ "$(rc)" = 1 ] && out | grep -q "^STATUS=FAIL conclusion=failure"'
 
