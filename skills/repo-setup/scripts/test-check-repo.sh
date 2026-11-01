@@ -154,7 +154,7 @@ adopted; run
 check "Tracker loads linear" 'has ok skill-lines'
 check "no app needs no verification section" 'has n/a verify-section'
 
-adopted; set_tracker 'GitHub issues on this repository. Load the `github` skill before creating, changing or closing a GitHub issue.'; run
+adopted; set_tracker $'GitHub issues on this repository.\nLoad the `github` skill before creating, changing or closing a GitHub issue.'; run
 check "Tracker loads github" 'has ok skill-lines'
 
 adopted; sed -i '/Load the/d' "$work/r/AGENTS.md"; run
@@ -167,14 +167,15 @@ check "no Tracker section makes skill-lines n/a" 'has n/a skill-lines'
 
 adopted
 printf '\n## Verifying the app\nLoad the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
-check "verification section with named skill is ok" 'has ok verify-section'
+check "instruction alone needs verification facts" 'has decide verify-section'
 
 adopted; mkdir -p "$work/r/composeApp"; touch "$work/r/composeApp/build.gradle.kts"; run
 check "Compose app needs verification facts" 'has decide verify-section && [ "$(rc)" = 0 ]'
 printf '\n## Verifying the app\nUse the app.\n' >> "$work/r/AGENTS.md"; run
 check "verification heading without skill still needs a decision" 'has decide verify-section'
 sed -i 's/Use the app./Load the `verify-change` skill before verifying a change in the running app./' "$work/r/AGENTS.md"; run
-check "app with verification skill is ok" 'has ok verify-section'
+printf 'Launch with the repository app script.\n' >> "$work/r/AGENTS.md"; run
+check "app with verification skill and facts is ok" 'has ok verify-section'
 
 adopted; mkdir -p "$work/r/androidApp"; touch "$work/r/androidApp/build.gradle"; run
 check "Android Gradle module needs verification facts" 'has decide verify-section'
@@ -210,20 +211,55 @@ check "skill-lines finds a ### Tracker nested under another section" 'has ok ski
 adopted; set_tracker 'Linear. Load the `linear` skill for all tracker work.'; run
 check "a topic-scoped tracker line is not accepted" 'has missing skill-lines'
 
-adopted; set_tracker 'GitHub issues. Load the `linear` skill before creating, changing or closing a tracker issue.'; run
+adopted; set_tracker $'GitHub issues.\nLoad the `linear` skill before creating, changing or closing a tracker issue.'; run
 check "a load line naming the wrong tracker is stale" 'has stale skill-lines'
 
 adopted; printf '\n## Verifying the app\nDo not load `verify-change` here.\n' >> "$work/r/AGENTS.md"; run
 check "a verification section that only mentions verify-change is not ok" '! has ok verify-section'
 
 adopted; printf '\n## Verifying the app\n**You MUST load the `verify-change` skill before verifying a change in the running app.**\n' >> "$work/r/AGENTS.md"; run
-check "the task-scoped verify-change line is ok" 'has ok verify-section'
+check "bold instruction alone still needs facts" 'has decide verify-section'
 
 adopted; printf '\n## Verifying the app\nDo not load the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
 check "a negated full verify-change sentence is not ok" '! has ok verify-section'
 
 adopted; set_tracker "Linear. Don't load the \`linear\` skill before creating, changing or closing a tracker issue."; run
 check "a negated tracker load line is missing, not ok" 'has missing skill-lines'
+
+# Regression coverage for case, tracker inference, affirmative wording and web apps.
+adopted; sed -i 's/^## Tracker$/## tRaCkEr/' "$work/r/AGENTS.md"; run
+check "mixed-case Tracker body is read" 'has ok skill-lines'
+
+adopted; set_tracker $'`GitHub` issues.\nLoad the `linear` skill before creating, changing or closing a tracker issue.'; run
+check "backticked tracker prose still exposes a mismatch" 'has stale skill-lines'
+
+adopted; set_tracker '`GitHub` issues. **Load the `linear` skill before creating, changing or closing a tracker issue.**'; run
+check "a mismatch on the prose's own line is stale" 'has stale skill-lines'
+
+adopted; set_tracker 'GitHub issues on this repository. **Load the `github` skill before creating, changing or closing a GitHub issue.**'; run
+check "a matching load line on the prose's own line is ok" 'has ok skill-lines'
+
+for prefix in 'Do not ever load the' 'Never ever load the' 'Notes: Load the'; do
+  adopted; set_tracker "Linear issues.
+$prefix \`linear\` skill before creating, changing or closing a tracker issue."; run
+  check "$prefix is not an affirmative tracker instruction" 'has missing skill-lines'
+  printf '\n## Verifying the app\n%s `verify-change` skill before verifying a change in the running app.\nLaunch the app script.\n' "$prefix" >> "$work/r/AGENTS.md"; run
+  check "$prefix is not an affirmative verification instruction" '! has ok verify-section'
+done
+
+adopted; set_tracker $'Linear issues.\n  - **lOaD tHe `linear` skill before creating, changing or closing a tracker issue.**'; run
+check "indented bold list tracker instruction counts" 'has ok skill-lines'
+printf '\n## vErIfYiNg ThE aPp\n  - **yOu MuSt LoAd ThE `verify-change` skill before verifying a change in the running app.**\nLaunch the app script.\n' >> "$work/r/AGENTS.md"; run
+check "mixed-case verification heading and list instruction count with facts" 'has ok verify-section'
+
+adopted
+printf '\n## Verifying the app\nLoad the `verify-change` skill before verifying a change in the running app.\n\n### Commands\n\n## Other\nUnrelated facts.\n' >> "$work/r/AGENTS.md"; run
+check "blank lines and headings are not verification facts" 'has decide verify-section'
+
+for entry in index.html public/index.html web/index.html src/index.html; do
+  adopted; mkdir -p "$work/r/$(dirname "$entry")"; touch "$work/r/$entry"; run
+  check "static entrypoint $entry needs verification facts" 'has decide verify-section'
+done
 
 echo
 echo "$pass passed, $fail failed"

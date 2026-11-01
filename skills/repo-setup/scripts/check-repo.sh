@@ -126,6 +126,10 @@ if heading 'Tracker'; then say ok tracker "AGENTS.md names the tracker"; else sa
 if heading '(Pull requests?|PRs?)([[:space:]]|$)'; then say ok pr-conventions "AGENTS.md has PR conventions"; else say decide pr-conventions "no Pull Request section (labels, project or board)"; fi
 if heading 'Merge policy'; then say ok merge-policy "AGENTS.md has a Merge policy"; else say decide merge-policy "no Merge policy: every PR stops at merge-ready, which is a valid choice"; fi
 
+# Affirmative instructions may be bold or list items, but must start the line
+# or a sentence.
+load_prefix='(^[[:space:]]*(-[[:space:]]+)?|[.!?][[:space:]]+)(\*\*)?[[:space:]]*(You MUST load the|Load the)'
+
 # Explicit skill invocations belong to the task's own section.
 # Print a section's body, at any heading level (## Tracker, or ### Tracker under
 # another section), up to the next heading of the same or a higher level.
@@ -134,7 +138,7 @@ section() {
     /^#+ / {
       level = match($0, /[^#]/) - 1; text = substr($0, level + 2)
       if (active && level <= depth) active = 0
-      if (text == title) { active = 1; depth = level; next }
+      if (tolower(text) == tolower(title)) { active = 1; depth = level; next }
     }
     active { print }
   ' AGENTS.md
@@ -144,15 +148,14 @@ if heading 'Tracker([[:space:]]|$)'; then
   # changing or closing a ... issue"), not a mention or a topic, and name the
   # skill for the tracker this section describes.
   tracker="$(section Tracker)"
-  # Which tracker the prose describes, ignoring backticked skill names in the load line itself.
-  prose="$(sed 's/`[^`]*`//g' <<< "$tracker")"
+  # Infer the tracker from prose, removing only the load instruction itself
+  # (which may share a line with the prose).
+  prose="$(sed -E 's/(you must )?load the `[a-z-]+` skill before [^.*]*//Ig' <<< "$tracker")"
   want=""
   if grep -qi 'linear' <<< "$prose"; then want=linear
   elif grep -qi 'github' <<< "$prose"; then want=github
   fi
-  # Affirmative lines only: "do not load", "never load" and the like don't count.
-  line="$(grep -viE "(not|never|n't)[[:space:]]+load" <<< "$tracker" \
-    | grep -oiE '(^|[^[:alnum:]])load the `(linear|github)` skill before creating, changing or closing an? [a-z ]*issue' | head -n 1)"
+  line="$(grep -oiE "$load_prefix"' `(linear|github)` skill before creating, changing or closing an? [a-z ]*issue' <<< "$tracker" | head -n 1)"
   named="$(grep -oiE '`(linear|github)`' <<< "$line" | tr -d '`' | tr '[:upper:]' '[:lower:]')"
   if [ -z "$line" ]; then
     say missing skill-lines "Tracker needs: load the \`linear\` (or \`github\`) skill before creating, changing or closing a tracker issue"
@@ -166,11 +169,19 @@ else
 fi
 
 # A positive, task-scoped load line, not just a mention of the skill.
-if section 'Verifying the app' | grep -viE "(not|never|n't)[[:space:]]+load" \
-    | grep -qiE '(^|[^[:alnum:]])load the `verify-change` skill before verifying a change in the running app'; then
-  say ok verify-section "Verifying the app loads verify-change before verifying a change"
+verification="$(section 'Verifying the app')"
+verify_instruction="$load_prefix"' `verify-change` skill before verifying a change in the running app'
+if grep -qiE "$verify_instruction" <<< "$verification"; then
+  if grep -viE "$verify_instruction" <<< "$verification" | grep -qE '^[[:space:]]*[^#[:space:]]'; then
+    say ok verify-section "Verifying the app loads verify-change before verifying a change"
+  else
+    say decide verify-section "Verifying the app needs repository verification facts after the load instruction"
+  fi
 else
   app=0
+  for entry in index.html public/index.html web/index.html src/index.html; do
+    [ ! -f "$entry" ] || app=1
+  done
   # Gradle module directories or declarations, including modules not at the root.
   if find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
       -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
