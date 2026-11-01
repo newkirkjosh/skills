@@ -99,7 +99,7 @@ scan_job() {
         gl[job] = 1
     }
     END { if (gl[job] && fd[job] && !off[job]) hit = 1; exit !(hit && trig) }
-  ' "$1"
+  ' mask="${2:-0}" "$1"
 }
 scan=""
 for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
@@ -125,5 +125,240 @@ if heading 'Layers'; then say ok layers "AGENTS.md declares layers"; else say de
 if heading 'Tracker'; then say ok tracker "AGENTS.md names the tracker"; else say decide tracker "no Tracker section (Linear team and project, or GitHub issues and board)"; fi
 if heading '(Pull requests?|PRs?)([[:space:]]|$)'; then say ok pr-conventions "AGENTS.md has PR conventions"; else say decide pr-conventions "no Pull Request section (labels, project or board)"; fi
 if heading 'Merge policy'; then say ok merge-policy "AGENTS.md has a Merge policy"; else say decide merge-policy "no Merge policy: every PR stops at merge-ready, which is a valid choice"; fi
+
+# Affirmative instructions may be bold or list items, but must start the line
+# or a sentence.
+load_prefix='(^[[:space:]]*([-*+][[:space:]]+)?|[.!?][[:space:]]+)(\*\*)?[[:space:]]*(You MUST load the|Load the)'
+
+# Explicit skill invocations belong to the task's own section.
+# Print a section's body, at any heading level (## Tracker, or ### Tracker under
+# another section), up to the next heading of the same or a higher level.
+# HTML comments, single or multiline, are not instructions and are dropped.
+section() {
+  [ -f AGENTS.md ] && awk -v title="$1" '
+    {
+      line = ""
+      while (length($0)) {
+        if (incomment) {
+          end = index($0, "-->"); if (!end) { $0 = ""; break }
+          $0 = substr($0, end + 3); incomment = 0
+        } else {
+          start = index($0, "<!--"); if (!start) { line = line $0; break }
+          line = line substr($0, 1, start - 1); $0 = substr($0, start + 4); incomment = 1
+        }
+      }
+      $0 = line
+      sub(/\r$/, "")
+    }
+    # In a fenced block, "# start the backend" is a shell comment, not a heading.
+    # A fence closes only on the same character, at least as long as it opened,
+    # with nothing but whitespace after it.
+    /^[[:space:]]*(```|~~~)/ {
+      match($0, /(`+|~+)/); run = substr($0, RSTART, RLENGTH)
+      if (!fenced) { fenced = 1; fence = run }
+      else if (substr(run, 1, 1) == substr(fence, 1, 1) && length(run) >= length(fence) &&
+          substr($0, RSTART + RLENGTH) ~ /^[[:space:]]*$/) fenced = 0
+      if (active) print
+      next
+    }
+    !fenced && /^#+ / {
+      level = match($0, /[^#]/) - 1; text = tolower(substr($0, level + 2))
+      sub(/[[:space:]#]+$/, "", text)
+      if (active && level <= depth) active = 0
+      # Same match as heading(): the title, then the end or a space ("Tracker (Linear)").
+      t = tolower(title)
+      if (text == t || index(text, t " ") == 1) { active = 1; depth = level; next }
+    }
+    active { print }
+  ' AGENTS.md
+}
+if heading 'Tracker([[:space:]]|$)'; then
+  # The line must be the task-scoped form ("load the X skill before creating,
+  # changing or closing a ... issue"), not a mention or a topic, and name the
+  # skill for the tracker this section describes.
+  tracker="$(section Tracker)"
+  # Infer the tracker from prose, removing only the load clause itself
+  # (which may share a line or sentence with the prose).
+  # Lowercased first: sed's I flag isn't portable to BSD sed.
+  prose="$(tr '[:upper:]' '[:lower:]' <<< "$tracker" | sed -E 's/(you must )?load the `[a-z-]+` skill before creating, changing or closing an? [a-z ]*issue//g')"
+  want=""
+  if grep -qi 'linear' <<< "$prose"; then want=linear
+  elif grep -qi 'github' <<< "$prose"; then want=github
+  fi
+  line="$(grep -oiE "$load_prefix"' `(linear|github)` skill before creating, changing or closing an? [a-z ]*issue' <<< "$tracker" | head -n 1)"
+  named="$(grep -oiE '`(linear|github)`' <<< "$line" | tr -d '`' | tr '[:upper:]' '[:lower:]')"
+  if [ -z "$line" ]; then
+    say missing skill-lines "Tracker needs: load the \`linear\` (or \`github\`) skill before creating, changing or closing a tracker issue"
+  elif [ -n "$want" ] && [ "$named" != "$want" ]; then
+    say stale skill-lines "Tracker describes $want but its load line names \`$named\`"
+  else
+    say ok skill-lines "Tracker loads \`$named\` before changing an issue"
+  fi
+else
+  say n/a skill-lines "no Tracker section"
+fi
+
+# Strip Gradle comments while preserving quoted strings (including URL slashes).
+# Raw string contents are dropped: they hold text, never declarations.
+# Block depth handles Kotlin's nested block comments across lines, and raw
+# (triple-quoted) strings keep their state across lines too.
+gradle_code() {
+  awk '
+    {
+      out = ""; quote = ""; escaped = 0
+      for (i = 1; i <= length($0); i++) {
+        c = substr($0, i, 1); pair = substr($0, i, 2)
+        if (raw) {
+          if (substr($0, i, 3) == "\"\"\"") { out = out "\"\"\""; i += 2; raw = 0 }
+        } else if (depth) {
+          if (pair == "/*") { depth++; i++ }
+          else if (pair == "*/") { depth--; i++; out = out " " }
+        } else if (quote != "") {
+          if (escaped) escaped = 0
+          else if (c == "\\") escaped = 1
+          else if (c == quote) quote = ""
+          if (!mask || quote == "") out = out c
+        } else if (pair == "//") { break }
+        else if (pair == "/*") { depth++; i++; out = out " " }
+        else if (substr($0, i, 3) == "\"\"\"") { out = out "\"\"\""; i += 2; raw = 1 }
+        else {
+          out = out c
+          if (c == "\"" || c == "\047") quote = c
+        }
+      }
+      print out
+    }
+  ' mask="${2:-0}" "$1"
+}
+
+# Detect targets even when verification instructions already exist.
+app=0 android=0 desktop=0 web=0 ios=0
+for entry in index.html public/index.html web/index.html src/index.html; do
+  [ ! -f "$entry" ] || { app=1; web=1; }
+done
+while IFS= read -r entry; do
+  case "$entry" in
+    # Library modules and KMP androidMain have manifests too: only a launcher
+    # activity makes one an app.
+    */AndroidManifest.xml) android=1
+      grep -q 'android.intent.category.LAUNCHER' "$entry" && app=1 ;;
+    */androidApp/*) android=1; app=1 ;;
+    *) app=1 ;;
+  esac
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
+  -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
+  -path '*/androidApp/build.gradle.kts' \) -print)
+while IFS= read -r build; do
+  # String contents are masked: an example in quotes is not a declaration.
+  code="$(gradle_code "$build" 1)"
+  if grep -qE '^[[:space:]]*compose\.desktop(\.application)?[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
+  # The nested form: compose { desktop { application { ... } } }.
+  if grep -qE '(^|[^[:alnum:]_.])compose[[:space:]]*\{' <<< "$code" &&
+      grep -qE '(^|[^[:alnum:]_.])desktop[[:space:]]*\{' <<< "$code" &&
+      grep -qE '(^|[^[:alnum:]_.])application[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
+  # A KMP library can declare Android or browser targets too: they name the
+  # target, and only an executable browser binary also implies an app.
+  if grep -qE '(^|[^[:alnum:]_])(androidTarget|android)[[:space:]]*(\(|\{)' <<< "$code"; then android=1; fi
+  if grep -qE '(^|[^[:alnum:]_])(wasmJs|js)[[:space:]]*(\(|\{)' <<< "$code" &&
+      grep -qE '(^|[^[:alnum:]_])browser[[:space:]]*(\(|\{)' <<< "$code"; then
+    web=1
+    if grep -qE 'binaries\.executable[[:space:]]*\(' <<< "$code"; then app=1; fi
+  fi
+  # iOS is a declared target, but alone does not imply a runnable app here.
+  if grep -qE '(^|[^[:alnum:]_])(iosX64|iosArm64|iosSimulatorArm64)[[:space:]]*(\(|\{)' <<< "$code"; then ios=1; fi
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f \( -name build.gradle -o -name build.gradle.kts \) -print)
+while IFS= read -r settings; do
+  code="$(gradle_code "$settings")"
+  if grep -qE "include.*['\":](composeApp|androidApp)['\"]" <<< "$code"; then app=1; fi
+  if grep -qE "include.*['\":]androidApp['\"]" <<< "$code"; then android=1; fi
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+while IFS= read -r package; do
+  if jq -e '(.scripts // {}) | (.dev | type == "string") or (.start | type == "string")' "$package" > /dev/null 2>&1; then app=1; web=1; fi
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f -name package.json -print)
+
+# A positive, task-scoped load line, not just a mention of the skill.
+verification="$(section 'Verifying the app')"
+verify_instruction="$load_prefix"' `verify-change` skill before verifying a change in the running app'
+if grep -qiE "$verify_instruction" <<< "$verification"; then
+  # Facts may share the instruction's line; remove only the instruction sentence.
+  if tr '[:upper:]' '[:lower:]' <<< "$verification" | sed -E 's/(you must )?load the `verify-change` skill before verifying a change in the running app[.]?//' \
+      | grep -v '^#' | grep -q '[[:alnum:]]'; then
+    missing_targets=()
+    for target in android desktop web ios; do
+      [ "${!target}" -eq 1 ] || continue
+      pattern=$target
+      [ "$target" != web ] || pattern='web|browser'
+      # A target counts only as a bullet or subheading label ("- **Desktop:**",
+      # "### Android") with facts after it: on the bullet's own line, or under
+      # the subheading before the next heading. A passing mention or a bare
+      # label is not coverage.
+      if ! awk -v pattern="^($pattern)([^[:alnum:]_]|$)" -v any='^(android|desktop|web|browser|ios)([^[:alnum:]_]|$)' '
+        # Text after a label: drop the label word and its markup ("**Web:**").
+        function rest(text) { sub(/^[^[:alnum:]_]*[[:alnum:]_]+/, "", text); return text }
+        function indent(text) { match(text, /^[[:space:]]*/); return RLENGTH }
+        {
+          line = tolower($0)
+          # Fences use section()'"'"'s rules; a marker is never a fact, and a "#"
+          # line inside one is code, not a heading.
+          if (line ~ /^[[:space:]]*(```|~~~)/) {
+            match(line, /(`+|~+)/); run = substr(line, RSTART, RLENGTH)
+            if (!fenced) { fenced = 1; fence = run }
+            else if (substr(run, 1, 1) == substr(fence, 1, 1) && length(run) >= length(fence) &&
+                substr(line, RSTART + RLENGTH) ~ /^[[:space:]]*$/) fenced = 0
+            next
+          }
+          if (!fenced && line ~ /^[[:space:]]*#+[[:space:]]+/) {
+            match(line, /#+/); level = RLENGTH
+            label = line; sub(/^[[:space:]]*#+[[:space:]]+/, "", label)
+            bullet = 0; skip = -1
+            if (under && level <= depth) under = 0
+            if (other && level <= other) other = 0
+            if (!under && label ~ pattern) { under = 1; depth = level }
+            # A nested heading for a different target is that target'"'"'s content.
+            else if (under && !other && label ~ any && label !~ pattern) other = level
+            next
+          }
+          if (other) next
+          blank = line ~ /^[[:space:]]*$/
+          # Lines under another target'"'"'s bullet belong to that target.
+          if (skip >= 0 && (blank || indent(line) > skip)) next
+          skip = -1
+          is_bullet = line ~ /^[[:space:]]*[-*+][[:space:]]+/
+          label = line; sub(/^[[:space:]]*[-*+][[:space:]]+(\*\*)?/, "", label)
+          if (bullet && !blank && indent(line) <= bullet_indent) bullet = 0
+          if (is_bullet && label ~ any) {
+            if (label ~ pattern && !bullet) {
+              if (rest(label) ~ /[[:alnum:]]/) { found = 1; exit }
+              bullet = 1; bullet_indent = indent(line)
+            } else if (label !~ pattern) skip = indent(line)
+            next
+          }
+          if (bullet && line ~ /[[:alnum:]]/) { found = 1; exit }
+          if (under && line ~ /[[:alnum:]]/) { found = 1; exit }
+        }
+        END { exit !found }
+      ' <<< "$verification"; then
+        missing_targets+=("$target")
+      fi
+    done
+    if [ "${#missing_targets[@]}" -gt 0 ]; then
+      say decide verify-section "Verifying the app has no bullet or subheading for detected targets: ${missing_targets[*]}; add one per target"
+    else
+      say ok verify-section "Verifying the app loads verify-change before verifying a change and covers every detected target"
+    fi
+  else
+    say decide verify-section "Verifying the app needs repository verification facts after the load instruction"
+  fi
+else
+  if [ "$app" -eq 1 ]; then
+    say decide verify-section "app detected; add Verifying the app with verify-change and facts from repository evidence"
+  else
+    say n/a verify-section "no app detected"
+  fi
+fi
 
 exit "$todo"
