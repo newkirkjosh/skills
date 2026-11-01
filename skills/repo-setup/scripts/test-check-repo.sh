@@ -297,6 +297,79 @@ for entry in index.html public/index.html web/index.html src/index.html; do
   check "static entrypoint $entry needs verification facts" 'has decide verify-section'
 done
 
+# Per-target facts must cover every detected target, even with a valid load line.
+verification_facts() {
+  printf '\n## Verifying the app\nLoad the `verify-change` skill before verifying a change in the running app.\n%s\n' "$1" >> "$work/r/AGENTS.md"
+}
+for declaration in 'compose.desktop {' 'compose.desktop.application {'; do
+  for comment in line block multiline; do
+    adopted
+    case "$comment" in
+      line) printf '// %s\n' "$declaration" ;;
+      block) printf '/* %s } */\n' "$declaration" ;;
+      multiline) printf '/* Disabled target\n%s\n}\n*/\n' "$declaration" ;;
+    esac > "$work/r/build.gradle.kts"
+    run
+    check "$comment commented $declaration is not an app" 'has n/a verify-section'
+  done
+done
+for target in android desktop web ios; do
+  adopted
+  case "$target" in
+    android) printf 'kotlin { androidTarget() }\n' ;;
+    desktop) printf 'compose.desktop.application { mainClass = "MainKt" }\n' ;;
+    web) printf 'kotlin { wasmJs { browser() } }\n' | sed 's/wasmJs {/wasmJs() {/' ;;
+    ios) printf 'kotlin { iosArm64() }\n' ;;
+  esac > "$work/r/build.gradle.kts"
+  verification_facts 'Launch with the repository script.'; run
+  check "$target missing from facts needs a decision naming it" 'has decide verify-section && grep -q "detected targets: $target;" "$work/out"'
+  printf -- '- **%s:** build and launch with the repository script; server URL from config.\n' "$target" >> "$work/r/AGENTS.md"
+  run
+  check "a $target bullet is ok" 'has ok verify-section'
+done
+for declaration in 'js() { browser() }' 'wasmJs() { browser() }'; do
+  adopted; printf 'kotlin { %s }\n' "$declaration" > "$work/r/build.gradle.kts"; run
+  check "a library's $declaration alone is not an app" 'has n/a verify-section'
+  adopted; printf 'kotlin { %s\n binaries.executable() }\n' "$declaration" > "$work/r/build.gradle.kts"
+  run
+  check "Kotlin $declaration with an executable binary is an app" 'has decide verify-section'
+  verification_facts '- **BROWSER:** build and launch with the repository script.'; run
+  check "browser alias covers $declaration case-insensitively" 'has ok verify-section'
+done
+for declaration in 'iosX64()' 'iosArm64()' 'iosSimulatorArm64()'; do
+  adopted; printf 'kotlin { %s }\n' "$declaration" > "$work/r/build.gradle.kts"; run
+  check "$declaration alone is not an app" 'has n/a verify-section'
+  verification_facts '- **iOS:** not verified here.'; run
+  check "$declaration recorded as not verified here is ok" 'has ok verify-section'
+done
+adopted
+printf '/*\nandroidTarget()\ncompose.desktop { }\nwasmJs() { browser() }\niosArm64()\n*/\n// iosX64()\n' > "$work/r/build.gradle.kts"
+verification_facts 'Launch with the repository script.'; run
+check "commented target declarations require no target facts" 'has ok verify-section'
+
+adopted
+printf 'kotlin {\n androidTarget()\n js() { browser() }\n iosArm64()\n}\ncompose.desktop { }\n' > "$work/r/build.gradle.kts"
+verification_facts '- **Android:** build and launch with the repository script.'; run
+check "all omitted targets are named together" 'has decide verify-section && grep -q "detected targets: desktop web ios;" "$work/out"'
+printf -- '- **DESKTOP:** launch with the repository script.\n### Browser\nServe with the repository script.\n- iOS: not verified here.\n' >> "$work/r/AGENTS.md"; run
+check "all detected targets mentioned is ok" 'has ok verify-section'
+
+adopted; printf 'compose.desktop { }\n' > "$work/r/build.gradle.kts"
+verification_facts 'It owns the emulator, desktop and web mechanics. Launch with the repository script.'; run
+check "a passing mention of desktop is not a target bullet" 'has decide verify-section && grep -q "detected targets: desktop;" "$work/out"'
+
+for source in manifest module package static; do
+  adopted
+  case "$source" in
+    manifest) mkdir -p "$work/r/client"; touch "$work/r/client/AndroidManifest.xml"; target=android ;;
+    module) mkdir -p "$work/r/androidApp"; touch "$work/r/androidApp/build.gradle"; target=android ;;
+    package) printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"; target=web ;;
+    static) touch "$work/r/index.html"; target=web ;;
+  esac
+  verification_facts 'Launch with the repository script.'; run
+  check "$source target missing from facts is named" 'has decide verify-section && grep -q "detected targets: $target;" "$work/out"'
+done
+
 echo
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

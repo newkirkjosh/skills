@@ -182,6 +182,72 @@ else
   say n/a skill-lines "no Tracker section"
 fi
 
+# Strip Gradle comments while preserving quoted strings (including URL slashes).
+# Block depth handles Kotlin's nested block comments across lines.
+gradle_code() {
+  awk '
+    {
+      out = ""; quote = ""; escaped = 0
+      for (i = 1; i <= length($0); i++) {
+        c = substr($0, i, 1); pair = substr($0, i, 2)
+        if (depth) {
+          if (pair == "/*") { depth++; i++ }
+          else if (pair == "*/") { depth--; i++; out = out " " }
+        } else if (quote != "") {
+          out = out c
+          if (escaped) escaped = 0
+          else if (c == "\\") escaped = 1
+          else if (c == quote) quote = ""
+        } else if (pair == "//") { break }
+        else if (pair == "/*") { depth++; i++; out = out " " }
+        else {
+          out = out c
+          if (c == "\"" || c == "\047") quote = c
+        }
+      }
+      print out
+    }
+  ' "$1"
+}
+
+# Detect targets even when verification instructions already exist.
+app=0 android=0 desktop=0 web=0 ios=0
+for entry in index.html public/index.html web/index.html src/index.html; do
+  [ ! -f "$entry" ] || { app=1; web=1; }
+done
+while IFS= read -r entry; do
+  app=1
+  case "$entry" in */AndroidManifest.xml|*/androidApp/*) android=1 ;; esac
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
+  -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
+  -path '*/androidApp/build.gradle.kts' \) -print)
+while IFS= read -r build; do
+  code="$(gradle_code "$build")"
+  if grep -qE '^[[:space:]]*compose\.desktop(\.application)?[[:space:]]*\{' <<< "$code"; then app=1; desktop=1; fi
+  # A KMP library can declare Android or browser targets too: they name the
+  # target, and only an executable browser binary also implies an app.
+  if grep -qE '(^|[^[:alnum:]_])(androidTarget|android)[[:space:]]*\(' <<< "$code"; then android=1; fi
+  if grep -qE '(^|[^[:alnum:]_])(wasmJs|js)[[:space:]]*\(' <<< "$code" &&
+      grep -qE '(^|[^[:alnum:]_])browser[[:space:]]*(\(|\{)' <<< "$code"; then
+    web=1
+    if grep -qE 'binaries\.executable[[:space:]]*\(' <<< "$code"; then app=1; fi
+  fi
+  # iOS is a declared target, but alone does not imply a runnable app here.
+  if grep -qE '(^|[^[:alnum:]_])(iosX64|iosArm64|iosSimulatorArm64)[[:space:]]*\(' <<< "$code"; then ios=1; fi
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f \( -name build.gradle -o -name build.gradle.kts \) -print)
+while IFS= read -r settings; do
+  code="$(gradle_code "$settings")"
+  if grep -qE "include.*['\":](composeApp|androidApp)['\"]" <<< "$code"; then app=1; fi
+  if grep -qE "include.*['\":]androidApp['\"]" <<< "$code"; then android=1; fi
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+while IFS= read -r package; do
+  if jq -e '(.scripts // {}) | (.dev | type == "string") or (.start | type == "string")' "$package" > /dev/null 2>&1; then app=1; web=1; fi
+done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
+  -type f -name package.json -print)
+
 # A positive, task-scoped load line, not just a mention of the skill.
 verification="$(section 'Verifying the app')"
 verify_instruction="$load_prefix"' `verify-change` skill before verifying a change in the running app'
@@ -189,34 +255,26 @@ if grep -qiE "$verify_instruction" <<< "$verification"; then
   # Facts may share the instruction's line; remove only the instruction sentence.
   if sed -E 's/(you must )?load the `verify-change` skill before verifying a change in the running app[.]?//I' <<< "$verification" \
       | grep -v '^#' | grep -q '[[:alnum:]]'; then
-    say ok verify-section "Verifying the app loads verify-change before verifying a change"
+    missing_targets=()
+    for target in android desktop web ios; do
+      [ "${!target}" -eq 1 ] || continue
+      pattern=$target
+      [ "$target" != web ] || pattern='web|browser'
+      # A target counts only as a bullet or subheading label ("- **Desktop:**",
+      # "### Android"), not a passing mention in the instruction sentence.
+      if ! grep -qiE "^[[:space:]]*([-*+][[:space:]]+(\*\*)?|#+[[:space:]]+)($pattern)([^[:alnum:]_]|$)" <<< "$verification"; then
+        missing_targets+=("$target")
+      fi
+    done
+    if [ "${#missing_targets[@]}" -gt 0 ]; then
+      say decide verify-section "Verifying the app has no bullet or subheading for detected targets: ${missing_targets[*]}; add one per target"
+    else
+      say ok verify-section "Verifying the app loads verify-change before verifying a change and covers every detected target"
+    fi
   else
     say decide verify-section "Verifying the app needs repository verification facts after the load instruction"
   fi
 else
-  app=0
-  for entry in index.html public/index.html web/index.html src/index.html; do
-    [ ! -f "$entry" ] || app=1
-  done
-  # Gradle module directories or declarations, including modules not at the root.
-  if find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
-      -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
-      -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
-      -path '*/androidApp/build.gradle.kts' \) -print | grep . > /dev/null; then app=1; fi
-  # A Compose Desktop application block (`compose.desktop {` or
-  # `compose.desktop.application {`): a jvm("desktop")
-  # target or a compose.desktop dependency alone may be a library.
-  if find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
-      -type f \( -name build.gradle -o -name build.gradle.kts \) -print0 \
-      | xargs -0 -r grep -lE '^[[:space:]]*compose\.desktop(\.application)?[[:space:]]*\{' 2> /dev/null | grep -q .; then app=1; fi
-  while IFS= read -r settings; do
-    if grep -qE "include.*['\":](composeApp|androidApp)['\"]" "$settings"; then app=1; fi
-  done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
-    -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
-  while IFS= read -r package; do
-    if jq -e '(.scripts // {}) | (.dev | type == "string") or (.start | type == "string")' "$package" > /dev/null 2>&1; then app=1; fi
-  done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
-    -type f -name package.json -print)
   if [ "$app" -eq 1 ]; then
     say decide verify-section "app detected; add Verifying the app with verify-change and facts from repository evidence"
   else
