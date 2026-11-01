@@ -238,6 +238,9 @@ check "a fact only inside a comment does not count" 'has decide verify-section'
 adopted; mkdir -p "$work/r/desktopApp"; printf 'compose.desktop {\n  application { mainClass = "MainKt" }\n}\n' > "$work/r/desktopApp/build.gradle.kts"; run
 check "a Compose Desktop build needs a verification section" 'has decide verify-section'
 
+adopted; mkdir -p "$work/r/shared"; printf 'kotlin {\n  jvm("desktop")\n}\n' > "$work/r/shared/build.gradle.kts"; run
+check "a library's jvm(\"desktop\") target alone is not an app" 'has n/a verify-section'
+
 adopted; printf '\n## Verifying the app\nDo not load the `verify-change` skill before verifying a change in the running app.\n' >> "$work/r/AGENTS.md"; run
 check "a negated full verify-change sentence is not ok" '! has ok verify-section'
 

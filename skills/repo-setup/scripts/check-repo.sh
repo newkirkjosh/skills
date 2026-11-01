@@ -203,10 +203,10 @@ else
       -type f \( -name AndroidManifest.xml -o -path '*/composeApp/build.gradle' -o \
       -path '*/composeApp/build.gradle.kts' -o -path '*/androidApp/build.gradle' -o \
       -path '*/androidApp/build.gradle.kts' \) -print | grep . > /dev/null; then app=1; fi
-  # A Compose Multiplatform desktop target in any Gradle build file.
+  # A Compose Desktop application block (a jvm("desktop") target alone may be a library).
   if find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
       -type f \( -name build.gradle -o -name build.gradle.kts \) -print0 \
-      | xargs -0 -r grep -lE 'compose\.desktop|jvm\("desktop"\)' 2> /dev/null | grep -q .; then app=1; fi
+      | xargs -0 -r grep -lE 'compose\.desktop' 2> /dev/null | grep -q .; then app=1; fi
   while IFS= read -r settings; do
     if grep -qE "include.*['\":](composeApp|androidApp)['\"]" "$settings"; then app=1; fi
   done < <(find . -type d \( -name .git -o -name node_modules -o -name build \) -prune -o \
