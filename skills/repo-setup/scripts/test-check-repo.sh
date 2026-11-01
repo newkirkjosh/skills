@@ -423,6 +423,16 @@ adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
 verification_facts $'### Web\n#### Browser\nRun npm run dev.'; run
 check "a nested heading for the same target's alias counts" 'has ok verify-section'
 
+adopted; sed -i 's/^## Tracker$/## Tracker (GitHub)/' "$work/r/AGENTS.md"; run
+check "a Tracker heading with a suffix is read" 'has ok skill-lines'
+
+adopted; sed -i 's/$/\r/' "$work/r/AGENTS.md"; run
+check "a CRLF AGENTS.md is read" 'has ok skill-lines'
+
+adopted; printf '{"scripts":{"dev":"serve"}}\n' > "$work/r/package.json"
+verification_facts $'```sh\n# start the backend\nnpm run dev\n```\n- **Web:** serve with npm run dev.'; run
+check "a shell comment in a fenced block does not end the section" 'has ok verify-section'
+
 for source in manifest module package static; do
   adopted
   case "$source" in

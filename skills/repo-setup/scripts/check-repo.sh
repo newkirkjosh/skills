@@ -148,11 +148,17 @@ section() {
         }
       }
       $0 = line
+      sub(/\r$/, "")
     }
-    /^#+ / {
-      level = match($0, /[^#]/) - 1; text = substr($0, level + 2)
+    # In a fenced block, "# start the backend" is a shell comment, not a heading.
+    /^[[:space:]]*(```|~~~)/ { fenced = !fenced; if (active) print; next }
+    !fenced && /^#+ / {
+      level = match($0, /[^#]/) - 1; text = tolower(substr($0, level + 2))
+      sub(/[[:space:]#]+$/, "", text)
       if (active && level <= depth) active = 0
-      if (tolower(text) == tolower(title)) { active = 1; depth = level; next }
+      # Same match as heading(): the title, then the end or a space ("Tracker (Linear)").
+      t = tolower(title)
+      if (text == t || index(text, t " ") == 1) { active = 1; depth = level; next }
     }
     active { print }
   ' AGENTS.md
