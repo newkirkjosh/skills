@@ -1,6 +1,6 @@
 ---
 name: spec-writer
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates and manages per-feature OpenSpec change folders: proposal, specs/stories, design and tasks artifacts from product discovery artifacts, and archives a completed change when dev says to."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Creates and manages per-feature legacy custom change folders under openspec/changes (not CLI-validated): proposal, specs/stories, design and tasks artifacts from product discovery artifacts, and archives a completed change when dev says to."
 metadata:
   type: flexible
 ---
@@ -38,7 +38,7 @@ metadata:
 | `design.md` | `arch-review` skill output; for a `bounded` change, a short design note | Written verbatim from inline `arch-review` invocation output — do not reformat or summarize. A `bounded` change (the Path in the Scope Brief) skips `arch-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
 | `tasks.md` | Derived from `design.md` + story scope | One section per layer, named and ordered as the project defines them (see Layers); omit empty layers |
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `dev` from the evaluator's report at Phase 3 — do not create during Phase 0 |
-| `issues.md` | Written by `linear` | Do not create — leave absent at this stage |
+| `issues.md` | Written by tracker integration (`linear` or dev’s GitHub reference) | Do not create — leave absent at this stage |
 
 **Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
 
@@ -125,7 +125,7 @@ Layer names are taken from `tasks.md` headings. One section per layer present in
 - `design.md` is written verbatim from `arch-review` output — never reformatted or summarized (a `bounded` change's short design note is the exception)
 - Checkboxes in `tasks.md` and `specs/stories.md` stay unticked: they are the plan, and `sprint-contract.md` is the record of what was verified. Reviewers shouldn't flag unticked boxes
 - The archive move happens in the change's own PR, as its last commit (see `dev` Phase 4), so merging archives it
-- `issues.md` is written by `linear`, not `spec-writer` — do not create it here
+- `issues.md` is written by tracker integration (`linear` or dev’s GitHub reference), not `spec-writer` — do not create it here
 - Archive action is only invoked by `dev` — never self-triggered
 - Change name is kebab-cased with a type prefix: `feat-` (story groups), `fix-` (bugs), `chore-` (non-feature work)
 - Omit empty layer sections from `tasks.md`
@@ -145,7 +145,7 @@ specs/
   stories.md      ← 3 onboarding stories, each with acceptance criteria below
 design.md         ← arch-review output (verbatim): HabitRepository in the first layer, HabitListScreen in the second
 tasks.md          ← one section per project layer that has work (here two: :<layer-1>, :<layer-2>)
-issues.md         ← absent at creation time; written later by linear
+issues.md         ← absent at creation time; written later by tracker integration (linear or dev’s GitHub reference)
 sprint-contract.md  ← absent at creation time; written at Phase 3 from the evaluator's report
 ```
 

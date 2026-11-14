@@ -1,18 +1,6 @@
----
-name: gh-issues
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Translates an OpenSpec change folder into a GitHub parent epic plus one sub-issue per layer, from specs/stories.md and tasks.md, and writes the issues.md anchor file. Idempotent: skips when issues.md already exists."
-metadata:
-  type: flexible
----
-
 # GitHub Issues
 
-**REQUIRED:** load the github skill for how to run each `gh` step (head-commit scoping, bounded CI waits, bodies from files, verifying writes). This skill owns the conventions; github owns the mechanics.
-
-## When to Use
-
-**Explicit use only:** the user names this skill, or `dev` calls it.
-- Translating an OpenSpec change into GitHub issues
+Use the installed `gh` help and API documentation to confirm commands and fields. Pass multiline bodies through files and read back writes to verify the result.
 
 **Entry detection:**
 - `issues.md` exists in the change folder → issues already created; output existing numbers and stop
@@ -20,7 +8,9 @@ metadata:
 
 ## Principles
 
-**Input:** OpenSpec change folder path (e.g., `openspec/changes/feat-onboarding/`). Reads three files from the folder: `proposal.md` (epic title), `specs/stories.md` (stories and acceptance criteria), `tasks.md` (layer list).
+This is the catalog’s legacy custom layout, not an OpenSpec CLI compatibility claim. No format migration or implicit spec synchronization is performed.
+
+**Input:** legacy custom change folder path (e.g., `openspec/changes/feat-onboarding/`). Reads three files from the folder: `proposal.md` (epic title), `specs/stories.md` (stories and acceptance criteria), `tasks.md` (layer list).
 
 **Output:** One parent epic issue + one sub-issue per layer present in `tasks.md`. Only layers with tasks are created — no empty placeholder tickets.
 

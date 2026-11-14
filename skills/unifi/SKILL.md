@@ -32,7 +32,7 @@ A Site Manager key works only through the cloud connector; the console rejects i
 
 ## Rules
 
-- **Credentials never touch argv.** Take them from the user's secret store into an environment variable or stdin; the bundled scripts pass them to curl through `-K -` and `--data @-`. Never print one. Mechanics: the shell skill.
+- **Credentials never touch argv.** Take them from the user's secret store into an environment variable or stdin; the bundled scripts pass them to curl through `-K -` and `--data @-`. Never print one.
 - **Default to read-only.** Ask the user to create a dedicated local-only View Only admin for the web-UI API, and to confirm the role: the API's `self` endpoint does not report it.
 - **Every change is approved first.** Before any non-GET call that changes state, show the method, path, body and what it will change, and wait for a yes. Make changes through the official API. The web-UI API is for reading; its POSTs are used only for log and report queries (`scripts/unifi-local.sh` refuses others).
 - **Identify the exact device before analysing.** Ask which device, where it sits, whether it moves, and what the symptom is. Households often have look-alike names ("work" and "personal" laptops on different access points); analysing the wrong one wastes the whole pass.

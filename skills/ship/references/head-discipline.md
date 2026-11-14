@@ -11,11 +11,11 @@ One failure motivates all of it: **every push invalidates the evidence gathered 
 The candidate head is the commit you intend to merge. Everything that can still change the tree happens before it exists; everything slow and head-scoped happens after.
 
 1. Implement, and commit everything the change needs: code, tests, tracker docs, generated files, the archive move. A "finalizing" commit after review is a push you didn't need.
-2. Run every local check and the local review (`pr`'s review set: the cross-model review, converged). Batch every finding and fix them in one pass.
+2. Run every local check and the local review (the cross-model review, converged). Batch every finding and fix them in one pass.
 3. Run any verification that doesn't need a PR (the app, the test plan).
 4. Push once. Record that SHA as the candidate head.
 5. Open or update the PR. Hosted reviewers (CodeRabbit and the like) start on the push.
-6. When they report, settle every finding in one round (`resolve-pr-feedback`). A fix push makes a new candidate head: go back to step 5 for the delta and what it affects (§ Evidence is SHA-scoped).
+6. When they report, settle every finding in one round using `dev`'s pull-request reference. A fix push makes a new candidate head: go back to step 5 for the delta and what it affects (§ Evidence is SHA-scoped).
 7. Once hosted review has nothing blocking, wait for CI on the current candidate head.
 8. Check the merge gates against that same SHA, then merge with `--match-head-commit <sha>`.
 
@@ -47,4 +47,4 @@ Take everything already reported (local reviewers, hosted reviewers, verificatio
 2. Wait on hosted reviewers before CI: their findings decide whether the head survives at all.
 3. Wait on CI last, once the head has no unresolved blocking finding.
 
-A reviewer that isn't configured for the repository (its waiter reports `NOT_CONFIGURED`; CodeRabbit can run without a `.coderabbit.yaml`, so the file's absence proves nothing) stays unconfigured for the rest of the run: note it once and stop checking for it.
+Read dev’s sibling pr-evidence.md in its references directory for the single evidence contract and status/wait helper paths. Resolve ship’s real skill directory, then `../dev`; paths never depend on the project working directory. An absent reviewer report is unknown. Only positive repository/service authority can establish an optional reviewer as not configured; record that authority.
