@@ -35,7 +35,7 @@ skills/<name>/
 
 Flat only. Skills install into one shared directory, and the installed name is the leaf directory name, so category folders would add nesting without namespacing anything.
 
-**Scripts are shell by default.** Glue around `gh`, `git`, `curl` and `jq` is bash: no runtime beyond what the skill already needs, readable from `SKILL.md`, and testable by stubbing commands on `PATH`. Use Python only for real parsing or data handling a shell would turn into an awk pile (`srd-import`'s PDF extraction): standard library only, no `pip install`, run with `python3 -I`. A shell script that starts growing parsing logic moves to Python rather than growing further. Don't add a script for something an agent gets right inline.
+**Scripts are shell by default.** Glue around `gh`, `git`, `curl` and `jq` is bash: no runtime beyond what the skill already needs, readable from `SKILL.md`, and testable by stubbing commands on `PATH`. Use Python only for real parsing or data handling a shell would turn into an awk pile (for example, structured API response parsing): standard library only, no `pip install`, run with `python3 -I`. A shell script that starts growing parsing logic moves to Python rather than growing further. Don't add a script for something an agent gets right inline.
 
 ## Naming
 
@@ -110,7 +110,7 @@ Conventional-commit titles, squash merge only. Labels: `enhancement` or `bug`, p
 
 ## Merge policy
 
-An agent may squash-merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the Codex cross-review converged, every CodeRabbit comment fixed or answered, and no unresolved review thread. Hand the merge back to the user when the PR touches credential handling (a bundled script that reads a token, key or password, such as `skills/unifi/scripts/` or `skills/*/scripts/` secret helpers), a security guard in a bundled script (the reviewer sandbox and tool limits in `skills/dev/scripts/cross-review.sh`, and the merge evidence guards in `skills/dev/scripts/pr-status.sh`, `pr-evidence.py` and `wait-for-*.sh`, plus their `test-pr-evidence.*` regression tests), `.github/workflows/`, the privacy checks (`scripts/check-private.sh`, the Security and privacy section above) or what switches them on (`scripts/install.sh`, which sets `privacy.public`), the review rules and what applies them (`REVIEW.md`, `.coderabbit.yaml`), or this Merge policy or the Code Review Rules section of this file.
+An agent may squash-merge its own PR when every gate holds on the head commit, re-checked right before merging: CI green, the Codex cross-review converged, every CodeRabbit comment fixed or answered, and no unresolved review thread. Hand the merge back to the user when the PR touches credential handling (a bundled script that reads a token, key or password, such as `skills/*/scripts/` secret helpers), a security guard in a bundled script (the reviewer sandbox and tool limits in `skills/dev/scripts/cross-review.sh`, and the merge evidence guards in `skills/dev/scripts/pr-status.sh`, `pr-evidence.py` and `wait-for-*.sh`, plus their `test-pr-evidence.*` regression tests), `.github/workflows/`, the privacy checks (`scripts/check-private.sh`, the Security and privacy section above) or what switches them on (`scripts/install.sh`, which sets `privacy.public`), the review rules and what applies them (`REVIEW.md`, `.coderabbit.yaml`), or this Merge policy or the Code Review Rules section of this file.
 
 ## Code Review Rules
 
