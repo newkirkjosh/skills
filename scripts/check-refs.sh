@@ -30,6 +30,7 @@ for dir in "$root"/skills/*/; do
     stages=${description#*sequences }
     while IFS= read -r stage; do
       [ -z "$stage" ] && continue
+      case "$EXTERNAL" in *" $stage "*) continue ;; esac
       [ -d "$root/skills/$stage" ] || { echo "$skill: unknown description stage $stage"; status=1; }
     done < <(printf '%s\n' "$stages" | grep -oE '`[a-z0-9-]+`' | tr -d '`')
     # Bare retired skill names as comma-delimited stages (not words in prose).

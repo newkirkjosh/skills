@@ -15,11 +15,26 @@ class ReadError(Exception):
     pass
 
 
+class WaitTimeout(Exception):
+    pass
+
+
+# A single invocation is synchronous; every gh read shares its overall budget.
+request_deadline = None
+
+
 def gh(*args):
+    remaining = None if request_deadline is None else request_deadline - time.monotonic()
+    if remaining is not None and remaining <= 0:
+        raise WaitTimeout()
     try:
-        p = subprocess.run(['gh', *args], text=True, capture_output=True, timeout=60)
+        p = subprocess.run(['gh', *args], text=True, capture_output=True, timeout=60 if remaining is None else min(60, remaining))
     except subprocess.TimeoutExpired:
+        if request_deadline is not None and time.monotonic() >= request_deadline:
+            raise WaitTimeout()
         raise ReadError('API request timed out')
+    if request_deadline is not None and time.monotonic() >= request_deadline:
+        raise WaitTimeout()
     if p.returncode:
         raise ReadError(p.stderr.strip() or 'gh failed')
     try:
@@ -146,7 +161,7 @@ def coverage(d):
         # Status history is newest-first. Preserve the latest status per producer.
         producers = set()
         for status in d['statuses']:
-            if status['context'] != name:
+            if status['context'].casefold() != name.casefold():
                 continue
             producer = status['creator']['login']
             if producer not in producers:
@@ -198,6 +213,8 @@ def current_rate_limit(d, pr, repo):
 
 
 def main():
+    global request_deadline
+    request_deadline = None
     mode, pr, repo = sys.argv[1:4]
     if mode not in ('status', 'ci', 'coderabbit') or not re.fullmatch('[1-9][0-9]*', pr) or not re.fullmatch(r'[\w.-]+/[\w.-]+', repo):
         return 2
@@ -208,6 +225,7 @@ def main():
         return 2
     started = time.monotonic()
     deadline = started + int(minutes) * 60
+    request_deadline = None if mode == 'status' else deadline
     first_run_deadline = started + 180
     pinned = None
     while True:
@@ -245,13 +263,17 @@ def main():
                     after = ''
                 if rc == 3 and current_rate_limit(d, pr, repo):
                     state, rc = 'RATE_LIMITED_EVIDENCE', 5
-            # Reread immediately before every terminal verdict, including timeout.
+            # Reread before evidence verdicts while budget remains. Strict expiry
+            # returns TIMEOUT with unknown sources, without another API read.
             if head(pr, repo) != pinned:
                 state, rc = 'HEAD_MOVED', 6
             if rc != 3 or time.monotonic() >= deadline:
                 print(json.dumps(dict(state='TIMEOUT' if rc == 3 else state, head=pinned, run=c['id'] if mode == 'coderabbit' and c else None, wait_after_run=after)))
                 return rc
             time.sleep(min(int(interval), max(0, deadline - time.monotonic())))
+        except WaitTimeout:
+            print(json.dumps(dict(state='TIMEOUT', head=pinned, sources='unknown', wait_after_run=after)))
+            return 3
         except (ReadError, KeyError, TypeError, ValueError, AttributeError, OSError) as e:
             print(json.dumps(dict(state='READ_ERROR', head=pinned, error=str(e), sources='unknown')), flush=True)
             return 5 if 'rate limit' in str(e).lower() else 8

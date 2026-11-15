@@ -45,7 +45,7 @@ print(json.dumps(data))
         (root / 'count').unlink(missing_ok=True)
         env = dict(os.environ, PATH=str(root)+os.pathsep+os.environ['PATH'], FIXTURE=str(root), CASE=case, WAIT_INTERVAL='0')
         env.update(extra or {})
-        p = subprocess.run(['bash', str(here/script), '12', 'owner/repo', '0'], env=env, text=True, capture_output=True)
+        p = subprocess.run(['bash', str(here/script), '12', 'owner/repo', '0' if rc == 3 else '1'], env=env, text=True, capture_output=True)
         assert p.returncode == rc, (case, script, p.returncode, p.stdout, p.stderr)
         d = json.loads(p.stdout)
         if state:
@@ -198,3 +198,50 @@ assert result['state']=='TIMEOUT' and seen==[0,30,60]
 result,seen=cycles('ci',[sample([workflow('in_progress')]),sample([dict(status='completed',conclusion='failure')])],1,1)
 assert result['state']=='FAIL' and seen==[0,30]
 print('Cross-commit objections, edited rate limits and short CI deadline regressions passed')
+
+with tempfile.TemporaryDirectory() as tmp:
+    policy=Path(tmp)/'policy.json'
+    policy.write_text(json.dumps(dict(source='fixture policy',required_checks=['CI'],required_reviewers=[])))
+    d=sample(); d['statuses']=[dict(id=2,context='ci',state='failure',creator={'login':'service'}),dict(id=1,context='CI',state='success',creator={'login':'service'})]
+    with patch.dict(os.environ,{'PR_EVIDENCE_POLICY':str(policy)}):
+        match=evidence.coverage(d)['required_checks']['CI']
+        assert match['state']=='blocked' and [m['id'] for m in match['matches']]==[2]
+
+# Successful API reads cannot cumulatively outlive the invocation deadline.
+clock=[0]; timeouts=[]
+def slow_read(args, **kwargs):
+    timeouts.append(kwargs['timeout'])
+    clock[0]+=10
+    payload={'headRefOid':H} if args[1:3]==['pr','view'] else {'total_count':1000,'check_runs':[{'id':i+len(timeouts)*100} for i in range(100)]}
+    return subprocess.CompletedProcess(args,0,json.dumps(payload),'')
+out=io.StringIO()
+with patch.object(evidence.time,'monotonic',side_effect=lambda:clock[0]), patch.object(evidence.subprocess,'run',slow_read), patch.object(sys,'argv',['script','ci','12','owner/repo','1']), contextlib.redirect_stdout(out):
+    assert evidence.main()==3
+assert json.loads(out.getvalue())['state']=='TIMEOUT'
+assert clock[0]==60 and timeouts==[60,50,40,30,20,10]
+evidence.request_deadline=None
+print('Case-insensitive statuses and cumulative API deadline tests passed')
+
+# Real collect/gh path: expiry cannot certify a change since the last observation.
+clock=[0]; observed=[]
+def api_cycle(args, **kwargs):
+    if args[1:3]==['pr','view']:
+        data={'headRefOid':H}
+    else:
+        url=args[2]
+        if '/check-runs' in url: data={'total_count':0,'check_runs':[]}
+        elif '/actions/runs' in url:
+            observed.append(clock[0])
+            data={'total_count':1,'workflow_runs':[dict(head_sha=H,**workflow('completed' if clock[0]>=45 else 'in_progress'))]}
+        elif url=='graphql':
+            data={'data':{'repository':{'pullRequest':{'reviewThreads':{'totalCount':0,'nodes':[],'pageInfo':{'hasNextPage':False,'endCursor':None}}}}}}
+        else: data=[]
+    return subprocess.CompletedProcess(args,0,json.dumps(data),'')
+def advance(seconds): clock[0]+=seconds
+out=io.StringIO()
+with patch.object(evidence.time,'monotonic',side_effect=lambda:clock[0]), patch.object(evidence.time,'sleep',advance), patch.object(evidence.subprocess,'run',api_cycle), patch.dict(os.environ,{'WAIT_INTERVAL':'30','PR_EVIDENCE_POLICY':''}), patch.object(sys,'argv',['script','ci','12','owner/repo','1']), contextlib.redirect_stdout(out):
+    assert evidence.main()==3
+assert observed==[0,30] and clock[0]==60
+assert json.loads(out.getvalue())['sources']=='unknown'
+evidence.request_deadline=None
+print('Real API collection respects strict expiry between polling cycles')
