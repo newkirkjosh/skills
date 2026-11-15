@@ -6,7 +6,7 @@
 # names in EXTERNAL are allowed because they come from elsewhere.
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+root="${CHECK_REFS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 EXTERNAL=" artifact-design research skill-creator code-review simplify "
 status=0
 
@@ -23,7 +23,23 @@ for dir in "$root"/skills/*/; do
     case "$name" in *:*) continue ;; esac
     case "$EXTERNAL" in *" $name "*) continue ;; esac
     [ -d "$root/skills/$name" ] || { echo "$skill: references unknown skill \`$name\`"; status=1; }
-  done < <(grep -hoE '(the `[a-z0-9:-]+` skill|[Ii]nvoke `[a-z0-9:-]+`)' "${files[@]}" | grep -oE '`[a-z0-9:-]+`' | tr -d '`' | grep -v ':$' | sort -u)
+  done < <(grep -hoE '(the `[a-z0-9:-]+` skill|[Ii]nvoke (the )?`[a-z0-9:-]+`|[Cc]all (the )?`[a-z0-9:-]+`)' "${files[@]}" | grep -oE '`[a-z0-9:-]+`' | tr -d '`' | grep -v ':$' | sort -u)
+  # A named pipeline stage in a description is an invocation, not ordinary prose.
+  description=$(sed -n '/^description:/p' "$dir/SKILL.md")
+  if [[ $description == *"sequences "* ]]; then
+    stages=${description#*sequences }
+    while IFS= read -r stage; do
+      [ -z "$stage" ] && continue
+      case "$EXTERNAL" in *" $stage "*) continue ;; esac
+      [ -d "$root/skills/$stage" ] || { echo "$skill: unknown description stage $stage"; status=1; }
+    done < <(printf '%s\n' "$stages" | grep -oE '`[a-z0-9-]+`' | tr -d '`')
+    # Bare retired skill names as comma-delimited stages (not words in prose).
+    for stage in pr gh-issues github resolve-pr-feedback; do
+      if printf '%s\n' "$stages" | grep -qE "(^|, )$stage(,| and |\.)"; then
+        [ -d "$root/skills/$stage" ] || { echo "$skill: unknown description stage $stage"; status=1; }
+      fi
+    done
+  fi
 done
 
 [ "$status" -eq 0 ] && echo "all skill references resolve"

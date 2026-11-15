@@ -61,7 +61,7 @@ Research findings are presented as 2-3 bullets per area — no essays.
 **Conversation flow:**
 1. Present research findings
 2. Ask one question at a time to fill gaps Claude couldn't research
-3. Run `devils-advocate` light mode on the go/no-go decision (a go/no-go call — always, no exceptions)
+3. Challenge the go/no-go decision: identify the assumption most likely to change the verdict and check the evidence for it.
 4. State verdict: **Go** / **Go with constraints** / **No-go**
 
 **`viability.md` template:**
@@ -270,9 +270,7 @@ Appended at the end of `user-flows.md` — a flat list of every screen with a on
 
 | Downstream skill | Input from discovery |
 |---|---|
-| `devils-advocate` | Light mode runs at Phase 0 go/no-go; also runs in Phases 1–2 if an assumption surfaces that, if wrong, would change the MVP scope or verdict |
 | `arch-review` | Constraints from `viability.md` + MVP scope from one-pager inform structure decisions |
-| `kmp-go-contract` | Job stories requiring backend calls → contract defined before implementation |
 | `dev` | Story groups from `job-stories.md` → OpenSpec changes → GitHub issues |
 
 **Full pipeline:**
@@ -281,12 +279,10 @@ discovery
   └── viability.md + one-pager.md + job-stories.md + user-flows.md
         └── dev (per story group)
               └── arch-review (how to structure it)
-                    └── kmp-go-contract (per backend call)
 ```
 
 ## Constraints
 
-- `devils-advocate` light mode runs at go/no-go — always, no exceptions
 - One-pager fields are 1-3 sentences maximum — never exceed this
 - Job stories format is default; traditional user stories only for projects with distinct roles and different permission flows
 - Mermaid diagrams only for branching/multi-entry flows — linear flows always use numbered text

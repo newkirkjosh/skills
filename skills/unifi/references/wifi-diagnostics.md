@@ -65,7 +65,7 @@ A ten-second freeze disappears in a 5-minute average. Run a per-second ping logg
 | The affected client | The radio link |
 | A public resolver | The internet connection |
 
-Run it as a user-level service with daily log files and a retention limit (the shell skill covers starting background work you can stop). Laptops with a stealth firewall don't answer ping, and Wi-Fi power saving produces single slow replies. Look for clusters of slow or missing replies at the reported times, not single spikes.
+Run it as a user-level service with daily log files and a retention limit. Laptops with a stealth firewall don't answer ping, and Wi-Fi power saving produces single slow replies. Look for clusters of slow or missing replies at the reported times, not single spikes.
 
 ## 8. A/B tests the user runs
 

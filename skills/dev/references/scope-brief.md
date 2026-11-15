@@ -61,6 +61,6 @@ A `narrow` change gets no opportunistic cleanup. Work you notice but were not as
 ## Using it
 
 - **Subagents**: paste the brief verbatim at the top of the prompt, above the job. A subagent that finds the brief and its job in conflict stops and reports the conflict instead of picking one.
-- **Reviewers** (`pr`'s review agents, `/code-review`): pass the brief as an OUT OF SCOPE / IN SCOPE block. Findings about excluded work are recorded and dismissed with the exclusion cited, not fixed.
+- **Reviewers** (review agents, `/code-review`): pass the brief as an OUT OF SCOPE / IN SCOPE block. Findings about excluded work are recorded and dismissed with the exclusion cited, not fixed.
 - **Never use the brief to suppress real defects.** Security, privacy, data-loss and correctness problems in the work that *was* done are always in scope, whatever the brief says.
 - **Resuming a change with no `scope-brief.md`**: reconstruct it from `proposal.md`, `specs/` and the conversation, tell the user you did, and save it.
