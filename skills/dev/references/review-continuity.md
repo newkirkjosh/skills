@@ -4,7 +4,7 @@ Read before triaging cross-model or hosted feedback in dev or ship. The coordina
 
 ## Keep decisions across rounds
 
-Keep `review-ledger.md` in durable local scratch space keyed by repository and branch or PR throughout review, including after a change folder is archived. Report its location at handoff so the next run can recover it. The working ledger is not a tracked change artifact. A useful durable decision may be included with the implementation or convention change it explains, subject to repository privacy rules; never add a ledger-only commit to record a completed review.
+Keep `review-ledger.md` in durable local scratch space keyed by repository and branch or PR throughout review, including after a change folder is archived. Use the persistent task-artifact location from the user's global instructions; absent one, use a directory under the repository's Git common directory, outside the tracked tree. Do not rely on a session scratchpad or temporary directory surviving a later run. Report its location at handoff so the next run can recover it. The working ledger is not a tracked change artifact. A useful durable decision may be included with the implementation or convention change it explains, subject to repository privacy rules; never add a ledger-only commit to record a completed review.
 
 For each finding record:
 
