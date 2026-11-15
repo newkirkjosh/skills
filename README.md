@@ -1,6 +1,6 @@
 # skills
 
-A personal agent-skill catalog: a development lifecycle (discovery → spec → issues → implement → evaluate → PR → merge), the reference skills it leans on, plus research and D&D tools.
+A personal agent-skill catalog: a development lifecycle (discovery → spec → issues → implement → evaluate → PR → merge), the reference skills it leans on, plus product research.
 
 Every skill follows the open [Agent Skills](https://agentskills.io) format.
 
@@ -26,11 +26,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `verify-change` | Checks a change in the running app: web in headless Playwright, KMP desktop off-screen, Android on a headless emulator by on-screen text. |
 | `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
 | `linear` | Reference for Linear through its MCP server. |
-| `unifi` | Reading and changing a UniFi network through its APIs. |
 | `product-research` | A source-linked consumer product comparison page. |
-| `session-log` | Raw TTRPG session notes into a session file and campaign updates. |
-| `session-prep` | Prep for the next TTRPG session. |
-| `srd-import` | One SRD 5.2.1 monster or spell as an Obsidian note. |
 
 ## Explicit invocation
 

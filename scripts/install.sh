@@ -28,26 +28,40 @@ if [ "$git_dir" != "$common_dir" ]; then
   exit 1
 fi
 
+src_phys="$(cd "$src" && pwd -P)"
+
 targets=("$@")
 [ ${#targets[@]} -gt 0 ] || targets=("$HOME/.claude/skills" "$HOME/.agents/skills")
+
+# Refuse collisions before linking or pruning anything in any target.
+for target in "${targets[@]}"; do
+  for dir in "$src"/*/; do
+    dest="$target/$(basename "$dir")"
+    if [ -L "$dest" ]; then
+      if [ "$(readlink -f "$dest" 2>/dev/null || true)" != "$(readlink -f "${dir%/}")" ]; then
+        echo "install.sh: foreign link collision: $dest" >&2
+        exit 1
+      fi
+    elif [ -e "$dest" ]; then
+      echo "install.sh: existing path collision: $dest" >&2
+      exit 1
+    fi
+  done
+done
 
 for target in "${targets[@]}"; do
   mkdir -p "$target"
 
   for link in "$target"/*; do
     [ -L "$link" ] || continue
-    case "$(readlink "$link")" in
-      "$src"/*) [ -e "$link" ] || { rm "$link"; echo "removed stale $(basename "$link")"; } ;;
+    case "$(readlink -f "$link" 2>/dev/null || true)" in
+      "$src_phys"/*) [ -e "$link" ] || { rm "$link"; echo "removed stale $(basename "$link")"; } ;;
     esac
   done
 
   for dir in "$src"/*/; do
     name="$(basename "$dir")"
     dest="$target/$name"
-    if [ -e "$dest" ] && [ ! -L "$dest" ]; then
-      echo "skip $name: $dest exists and is not a link" >&2
-      continue
-    fi
     ln -sfn "${dir%/}" "$dest"
   done
 

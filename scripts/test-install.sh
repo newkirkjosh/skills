@@ -38,6 +38,15 @@ if ! bash "$tmp/catalog-link/scripts/install.sh" "$tmp/target-link" >/dev/null 2
   echo "FAIL: install.sh refused the main checkout reached through a symlink"; fail=1
 fi
 
+# Retired links reached through an alias are still owned by the catalog.
+ln -s "$tmp/catalog-link/skills/retired" "$tmp/target/retired"
+ln -s "$tmp/other-missing" "$tmp/target/unrelated"
+bash "$repo/scripts/install.sh" "$tmp/target" >/dev/null
+if [ -L "$tmp/target/retired" ]; then
+  echo "FAIL: alias-spelled retired link survived"; fail=1
+fi
+[ -L "$tmp/target/unrelated" ] || { echo "FAIL: unrelated link pruned"; fail=1; }
+
 # Outside any git checkout: refuses, links nothing.
 mkdir -p "$tmp/plain/scripts" "$tmp/plain/skills/alpha"
 cp "$here/install.sh" "$tmp/plain/scripts/"
@@ -47,6 +56,27 @@ fi
 if [ -e "$tmp/target-plain/alpha" ]; then
   echo "FAIL: install.sh linked a skill outside a git checkout"; fail=1
 fi
+
+# Foreign links (including broken links) and real directories survive refusal.
+for kind in foreign broken directory; do
+  target="$tmp/collision-$kind"
+  mkdir -p "$target" "$tmp/other"
+  case "$kind" in
+    foreign) ln -s "$tmp/other" "$target/alpha" ;;
+    broken) ln -s "$tmp/missing" "$target/alpha" ;;
+    directory) mkdir "$target/alpha" ;;
+  esac
+  ln -s "$repo/skills/retired" "$target/retired"
+  if bash "$repo/scripts/install.sh" "$target" >/dev/null 2>&1; then
+    echo "FAIL: accepted $kind collision"; fail=1
+  fi
+  [ -L "$target/retired" ] || { echo "FAIL: pruned before preflight"; fail=1; }
+  if [ "$kind" = directory ]; then
+    [ -d "$target/alpha" ] && [ ! -L "$target/alpha" ] || { echo "FAIL: collision path changed ($kind)"; fail=1; }
+  else
+    [ "$(readlink "$target/alpha")" != "$repo/skills/alpha" ] || { echo "FAIL: collision path changed ($kind)"; fail=1; }
+  fi
+done
 
 [ "$fail" -eq 0 ] && echo "install: ok"
 exit "$fail"
