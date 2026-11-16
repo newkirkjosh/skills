@@ -12,7 +12,7 @@ CodeRabbit is extra coverage on the PR, not the cross-model review: it never rep
 
 ## Throttled: rate-limited or paused
 
-CodeRabbit is throttled when its comment says "Review limit reached" or "Review rate limited" (the waiter exits 5), or when it pauses reviews on a branch with many pushes (the check is `skipped`; the waiter exits 7 `PAUSED`).
+CodeRabbit is throttled when its comment says "Review limit reached" or "Review rate limited" (the waiter's JSON `state` is `RATE_LIMITED_EVIDENCE`, exit 5), or when it pauses reviews on a branch with many pushes (the check is `skipped`; `state` is `PAUSED`, exit 7). Exit 5 with any other `state` is a GitHub API read failure: unknown evidence, not throttling, so it never takes this exception.
 
 Report it once and continue without that review. Don't sleep, poll, retry after the cooldown, ask the user to wait, or block PR creation or merge on throttling alone; a cooldown is not a convergence pass either.
 
