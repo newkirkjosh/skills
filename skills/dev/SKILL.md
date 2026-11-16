@@ -84,7 +84,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Worktree, branch or PR exists, but no change folder | Reconstruct the change folder there from its commits (brief, proposal, stories, design note, tasks), commit it, then re-run detection |
 | Change folder exists, no `scope-brief.md` | Reconstruct the brief (see `references/scope-brief.md`), then re-run detection |
 | Change folder exists, no `issues.md` | Phase 1: Issue creation |
-| A branch of this change (in `wt list` until Phase 6 removes it) has a merged PR, whatever its issue's state (`Closes #<n>` closes a GitHub issue at merge) | Phase 5: `ship` verifies the merge and does its close-out (step 8 reads each write back, so a repeat is harmless), then Phase 6 |
+| A branch of this change (in `wt list` until Phase 6 removes it) has a merged PR, whatever its issue's state (`Closes #<n>` closes a GitHub issue at merge) | Phase 5 for that branch's own layer, not "the layer" above: pass `ship` only the issue its PR closes or links, so close-out never touches a layer still open. `ship` verifies the merge and does its close-out (step 8 reads each write back, so a repeat is harmless), then Phase 6 |
 | All sub-issues in `issues.md` are closed | Phase 6: Cleanup |
 | `issues.md` exists, and the layer's branch is missing or has no commit outside `openspec/changes/` (`git diff --stat origin/<default>...<branch> -- . ':!openspec/changes'` is empty: the change folder, contract and review record live there, so a spec edit elsewhere under `openspec/` still counts as implementation) | Phase 2: Implementation |
 | No `sprint-contract.md` section for the layer, with or without a PR (draft or ready) | Phase 3: Evaluation (start) |
@@ -153,7 +153,7 @@ Invoke `ship` and follow its Called by dev section, passing the Scope Brief, the
 
 Reached when `ship` returns `merged`, or from entry detection once every sub-issue is closed:
 1. Read `issues.md`, and check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`. Read only; `ship` wrote them.
-2. If any layer's issue (every `issues.md` line except the `parent:` or `epic:` one, which `ship` never closes) is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub): if the merged layer's own issue is closed, clean up its branch as in step 4 and re-run entry detection, which moves on to the next layer; otherwise surface the open identifiers and stop.
+2. If any layer's issue (every `issues.md` line except the `parent:` or `epic:` one, which `ship` never closes) is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub): if the merged layer's own issue is closed, clean up its branch as in step 4 and re-run entry detection, which moves on to the next layer. If step 4 kept that branch, stop and report it instead: detection would select the same merged branch again. Otherwise surface the open identifiers and stop.
 3. Confirm the change folder is under `openspec/changes/archive/` on the default branch (Phase 4 moved it in the PR). If it isn't, report it; there is no post-merge archive PR.
 4. Clean up from the main checkout, for every layer branch of this change (named as in Layer branches) still in `wt list` whose PR is merged (one an earlier run kept is cleaned up here): `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps a branch, report why instead of forcing it. For each removed branch, delete the remote branch only at its PR's merged head: read that from `gh pr view <branch> --json state,headRefOid` (`state` must be `MERGED`), read the remote with `git ls-remote origin refs/heads/<branch>`, and run `git push origin --delete <branch>` only when the two SHAs are equal. Empty `ls-remote` output means the merge already deleted it: nothing to do. A different SHA means the remote holds a commit that wasn't merged: keep the branch and report it. (Not `--force-with-lease`: guard hooks commonly block every force-push form.) Then re-check status for anything now behind.
 
@@ -168,7 +168,7 @@ Reached when `ship` returns `merged`, or from entry detection once every sub-iss
 - Subagents never commit, push or open PRs; the coordinator does, after checking each report.
 - Phase 4 is only reached when the layer's `sprint-contract.md` section exists and every item is checked.
 - Completion always links the PR to its sub-issue (`ship` step 4: Linear comment, or `Closes #<n>` on GitHub); never skip it.
-- Phase 6 cleanup is blocked while any sub-issue is open.
+- Final cleanup of the change is blocked while any sub-issue is open. Cleaning up one merged layer whose own issue is closed, then moving on to the next layer (Phase 6 step 2), is not.
 - **Real device state needs permission.** No subagent runs a step that changes real hardware or system state (writing to a device such as lighting, fans or a pump; a root-only command) unless the repository's `AGENTS.md` permits it for unattended runs. Otherwise ask the user before that step runs, and record the item in `sprint-contract.md` as a manual check, saying who ran it. Tell the evaluator in its prompt which such steps are permitted.
 
 ## Gotchas
