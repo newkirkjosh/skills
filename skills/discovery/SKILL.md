@@ -26,10 +26,12 @@ metadata:
 |---|---|
 | None | Phase 0: Viability |
 | `viability.md` exists, review not complete | Phase 0, step 3: resume the review |
-| `viability.md` exists, review complete | Phase 1: One-Pager |
-| `viability.md` + (`one-pager.md` OR `lean-canvas.md`) exist, and `job-stories.md` does not | Phase 2: Job Stories |
-| `viability.md` + (`one-pager.md` OR `lean-canvas.md`) + `job-stories.md` exist | Phase 3: User Flows |
-| All four artifacts exist | Summarize current state, ask what to revisit |
+| `viability.md` exists, review complete, no `one-pager.md` or `lean-canvas.md` | Phase 1: One-Pager |
+| `viability.md` (review complete) + (`one-pager.md` OR `lean-canvas.md`) exist, and `job-stories.md` does not | Phase 2: Job Stories |
+| `viability.md` (review complete) + (`one-pager.md` OR `lean-canvas.md`) + `job-stories.md` exist, user flows do not | Phase 3: User Flows |
+| All four artifacts exist, review complete | Summarize current state, ask what to revisit |
+
+The rows are exclusive: an incomplete review (including after `viability.md` changed) always matches the review row, whatever else exists.
 
 **"Summarize current state" format:** One-line verdict from `viability.md`, MVP scope from one-pager/lean-canvas, story count by group (Onboarding / Core Loop / Edge Cases), flat list of screens from the inventory.
 
