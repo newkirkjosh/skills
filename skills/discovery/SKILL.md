@@ -25,7 +25,8 @@ metadata:
 | Existing artifacts | Entry point |
 |---|---|
 | None | Phase 0: Viability |
-| `viability.md` exists | Phase 1: One-Pager |
+| `viability.md` exists, review not complete | Phase 0, step 3: resume the review |
+| `viability.md` exists, review complete | Phase 1: One-Pager |
 | `viability.md` + (`one-pager.md` OR `lean-canvas.md`) exist, and `job-stories.md` does not | Phase 2: Job Stories |
 | `viability.md` + (`one-pager.md` OR `lean-canvas.md`) + `job-stories.md` exist | Phase 3: User Flows |
 | All four artifacts exist | Summarize current state, ask what to revisit |
@@ -61,7 +62,9 @@ Research findings are presented as 2-3 bullets per area — no essays.
 **Conversation flow:**
 1. Present research findings
 2. Ask one question at a time to fill gaps Claude couldn't research
-3. Draft `viability.md` with a provisional verdict, then send it to `cross-review` in document mode (the other model family, read-only), asking it to challenge the go/no-go: the assumption most likely to change the verdict and the evidence for it. Revise the draft and review the new digest until it converges. The `## Cross-Model Review` section holds only the template's fixed pointer from the first review on, so the converged digest names the final file and nothing is edited after it. Record the review itself (reviewer, passes, what it challenged, how the verdict changed, the converged `sha256:` digest) in the document's review ledger (the review-continuity reference in `cross-review`) and in your summary to the user, never in `viability.md`. If the reviewer is unavailable, replace the pointer with `Unavailable: <reason>` (no digest covers the draft then) and say so to the user; don't substitute a self-review.
+3. Draft `viability.md` with a provisional verdict, then send it to `cross-review` in document mode (the other model family, read-only), asking it to challenge the go/no-go: the assumption most likely to change the verdict and the evidence for it. Revise the draft and review the new digest until it converges. The `## Cross-Model Review` section holds only the template's fixed pointer from the first review on, so the converged digest names the final file and nothing is edited after it. Record the review itself (reviewer, passes, what it challenged, how the verdict changed, the converged `sha256:` digest) in the document's review ledger (the review-continuity reference in `cross-review`) and in your summary to the user, never in `viability.md`. If the reviewer is unavailable, replace the pointer with `Unavailable: <reason>` (no digest covers the draft then) and say so to the user; don't substitute a self-review. If `cross-review` stops at its pass limit with blockers, record them in the ledger, keep the verdict provisional, give the user the blockers, and stop: the review is not complete.
+
+The review is **complete** only when the section reads `Unavailable: <reason>`, or the ledger holds a converged record whose `sha256:` digest matches `viability.md` as it is now. The pointer alone proves nothing, since the draft carries it before any review runs; the entry table checks completeness, not the file's existence.
 4. State verdict: **Go** / **Go with constraints** / **No-go**
 
 **`viability.md` template:**

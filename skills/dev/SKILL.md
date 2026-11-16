@@ -93,6 +93,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Draft PR open (from Phase 3 step 1), the layer's contract has unchecked items | Phase 3: Evaluation (fix pass, or a fresh evaluator once what was `INCOMPLETE` is available) |
 | Draft PR open (from Phase 3 step 1), the layer's contract all checked, no `Cross-review:` line | Phase 4: Cross-model review; `ship` marks the draft ready |
 | Ready PR open, the layer's contract has unchecked items (a `re-evaluation-needed` run that stopped) | Phase 5: resume `re-evaluation-needed` at its fresh evaluator |
+| PR open (draft or ready), the layer's contract all checked with its `Cross-review:` line, and the change folder not yet under `openspec/changes/archive/` or a commit after the evaluator PASS SHA without a `behavioral` record | Phase 4 steps 4–5 (archive move, classify), then Phase 5 |
 | PR open for the layer | Phase 5: Completion |
 | All sub-issues in `issues.md` are closed | Phase 6: Cleanup |
 
@@ -156,7 +157,7 @@ After `ship` returns verified merge evidence:
 1. Read `issues.md`, and check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`. Read only; `ship` wrote them.
 2. If any layer's issue (every `issues.md` line except the `parent:` or `epic:` one, which `ship` never closes) is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop.
 3. Confirm the change folder is under `openspec/changes/archive/` on the default branch (Phase 4 moved it in the PR). If it isn't, report it; there is no post-merge archive PR.
-4. Clean up from the main checkout: `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps the branch, report why instead of forcing it. Then `git push origin --delete <branch>`, and re-check status for anything now behind.
+4. Clean up from the main checkout, for every layer branch of this change still in `wt list` (earlier layers' runs stopped at step 2, so their branches are still there): `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps a branch, report why instead of forcing it. Then `git push origin --delete <branch>` for each removed branch, and re-check status for anything now behind.
 
 ## Constraints
 
