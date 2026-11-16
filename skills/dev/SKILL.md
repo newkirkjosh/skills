@@ -86,7 +86,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Change folder exists, no `issues.md` | Phase 1: Issue creation |
 | A branch of this change (in `wt list` until Phase 6 removes it) has a merged PR, whatever its issue's state (`Closes #<n>` closes a GitHub issue at merge) | Phase 5: `ship` verifies the merge and does its close-out (step 8 reads each write back, so a repeat is harmless), then Phase 6 |
 | All sub-issues in `issues.md` are closed | Phase 6: Cleanup |
-| `issues.md` exists, and the layer's branch is missing or has no commit outside `openspec/` (`git diff --stat origin/<default>...<branch> -- . ':!openspec'` is empty) | Phase 2: Implementation |
+| `issues.md` exists, and the layer's branch is missing or has no commit outside `openspec/changes/` (`git diff --stat origin/<default>...<branch> -- . ':!openspec/changes'` is empty: the change folder, contract and review record live there, so a spec edit elsewhere under `openspec/` still counts as implementation) | Phase 2: Implementation |
 | No `sprint-contract.md` section for the layer, with or without a PR (draft or ready) | Phase 3: Evaluation (start) |
 | No PR or a draft PR, the layer's contract has unchecked items | Phase 3: Evaluation (fix pass, or a fresh evaluator once what was `INCOMPLETE` is available) |
 | The layer's contract is all checked, no `Cross-review:` line, with or without a PR (draft or ready) | Phase 4: Cross-model review; `ship` marks a draft ready |
@@ -98,7 +98,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 ## Phases
 
 **Phase 0 — Scope Brief and OpenSpec setup**
-0. Create the worktree on the first layer's branch (Layer branches, above): `wt switch --create <branch> --no-cd` (no issue number is needed), and work from its path from here on.
+0. Create the worktree on the first layer's branch (Layer branches, above): `wt switch --create <branch> --no-cd` (no issue number is needed; if `wt list` already shows the branch, from an interrupted run, use its worktree instead), and work from its path from here on.
 1. Build the Scope Brief from the user's own words. Grep for every file the change will touch to fill **Also update**.
 2. Classify the **Path** (`references/scope-brief.md`). A `spike` leaves the lifecycle here: answer it and stop. Otherwise invoke the `spec-writer` skill, passing the brief: a `bounded` change gets a short design note, an `architectural` one a full `arch-review`, and the user approves an architectural design before Phase 1.
 3. Save the brief as `openspec/changes/<feat-name>/scope-brief.md`.
@@ -113,7 +113,7 @@ Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `
 If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `dev` again for `<feat-name>`", and stop.
 
 Otherwise, for the layer:
-1. For a later layer, the previous layer has merged: from the main checkout, `git fetch origin`, then `wt switch --create <the layer's branch> --base origin/<default> --no-cd`, and work from its path. It starts from the default branch, which already holds the archived change folder. For the first layer, commit the change folder in its worktree first (`docs(openspec): …`). On a resumed run, skip any step whose commit is already on the branch.
+1. For a later layer, the previous layer has merged: from the main checkout, `git fetch origin`, then `wt switch --create <the layer's branch> --base origin/<default> --no-cd`, and work from its path. If `wt list` already shows that branch (a run stopped right after creating it), use its worktree instead of creating it again. It starts from the default branch, which already holds the archived change folder. For the first layer, commit the change folder in its worktree first (`docs(openspec): …`). On a resumed run, skip any step whose commit is already on the branch.
 2. Spawn the **test author**, unless checks that fail for this exact bug already exist (a broken build, an existing test that fails today). Then skip it, name those checks in the implementer's prompt and in `sprint-contract.md`, and say why.
    Otherwise spawn it. Check its report: every story has a test or a named manual check, and every test fails for the stated reason. Commit the tests (`test(<scope>): …`).
 3. Spawn the **implementer** with the test author's report. Check its report: tests and build clean, every **Also update** item accounted for, nothing outside the brief. Commit (`feat(<scope>): …`). If it reports a wrong test, surface its evidence to the user and stop.
