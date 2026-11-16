@@ -83,7 +83,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Worktree, branch or PR exists, but no change folder | Reconstruct the change folder there from its commits (brief, proposal, stories, design note, tasks), commit it, then re-run detection |
 | Change folder exists, no `scope-brief.md` | Reconstruct the brief (see `references/scope-brief.md`), then re-run detection |
 | Change folder exists, no `issues.md` | Phase 1: Issue creation |
-| A branch of this change (in `wt list` until Phase 6 removes it) has a merged PR, whatever its issue's state (`Closes #<n>` closes a GitHub issue at merge) | Phase 5: `ship` verifies the merge and does its close-out (step 8 reads each write back, so a repeat is harmless), then Phase 6 |
+| A branch of this change (in `wt list` until Phase 6 removes it) has a merged PR, whatever its issue's state (`Closes #<n>` closes a GitHub issue at merge) | Phase 5 for that branch's own layer, not "the layer" above: pass `ship` only the issue its PR closes or links, so close-out never touches a layer still open. `ship` verifies the merge and does its close-out (step 8 reads each write back, so a repeat is harmless), then Phase 6 |
 | All sub-issues in `issues.md` are closed | Phase 6: Cleanup |
 | `issues.md` exists, no branch for the layer | Phase 2: Implementation |
 | Branch exists, no open PR, no `sprint-contract.md` section for the layer | Phase 3: Evaluation (start) |
