@@ -11,7 +11,7 @@ metadata:
 
 **Invoke for:**
 - Starting work on a story group — "set up spec-writer for X", "create change folder for X"
-- Archiving a completed feature — "archive feat-X" (only when explicitly instructed by `dev` after all sub-issues are confirmed closed)
+- Archiving a completed feature — "archive feat-X" (only when explicitly instructed by `dev`, as the last commit of the change's own PR, after its sprint contract and cross-model review are final)
 
 **Explicit use only** — always an explicit act: the user names this skill, or `dev` calls it.
 
@@ -21,7 +21,7 @@ metadata:
 |---|---|
 | Folder does not exist | Create folder and all artifacts |
 | Folder exists, artifacts complete | Output folder path, skip creation |
-| Archive instruction received | Move folder to `openspec/changes/archive/<feat-name>/` — do not check issue state (`dev` confirms first) |
+| Archive instruction received | Move folder to `openspec/changes/archive/<feat-name>/` — do not check issue state (the move ships in the change's PR, so merging archives it) |
 
 ## Principles
 
@@ -38,7 +38,7 @@ metadata:
 | `design.md` | `arch-review` skill output; for a `bounded` change, a short design note | Written verbatim from inline `arch-review` invocation output — do not reformat or summarize. A `bounded` change (the Path in the Scope Brief) skips `arch-review`: write the options as a short trade-off table, the choice, and what it sacrifices |
 | `tasks.md` | Derived from `design.md` + story scope | One section per layer, named and ordered as the project defines them (see Layers); omit empty layers |
 | `sprint-contract.md` | Derived from `specs/stories.md` | Written by `dev` from the evaluator's report at Phase 3 — do not create during Phase 0 |
-| `issues.md` | Written by tracker integration (`linear` or dev’s GitHub reference) | Do not create — leave absent at this stage |
+| `issues.md` | Written by tracker integration (`linear` or `github`) | Do not create — leave absent at this stage |
 
 **Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
 
@@ -50,7 +50,7 @@ metadata:
 5. Output the change folder path
 
 **Archive action:**
-Receives an explicit archive instruction from `dev` (never self-triggers). Moves `openspec/changes/<feat-name>/` → `openspec/changes/archive/<feat-name>/`. Does not verify issue state — `dev` handles that before invoking.
+Receives an explicit archive instruction from `dev` (never self-triggers). Moves `openspec/changes/<feat-name>/` → `openspec/changes/archive/<feat-name>/` with `git mv`, as the last commit before `dev` hands completion to `ship`. Does not verify issue state: the issues close when that PR merges. Later edits (a re-evaluation) go to the archived folder in place; it never moves back.
 
 **`proposal.md` template:**
 ```markdown
@@ -115,7 +115,7 @@ One section per project layer, in the project's order. Omit layer sections that 
 - [ ] [concrete testable assertion]
 ```
 
-Never write a `Cross-review:` line into the contract: `dev` adds it in Phase 4 from a real review result, and its presence is what tells `dev` the review ran.
+Never write a `Cross-review:` or `Evaluated at:` line into the contract: `dev` adds them from a real review outcome (Phase 4) and a real evaluator run (Phase 3). A line's presence says the step was recorded; its value says the outcome (`converged at`, `unavailable:` or `skipped`), and only `converged at` is review coverage.
 
 Layer names are taken from `tasks.md` headings. One section per layer present in `tasks.md`.
 
@@ -125,7 +125,7 @@ Layer names are taken from `tasks.md` headings. One section per layer present in
 - `design.md` is written verbatim from `arch-review` output — never reformatted or summarized (a `bounded` change's short design note is the exception)
 - Checkboxes in `tasks.md` and `specs/stories.md` stay unticked: they are the plan, and `sprint-contract.md` is the record of what was verified. Reviewers shouldn't flag unticked boxes
 - The archive move happens in the change's own PR, as its last commit (see `dev` Phase 4), so merging archives it
-- `issues.md` is written by tracker integration (`linear` or dev’s GitHub reference), not `spec-writer` — do not create it here
+- `issues.md` is written by tracker integration (`linear` or `github`), not `spec-writer` — do not create it here
 - Archive action is only invoked by `dev` — never self-triggered
 - Change name is kebab-cased with a type prefix: `feat-` (story groups), `fix-` (bugs), `chore-` (non-feature work)
 - Omit empty layer sections from `tasks.md`
@@ -145,7 +145,7 @@ specs/
   stories.md      ← 3 onboarding stories, each with acceptance criteria below
 design.md         ← arch-review output (verbatim): HabitRepository in the first layer, HabitListScreen in the second
 tasks.md          ← one section per project layer that has work (here two: :<layer-1>, :<layer-2>)
-issues.md         ← absent at creation time; written later by tracker integration (linear or dev’s GitHub reference)
+issues.md         ← absent at creation time; written later by tracker integration (linear or github)
 sprint-contract.md  ← absent at creation time; written at Phase 3 from the evaluator's report
 ```
 

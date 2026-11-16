@@ -18,13 +18,15 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 | Skill | Purpose |
 |---|---|
-| `dev` | Runs one change from approved stories to a merged PR and archived change folder. |
+| `dev` | Coordinates one change from approved stories to an evaluated, cross-reviewed, archived candidate, hands completion to `ship`, then cleans up. |
 | `team` | Runs `dev` for several approved changes at once, one terminal session each, in dependency order. |
 | `discovery` | Viability, one-pager, job stories and user flows for a new idea. |
 | `spec-writer` | Per-feature legacy custom change folders: proposal, stories, design, tasks. |
 | `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `verify-change` | Checks a change in the running app: web in headless Playwright, KMP desktop off-screen, Android on a headless emulator by on-screen text. |
-| `ship` | Finished branch to merged PR: one push per CI cycle, merge under the repo's policy, tracker update. |
+| `ship` | The one completion procedure, standalone or under `dev`: review, PR, hosted feedback, CI, merge under the repo's policy, tracker updates. |
+| `cross-review` | Read-only review by the other model family of a change or a draft document, and triage of hosted findings. |
+| `github` | GitHub issues, PRs, checks and threads with verified writes, plus the tested PR evidence helpers. |
 | `linear` | Reference for Linear through its MCP server. |
 | `product-research` | A source-linked consumer product comparison page. |
 
@@ -40,4 +42,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Make changes in a worktr
 
 ## License
 
-[MIT](LICENSE). Our `dev`, `team`, `ship` and `verify-change` workflows include ideas or content adapted from [fx/skills](https://github.com/fx/skills); their folders retain upstream attribution and license notices. These versions are maintained in this catalog.
+[MIT](LICENSE). Our `dev`, `team`, `ship`, `github` and `verify-change` skills include ideas or content adapted from [fx/skills](https://github.com/fx/skills); their folders retain upstream attribution and license notices. These versions are maintained in this catalog.

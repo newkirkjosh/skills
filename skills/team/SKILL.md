@@ -17,7 +17,7 @@ metadata:
 
 ## What it is
 
-`team` is a launcher and supervisor for `dev`, not a second lifecycle. Each change runs in its **own `dev` session**, in its own terminal tab and worktree, with its own context: `dev` already says a single session juggling several changes runs out of context. `team` writes no code, opens no PRs and merges nothing itself. What it adds is what an unattended batch needs: dependency order, at most three sessions at once, a standing instruction to run without pausing, and someone checking every session so a stall is noticed by `team`, not the user.
+`team` is a launcher and supervisor for `dev`, not a second lifecycle. Each change runs in its **own `dev` session**, in its own terminal tab and worktree, with its own context: `dev` already says a single session juggling several changes runs out of context. `team` writes no code, opens no PRs and merges nothing itself. What it adds is what an unattended batch needs: dependency order, at most three sessions at once, a standing instruction to run without pausing, and someone checking every session so a stall is noticed by `team`, not the user. Each session's completion runs `ship` under its own `dev` invocation, so it pushes and opens its PR without a confirmation prompt; its merge still follows the repository's Merge policy.
 
 ## Session operations
 

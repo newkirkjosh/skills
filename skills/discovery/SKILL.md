@@ -25,10 +25,13 @@ metadata:
 | Existing artifacts | Entry point |
 |---|---|
 | None | Phase 0: Viability |
-| `viability.md` exists | Phase 1: One-Pager |
-| `viability.md` + (`one-pager.md` OR `lean-canvas.md`) exist, and `job-stories.md` does not | Phase 2: Job Stories |
-| `viability.md` + (`one-pager.md` OR `lean-canvas.md`) + `job-stories.md` exist | Phase 3: User Flows |
-| All four artifacts exist | Summarize current state, ask what to revisit |
+| `viability.md` exists, review not complete | Phase 0, step 3: resume the review |
+| `viability.md` exists, review complete, no `one-pager.md` or `lean-canvas.md` | Phase 1: One-Pager |
+| `viability.md` (review complete) + (`one-pager.md` OR `lean-canvas.md`) exist, and `job-stories.md` does not | Phase 2: Job Stories |
+| `viability.md` (review complete) + (`one-pager.md` OR `lean-canvas.md`) + `job-stories.md` exist, user flows do not | Phase 3: User Flows |
+| All four artifacts exist, review complete | Summarize current state, ask what to revisit |
+
+The rows are exclusive: an incomplete review (including after `viability.md` changed) always matches the review row, whatever else exists.
 
 **"Summarize current state" format:** One-line verdict from `viability.md`, MVP scope from one-pager/lean-canvas, story count by group (Onboarding / Core Loop / Edge Cases), flat list of screens from the inventory.
 
@@ -61,8 +64,10 @@ Research findings are presented as 2-3 bullets per area — no essays.
 **Conversation flow:**
 1. Present research findings
 2. Ask one question at a time to fill gaps Claude couldn't research
-3. Challenge the go/no-go decision: identify the assumption most likely to change the verdict and check the evidence for it.
+3. Draft `viability.md` with a provisional verdict, then send it to `cross-review` in document mode (the other model family, read-only), asking it to challenge the go/no-go: the assumption most likely to change the verdict and the evidence for it. Revise the draft and review the new digest until it converges. The `## Cross-Model Review` section holds only the template's fixed pointer from the first review on, so the converged digest names the final file and nothing is edited after it. Record the review itself (reviewer, passes, what it challenged, how the verdict changed, the converged `sha256:` digest) in the document's review ledger (the review-continuity reference in `cross-review`) and in your summary to the user, never in `viability.md`. If the reviewer is unavailable, replace the pointer with `Unavailable: <reason>` (no digest covers the draft then) and say so to the user; don't substitute a self-review. If `cross-review` stops at its pass limit with blockers, record them in the ledger, keep the verdict provisional, give the user the blockers, and stop: the review is not complete. Resuming after that stop, ask the user to authorize a new round (record it in the ledger; `cross-review` then allows it) or to keep the verdict provisional, which leaves the review incomplete.
 4. State verdict: **Go** / **Go with constraints** / **No-go**
+
+The review is **complete** only when the section reads `Unavailable: <reason>` and the ledger has no open blocker from an earlier pass (an unavailable reviewer doesn't clear a known blocker: keep the verdict provisional and report both to the user), or the ledger holds a converged record whose `sha256:` digest matches `viability.md` as it is now and no later pass left an open blocker. The pointer alone proves nothing, since the draft carries it before any review runs; the entry table checks completeness, not the file's existence.
 
 **`viability.md` template:**
 ```markdown
@@ -90,8 +95,8 @@ Research findings are presented as 2-3 bullets per area — no essays.
 ## Constraints
 [Only present if verdict is "Go with constraints" — specific scope limits. Omit this section header entirely for "Go" or "No-go" verdicts.]
 
-## Devil's Advocate Summary
-[2-3 sentences: what the challenger found, how it affected the verdict]
+## Cross-Model Review
+Reviewed by the other model family with `cross-review` in document mode. The review record and the reviewed digest are in this document's review ledger, not here, so the digest covers this file as written.
 ```
 
 ---
@@ -322,9 +327,11 @@ A plain checklist captures most of the value; streaks and reminders are what mak
 - MVP is local-only: no accounts, no sync
 - Reminders deferred until the expect/actual notification wrapper is validated
 
-## Devil's Advocate Summary
-The challenger noted the crowded market; the verdict held because the first user is the builder. Build the tracker, use it for a month, then decide on sync.
+## Cross-Model Review
+Reviewed by the other model family with `cross-review` in document mode. The review record and the reviewed digest are in this document's review ledger, not here, so the digest covers this file as written.
 ```
+
+The review record for this example (in the ledger, and in the summary to the user) would read: the reviewer challenged the crowded market; the verdict held because the first user is the builder, and it gained the local-only constraint.
 
 ---
 
