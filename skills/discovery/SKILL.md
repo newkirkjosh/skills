@@ -61,7 +61,7 @@ Research findings are presented as 2-3 bullets per area — no essays.
 **Conversation flow:**
 1. Present research findings
 2. Ask one question at a time to fill gaps Claude couldn't research
-3. Challenge the go/no-go decision: identify the assumption most likely to change the verdict and check the evidence for it.
+3. Draft `viability.md` with a provisional verdict, then send it to `cross-review` in document mode (the other model family, read-only), asking it to challenge the go/no-go: the assumption most likely to change the verdict and the evidence for it. Revise the draft and review the new digest until it converges. If the reviewer is unavailable, say so in the summary section; don't substitute a self-review.
 4. State verdict: **Go** / **Go with constraints** / **No-go**
 
 **`viability.md` template:**
@@ -90,8 +90,8 @@ Research findings are presented as 2-3 bullets per area — no essays.
 ## Constraints
 [Only present if verdict is "Go with constraints" — specific scope limits. Omit this section header entirely for "Go" or "No-go" verdicts.]
 
-## Devil's Advocate Summary
-[2-3 sentences: what the challenger found, how it affected the verdict]
+## Cross-Model Review
+[2-3 sentences: what the reviewer challenged, how the verdict changed, and the reviewed digest]
 ```
 
 ---
@@ -322,8 +322,8 @@ A plain checklist captures most of the value; streaks and reminders are what mak
 - MVP is local-only: no accounts, no sync
 - Reminders deferred until the expect/actual notification wrapper is validated
 
-## Devil's Advocate Summary
-The challenger noted the crowded market; the verdict held because the first user is the builder. Build the tracker, use it for a month, then decide on sync.
+## Cross-Model Review
+The reviewer challenged the crowded market; the verdict held because the first user is the builder, and it gained the local-only constraint. Build the tracker, use it for a month, then decide on sync.
 ```
 
 ---

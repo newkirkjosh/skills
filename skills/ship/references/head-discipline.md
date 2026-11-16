@@ -15,7 +15,7 @@ The candidate head is the commit you intend to merge. Everything that can still 
 3. Run any verification that doesn't need a PR (the app, the test plan).
 4. Push once. Record that SHA as the candidate head.
 5. Open or update the PR. Hosted reviewers (CodeRabbit and the like) start on the push.
-6. When they report, settle every finding in one round using `dev`'s pull-request reference. A fix push makes a new candidate head: go back to step 5 for the delta and what it affects (§ Evidence is SHA-scoped).
+6. When they report, settle every finding in one round using the pull-request reference in `github`. A fix push makes a new candidate head: go back to step 5 for the delta and what it affects (§ Evidence is SHA-scoped).
 7. Once hosted review has nothing blocking, wait for CI on the current candidate head.
 8. Check the merge gates against that same SHA, then merge with `--match-head-commit <sha>`.
 
@@ -47,4 +47,4 @@ Take everything already reported (local reviewers, hosted reviewers, verificatio
 2. Wait on hosted reviewers before CI: their findings decide whether the head survives at all.
 3. Wait on CI last, once the head has no unresolved blocking finding.
 
-Read dev’s sibling pr-evidence.md in its references directory for the single evidence contract and status/wait helper paths. Resolve ship’s real skill directory, then `../dev`; paths never depend on the project working directory. An absent reviewer report is unknown. Only positive repository/service authority can establish an optional reviewer as not configured; record that authority.
+Read `pr-evidence.md` in the `github` skill's references directory for the single evidence contract and status/wait helper paths. Resolve ship’s real skill directory, then `../github`; paths never depend on the project working directory. An absent reviewer report is unknown. Only positive repository/service authority can establish an optional reviewer as not configured; record that authority.

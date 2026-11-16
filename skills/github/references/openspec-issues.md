@@ -1,6 +1,6 @@
-# GitHub Issues
+# OpenSpec change → GitHub issues
 
-Use the installed `gh` help and API documentation to confirm commands and fields. Pass multiline bodies through files and read back writes to verify the result.
+The workflow `dev` runs in its Phase 1 when GitHub is the tracker. Read the main `SKILL.md` first for its rules: docs before commands, bodies through files, and every write read back.
 
 **Entry detection:**
 - `issues.md` exists in the change folder → issues already created; output existing numbers and stop

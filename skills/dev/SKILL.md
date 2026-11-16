@@ -1,6 +1,6 @@
 ---
 name: dev
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, spec-writer, the tracker, test author and implementer subagents, an isolated evaluator, a cross-model review (Codex or Claude, whichever did not write it), pull-request creation, hosted review and archive."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Orchestrates one change from approved job stories to a merged PR and archived change folder: detects existing state and enters at the right phase, then sequences scope brief, spec-writer, the tracker, test author and implementer subagents, an isolated evaluator, a cross-model review (Codex or Claude, whichever did not write it) and the archive move, then hands completion (pull request, hosted review, merge and tracker updates) to ship and cleans up after the merge."
 license: MIT (Scope Brief adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -16,15 +16,15 @@ metadata:
 - "what's next for `<feat-name>`"
 - "open a PR for `<feat-name>`"
 
-All three behave identically: entry detection runs first and decides the phase, whatever the wording. "Open a PR for feat-X" does not skip to Phase 4; it may enter Phase 3 if `sprint-contract.md` is absent or has unchecked items.
+All three behave identically: entry detection runs first and decides the phase, whatever the wording. "Open a PR for feat-X" does not skip to Phase 5; it may enter Phase 3 if `sprint-contract.md` is absent or has unchecked items.
 
 **Explicit use only.** Never load this skill for a request that doesn't name it: a status question, a branch sync or a PR tweak on a change is handled directly.
 
-**The workflow ends at its handoff.** Its rules apply to the invocation that started it and stop at the merge-ready report (or the merge, under a Merge policy), or when it stops for the user. A later request in the same session doesn't inherit its orchestration unless the user invokes it again.
+**The workflow ends at its handoff.** Its rules apply to the invocation that started it and stop at the report after `ship` returns (merged and cleaned up, merge-ready, or blocked), or when it stops for the user. A later request in the same session doesn't inherit its orchestration unless the user invokes it again.
 
 ## Roles
 
-You are the **coordinator**. You own the Scope Brief, branches, commits, `sprint-contract.md`, the PR and every handoff to the user. You delegate exactly three jobs, each to its own general-purpose subagent that reads a role file from this skill's `references/` directory:
+You are the **coordinator**. You own the Scope Brief, branches, commits, `sprint-contract.md`, the tracker mapping, the archive move and every handoff to the user. Completion (the PR, hosted review, the merge and every tracker write after the PR exists) runs through `ship` in this same session (Phase 5). You delegate exactly three jobs, each to its own general-purpose subagent that reads a role file from this skill's `references/` directory:
 
 | Role | File | Writes | Tier |
 |---|---|---|---|
@@ -65,7 +65,7 @@ Read `references/scope-brief.md` before Phase 0. It defines the brief, its field
 **One change, one worktree, for its whole life,** managed with worktrunk (`wt`; current commands from `wt <command> --help` and https://worktrunk.dev/llms.txt). `wt switch --create <branch> --no-cd` creates it where the user's worktrunk config puts worktrees, before Phase 0 writes anything; find its path with `wt list --format=json | jq -r '.items[] | select(.branch=="<branch>") | .worktree.path'`. Every phase, subagent and command for that change runs from that path. The main checkout stays on the default branch and clean, so other changes can start beside it.
 
 - **Parallel work** is one coordinator session per change, each started in its own worktree. A single session juggling several changes runs out of context.
-- **Status** comes from `wt list --format=json` (per item: `branch`, `worktree.path`, `worktree.changes`, `default_branch.ahead/behind`, `head.committed_at`) plus the PR state from `gh pr view`. Check it at the start of every invocation and after every merge: a merged PR, run the Phase 6 cleanup; an open PR behind the default branch, merge it in and push; no PR and no commit for two weeks, report it as stale and never delete it; uncommitted changes, leave it alone.
+- **Status** comes from `wt list --format=json` (per item: `branch`, `worktree.path`, `worktree.changes`, `default_branch.ahead/behind`, `head.committed_at`) plus the PR state from `gh pr view`. Check it at the start of every invocation and after every merge: a merged PR, run entry detection for that change (`ship` closes out the tracker, then Phase 6 cleans up); an open PR behind the default branch, merge it in and push; no PR and no commit for two weeks, report it as stale and never delete it; uncommitted changes, leave it alone.
 - **Shared resources** that only one run can use at a time (an emulator, a device, a fixed local port) are taken with `flock`, on a lock file in the repository's common git dir, which every worktree shares: `mkdir -p "$(git rev-parse --path-format=absolute --git-common-dir)/locks"`, then `flock "$(git rev-parse --path-format=absolute --git-common-dir)/locks/<resource>" <command>`. Hold it for the whole check that needs the resource, and pass the same rule to evaluators.
 - **Builds** in separate worktrees have separate outputs and can run side by side; the lock is only for what they truly share.
 
@@ -83,14 +83,15 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Worktree, branch or PR exists, but no change folder | Reconstruct the change folder there from its commits (brief, proposal, stories, design note, tasks), commit it, then re-run detection |
 | Change folder exists, no `scope-brief.md` | Reconstruct the brief (see `references/scope-brief.md`), then re-run detection |
 | Change folder exists, no `issues.md` | Phase 1: Issue creation |
+| The layer's branch (in `wt list` until Phase 6 removes it) has a merged PR, but its issue is still open | Phase 5: `ship` verifies the merge and closes out the tracker, then Phase 6 |
 | `issues.md` exists, no branch for the layer | Phase 2: Implementation |
 | Branch exists, no open PR, no `sprint-contract.md` section for the layer | Phase 3: Evaluation (start) |
 | Branch exists, no open PR, the layer's contract has unchecked items | Phase 3: Evaluation (fix pass) |
 | Branch exists, no open PR, the layer's contract is all checked, no `Cross-review:` line | Phase 4: Cross-model review |
-| Branch exists, no open PR, the layer's contract is all checked and has its `Cross-review:` line | Phase 4: PR creation |
-| Draft PR open (from Phase 3 step 1), the layer's contract all checked, no `Cross-review:` line | Phase 4: Cross-model review, then mark the draft ready |
-| PR open for the layer | Phase 5: Review |
-| All sub-issues in `issues.md` are closed | Phase 6: Archive |
+| Branch exists, no open PR, the layer's contract is all checked and has its `Cross-review:` line | Phase 4: Archive move if not yet made, then Phase 5 |
+| Draft PR open (from Phase 3 step 1), the layer's contract all checked, no `Cross-review:` line | Phase 4: Cross-model review; `ship` marks the draft ready |
+| PR open for the layer | Phase 5: Completion |
+| All sub-issues in `issues.md` are closed | Phase 6: Cleanup |
 
 ## Phases
 
@@ -104,7 +105,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 **Phase 1 — Issue creation**
 Invoke `linear` (default tracker) for its OpenSpec-to-issues workflow. Output: `issues.md` with the parent identifier and one sub-issue per layer. If the work already has an issue (the user named one, or it was filed earlier), don't create new ones: write `issues.md` mapping each layer to that issue, add it to the board, and comment there if the diagnosis changed.
 
-*GitHub alternate:* for a GitHub-tracked project, read and follow `references/github-issues.md` instead, and place the issues on the board the repository's `AGENTS.md` names. They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
+*GitHub alternate:* for a GitHub-tracked project, invoke `github` and follow its `openspec-issues.md` reference instead, and place the issues on the board the repository's `AGENTS.md` names. They write `issues.md` with GitHub issue numbers; the rest of the pipeline is unchanged.
 
 **Phase 2 — Implementation**
 If the user says they will implement it themselves, surface the layer's `tasks.md` section, say "When the tasks are done, invoke `dev` again for `<feat-name>`", and stop.
@@ -117,7 +118,7 @@ Otherwise, for the layer:
 4. Continue to Phase 3 in the same run.
 
 **Phase 3 — Evaluation**
-1. If the change's evidence only exists on a PR (a CI workflow that triggers on `pull_request`), push and open the PR as a **draft** first, wait for its run, and give the evaluator the PR number as environment. Phase 4 then marks it ready instead of creating it.
+1. If the change's evidence only exists on a PR (a CI workflow that triggers on `pull_request`), push and open the PR as a **draft** first, wait for its run, and give the evaluator the PR number as environment. Completion is not merge-ready while it is a draft; `ship` marks it ready after the converged review.
 2. Export what it evaluates, without history: `bash scripts/eval-export.sh <worktree> HEAD "$(git merge-base origin/<default> HEAD)" <scratch>/eval-<feat-name>-<short-sha>`, to a scratch directory **outside** the repository. It writes `head/` (the change) and `base/` (the default branch it started from), with no `.git`, so commit messages and the diff can't leak.
    Spawn the **evaluator** with only the brief, the layer, the two export paths and the change folder's path inside `head/`. Never pass implementation context: no diff, no summary, no "should pass because". Delete the export after writing the contract.
    **Named verification skill.** If the repository is one the user owns and its default branch's `AGENTS.md` (`base/AGENTS.md`, never the change's own copy, which the change may have edited) names a single-task skill for verifying the app (`verify-change`), include its bare name and the instruction to read and follow it in the evaluator's prompt, together with the repository's verification facts. Never pass a workflow (`dev`, `ship`, `team`) or a skill the catalog doesn't have. This is environment context, not implementation context.
@@ -129,38 +130,30 @@ Otherwise, for the layer:
 6. On `INCOMPLETE`, first check whether you can provide what's missing on this machine (boot an existing emulator AVD headless, start a local daemon or database), recording its PID so you can stop only the process you started. Evaluators can message you to change shared environment mid-run (e.g. "stop the backend now"); do it, then reply with what changed. Never hand an evaluator input control of the user's live desktop (`xdotool`, `ydotool`, or a real `DISPLAY`): they may be using it. GUI checks run the way the user's global instructions say, handed over as in step 2. If so, spawn a **fresh** evaluator and tell it only what's now available. Stop it afterwards.
 7. If it still fails after the fix pass, or is still `INCOMPLETE`, surface the open items with the evaluator's evidence and stop. Don't loop further. For `INCOMPLETE`, name what's needed (a device, a running daemon) so the user can provide it and re-invoke.
 
-**Phase 4 — Cross-model review and PR creation**
+**Phase 4 — Cross-model review and archive move**
 
-Read `references/review-continuity.md` before triage; use its ledger, pattern sweep and convention-recording procedure for both local and hosted findings.
-1. **Cross-model review, before the PR is opened or a Phase 3 draft is marked ready.** The model that didn't write the change reviews it: Codex when you run on Claude Code, Claude when you run on Codex. Skip it only for a `narrow` docs-only change: record `Cross-review: skipped (narrow docs-only)` as in step 4, tell the user, and go on to the PR. Write a prompt file in scratch space: the Scope Brief verbatim as OUT OF SCOPE / IN SCOPE, then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` the change doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Run it as a long command (backgrounded on Claude Code; the native long-command mechanism on Codex), logging to scratch space:
-   `bash <skill-dir>/scripts/cross-review.sh <codex|claude> <worktree> origin/<default> <prompt-file> > <scratch>/cross-review-<n>.log 2>&1`
-   Its last line is `STATUS=COMPLETED` or `STATUS=ERROR`; a log without one is still running. Never poll it, and never set a timeout on the review command (follow the host adapter’s wait rules): a real review takes many minutes and prints nothing until it finishes.
-2. Triage each finding against the brief. In-scope blocking findings go to a fresh implementer as a fix list, all of them in one pass; out-of-scope ones are recorded with the exclusion that covers them. Commit each fix pass (`fix(<scope>): …`) before the next review: the script reviews committed changes only, so an uncommitted fix is never reviewed and the next pass would converge on the old code. A fix that changes behaviour re-runs Phase 3 with a fresh evaluator before the next pass.
-3. **Converge**: embed the review ledger text in each rerun's prompt file, including open findings and evidence for prior dispositions; a scratch-file path alone is not accessible to every reviewer. Ask the reviewer to verify fixes, examine new or affected code, and reopen a settled finding only with new evidence or a changed premise. Stop successfully only when triage of the pass and the ledger leaves no unresolved blocker; a repeated settled finding without new evidence is recorded but does not block convergence; a quiet pass does not erase earlier findings. After three passes, surface remaining blockers and stop for the user. On `STATUS=ERROR` or a reviewer that can't run, fix the setup error if it is one (the script names it); otherwise record the review as unavailable, tell the user, and continue only to the PR handoff; an unavailable required review blocks autonomous merge.
-4. Record it in the layer's `sprint-contract.md` section: `Cross-review: <reviewer>, <passes> pass(es), converged at <short-sha>` (or `Cross-review: unavailable: <reason>`, or the skip from step 1), and save the final pass's output as `cross-review.md` in the change folder, to post on the PR; commit both with the change folder.
+Run the review with the `cross-review` skill in change mode, before the PR is opened or a Phase 3 draft is marked ready, keeping its review ledger for this branch through completion.
+1. **Review.** Skip it only for a `narrow` docs-only change: record `Cross-review: skipped (narrow docs-only)` as in step 3, tell the user, and go on. Otherwise give `cross-review` the Scope Brief verbatim as the scope, the worktree and `origin/<default>`, and the ledger.
+2. **Triage and fix.** In-scope blocking findings go to a fresh implementer as a fix list, all of them in one pass; out-of-scope ones are recorded with the exclusion that covers them. Commit each fix pass (`fix(<scope>): …`) before the next review, and record its `behavioral: yes|no` classification in the ledger. A behavior-changing fix re-runs Phase 3 with a fresh evaluator before the next pass, which makes a new evaluator PASS SHA. Converge as `cross-review` describes (at most three passes, then surface the remaining blockers and stop for the user). An unavailable reviewer is recorded as unavailable; continue only to the PR handoff, since an unavailable required review blocks autonomous merge.
+3. **Record** it in the layer's `sprint-contract.md` section: `Cross-review: <reviewer>, <passes> pass(es), converged at <short-sha>` (or `Cross-review: unavailable: <reason>`, or the skip from step 1), and save the final pass's output as `cross-review.md` in the change folder, to post on the PR; commit both with the change folder.
+4. **Archive move.** Once `sprint-contract.md` is final and review is done, make the archive move the candidate head's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
+5. **Classify** every commit after the evaluator PASS SHA that has no record yet (the contract, `cross-review.md` and archive commits included) as `behavioral: yes|no` in the ledger, by its actual effect. Then go to Phase 5.
 
-Once `sprint-contract.md` is final and review is done, make the archive move the PR's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
-Open the PR using `references/pull-requests.md`, carrying the Scope Brief into its body and review prompts. After the PR exists, link it to the layer's sub-issue from `issues.md`: on Linear, comment the PR URL on the sub-issue and move it to the team's review state (the `linear` skill); on GitHub, the PR body's `Closes #<n>` links it, and the board item moves as the repository's `AGENTS.md` says. Output: PR URL.
+**Phase 5 — Completion**
 
-**Phase 5 — Review**
-Read `references/pr-evidence.md` for helper invocation and merge evidence semantics, and `references/pull-requests.md` for hosted review; pass each review agent the brief as an OUT OF SCOPE / IN SCOPE block. Triage findings against the brief, fix what is in scope, and surface the consolidated result before merge. Use that reference to settle hosted feedback. Push and wait in the order of `ship`'s head-discipline reference (`head-discipline.md`): every fix push re-enters review, and CI is waited on last.
+Invoke `ship` and follow its Called by dev section, passing the Scope Brief, the layer, the evaluator PASS SHA, the `Cross-review:` result, the ledger location and `issues.md`. `ship` publishes the PR, links it to the layer's issue, settles hosted review, waits for CI, merges only under the Merge policy, and does the tracker writes from here on; `dev` writes no tracker state after the PR exists. Act on what it returns:
 
-**Merging** is the user's call unless the project's `AGENTS.md` has a **Merge policy** that grants it. With that grant, merge yourself only when every gate holds on the PR's current head, re-checked right before merging using a fresh `pr-status.sh` exit-0 report for that SHA and every caller gate in `dev`'s `references/pr-evidence.md` (including a policy file verified against repository authority, all required check matches successful, and each configured reviewer completed on that SHA):
+- `merged`: go to Phase 6.
+- `merge-ready` or `blocked`: report it to the user, with the reason, and stop.
+- `re-evaluation-needed`: a hosted or CI fix changes behavior. Send the fix list to a fresh implementer, commit, then run a **fresh** evaluator as in Phase 3 and update the contract in place at `openspec/changes/archive/<feat-name>/sprint-contract.md` (the folder never moves back). Review the delta with `cross-review`, classify the new commits, and invoke `ship` again, which pushes once. If that evaluator fails or is `INCOMPLETE`, Phase 3 steps 5–7 apply as written: one fix pass, then surface the open items and stop. When the fresh evaluation needs evidence only a PR produces, push the candidate yourself to get it (keeping a draft a draft) and report completion as not merge-ready; additional evidence-driven pushes stay within the same fix pass. Invoke `ship` again once evaluation and review cover the resulting head.
 
-1. CI green on the head commit.
-2. The layer's `sprint-contract.md` section is all checked from an evaluator `VERDICT: PASS`, and its `Cross-review:` line says converged (at the head, or re-run on every commit pushed after it, the way Phase 4 step 3 re-runs), or skipped for a `narrow` docs-only change. An unavailable required cross-review blocks merge and requires a user handoff.
-3. Every review finding is fixed or dismissed with a reason in the PR comment; none is open or blocking.
-4. Zero unresolved review threads.
-5. Nothing the policy excludes (it may exclude, for example, migrations, auth or release PRs).
+**Phase 6 — Cleanup**
 
-Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, then move the tracker issues to done and run Phase 6. Any gate failing hands the merge back to the user with the reason. Without a policy, stop at the merge-ready report.
-
-**Phase 6 — Archive**
-1. Read `issues.md`.
-2. Check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`.
-3. If any issue is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop. Don't archive.
-4. If all are closed, confirm the change folder is under `openspec/changes/archive/` (Phase 4 moved it in the PR). Only a change merged before that rule needs a separate archive commit; batch those into one chore PR.
-5. Clean up from the main checkout: `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps the branch, report why instead of forcing it. Then `git push origin --delete <branch>`, and re-check status for anything now behind.
+After `ship` returns verified merge evidence:
+1. Read `issues.md`, and check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`. Read only; `ship` wrote them.
+2. If any issue is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop.
+3. Confirm the change folder is under `openspec/changes/archive/` on the default branch (Phase 4 moved it in the PR). If it isn't, report it; there is no post-merge archive PR.
+4. Clean up from the main checkout: `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps the branch, report why instead of forcing it. Then `git push origin --delete <branch>`, and re-check status for anything now behind.
 
 ## Constraints
 
@@ -172,13 +165,11 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 - Test author, implementer and evaluator are separate spawns with no shared context. The evaluator never sees implementation narrative, and a fix pass always ends with a **fresh** evaluator.
 - Subagents never commit, push or open PRs; the coordinator does, after checking each report.
 - Phase 4 is only reached when the layer's `sprint-contract.md` section exists and every item is checked.
-- Phase 4 always links the PR to its sub-issue (Linear comment, or `Closes #<n>` on GitHub); never skip it.
-- Phase 6 archive is blocked while any sub-issue is open; no partial archive.
+- Completion always links the PR to its sub-issue (`ship` step 4: Linear comment, or `Closes #<n>` on GitHub); never skip it.
+- Phase 6 cleanup is blocked while any sub-issue is open.
 - **Real device state needs permission.** No subagent runs a step that changes real hardware or system state (writing to a device such as lighting, fans or a pump; a root-only command) unless the repository's `AGENTS.md` permits it for unattended runs. Otherwise ask the user before that step runs, and record the item in `sprint-contract.md` as a manual check, saying who ran it. Tell the evaluator in its prompt which such steps are permitted.
 
 ## Gotchas
-
-- A quiet review pass does not close earlier findings. Carry their dispositions and evidence forward using the review-continuity reference.
 
 - **The sprint contract cites runs, not memories.** Write it only from the evaluator's report, with the run or job ID behind each checked item. Evidence you supplied yourself (a rerun you triggered, a CI run ID) is labelled as yours. Timings from a different run are not evidence.
 - **After any merge to `main`, merge `main` into every in-flight branch and push**, so each PR's CI tests what will actually merge. Land CI/workflow changes first; branches created before the workflow existed get no checks until then.
@@ -186,8 +177,7 @@ Squash-merge with `--match-head-commit <sha>` so a later push can't slip in, the
 - **Signing or push failures stop the run.** If a commit or push fails with a signing-agent or SSH-agent error, nothing after it may run: chain with `&&`, report, and ask the user to unlock. Never fall back to unsigned commits.
 - **An implementer that didn't show red first** (tests failing before the fix) leaves you without red-to-green evidence. Ask the evaluator to prove it: run the new tests against the pre-fix code in a scratch worktree.
 
-- **Codex reads `AGENTS.md` only**, not `CLAUDE.md` or `REVIEW.md`. In a repo with a `REVIEW.md`, the cross-review applies its rules only when `AGENTS.md` has a `## Code Review Rules` section pointing at it. If Codex flags something `REVIEW.md` explicitly allows, check whether the pointer exists and whether the rule actually covers the finding; do not assume either a missing pointer or a false premise. Use the review-continuity procedure to record the evidence and any warranted clarification.
-- **Never call `codex review --base`** for the cross-review: it refuses a prompt alongside `--base`, so it can't carry the brief and reviews work the change deliberately left out. `cross-review.sh` passes the range inside the prompt instead.
+- **A commit after the evaluator's PASS SHA without a `behavioral` record leaves the merge gate unmet.** Record the contract, review-record and archive commits too, not only fixes.
 
 - A subagent's "tests pass" is a claim. Check its report names the command and shows the result; if it doesn't, the evaluator will find out the hard way.
 - Evaluators that read `design.md` or code before writing the contract grade the code instead of the stories. The role file forbids it; if a report's contract items mirror implementation names rather than story language, rerun with a fresh evaluator.
@@ -206,4 +196,6 @@ Phase 2 (`:<layer-1>`): branch `feat/onboarding-empty-state`; test author writes
 
 Phase 3: a fresh evaluator derives four contract items from `specs/stories.md`, runs the tests, reports `VERDICT: PASS`. `sprint-contract.md` gets a `:<layer-1>` section, all checked.
 
-Phase 4: open the PR and the URL is commented on APP-13. The next invocation picks up `:<layer-2>`.
+Phase 4: `cross-review` converges in one pass; the contract records it, and the archive move is the last commit.
+
+Phase 5: `ship` opens the PR and comments its URL on APP-13; the merge is the user's call, so it returns `merge-ready` and `dev` reports it. The next invocation picks up `:<layer-2>`.
