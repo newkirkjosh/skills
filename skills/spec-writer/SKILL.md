@@ -115,7 +115,7 @@ One section per project layer, in the project's order. Omit layer sections that 
 - [ ] [concrete testable assertion]
 ```
 
-Never write a `Cross-review:` or `Evaluated at:` line into the contract: `dev` adds them from a real review result (Phase 4) and a real evaluator run (Phase 3), and their presence is what tells `dev` those ran.
+Never write a `Cross-review:` or `Evaluated at:` line into the contract: `dev` adds them from a real review outcome (Phase 4) and a real evaluator run (Phase 3). A line's presence says the step was recorded; its value says the outcome (`converged at`, `unavailable:` or `skipped`), and only `converged at` is review coverage.
 
 Layer names are taken from `tasks.md` headings. One section per layer present in `tasks.md`.
 
