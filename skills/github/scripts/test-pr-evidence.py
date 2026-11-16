@@ -167,6 +167,10 @@ with patch.object(evidence,'gh',side_effect=dates('2025-01-01T00:00:00Z')):
     assert evidence.current_rate_limit(d,'12','owner/repo')
 with patch.object(evidence,'gh',side_effect=dates('2025-01-01T00:00:00Z','2025-01-03T00:00:00Z')):
     assert not evidence.current_rate_limit(d,'12','owner/repo')
+# The free-plan quota notice says "Review limit reached", not "rate limit".
+d['issue_comments'][0]['body']='> [!WARNING]\n> ## Review limit reached\n> Next included review available in 34 minutes.'
+with patch.object(evidence,'gh',side_effect=dates('2025-01-01T00:00:00Z')):
+    assert evidence.current_rate_limit(d,'12','owner/repo')
 print('Multi-cycle, coverage collision, rate-limit freshness and pagination tests passed')
 
 # Objections survive pushes; older approvals alone never satisfy head coverage.
