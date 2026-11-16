@@ -44,7 +44,7 @@ Read `references/review-continuity.md` first: its ledger, related-instance searc
 
 Return exactly these five fields, plus the findings:
 
-- **Reviewed:** the SHA (change, hosted triage) or `sha256:<digest>` (document).
+- **Reviewed:** the SHA (change, hosted triage) or `sha256:<digest>` (document), plus for a change the merge base from the script's `merge_base=` (`ship` reuses a review only on the same base).
 - **Coverage:** reviewer, mode, passes run, and what was reviewed; or `unavailable: <reason>`.
 - **Dispositions:** each finding's ID and disposition, with evidence.
 - **Unresolved blockers:** open in-scope blockers, or none.

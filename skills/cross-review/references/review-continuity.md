@@ -6,6 +6,8 @@ Read before triaging cross-model or hosted feedback in any mode. The coordinator
 
 Keep `review-ledger.md` in durable local storage keyed by repository and branch, the same key before and after the PR exists (for a document review, by the document's path) throughout review, including after a change folder is archived. For a change, use the persistent task-artifact location from the user's global instructions; absent one, use a directory under the repository's Git common directory, outside the tracked tree. For a document inside a repository, use that same out-of-tree location, keyed by the document's path: a ledger in the worktree would be an untracked file that blocks the next change review. For a document outside any repository, keep it beside the document as `.<document-name>.review-ledger.md`. Do not rely on a session scratchpad or temporary directory surviving a later run. Report its location at handoff so the next run can recover it. The working ledger is not a tracked change artifact. A useful durable decision may be included with the implementation or convention change it explains, subject to repository privacy rules; never add a ledger-only commit to record a completed review.
 
+For each change-mode pass, record the reviewed SHA and the script's `merge_base=` value: `ship` reuses a converged review only when that merge base still matches.
+
 For each finding record:
 
 - Stable ID and source (review URL or local report), reviewed SHA, affected location and claim. Link duplicates to the original without losing their sources.
