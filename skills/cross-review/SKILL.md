@@ -24,7 +24,7 @@ Hosted triage assesses findings another reviewer already made; it runs no model 
 
 ## Procedure
 
-Read `references/review-continuity.md` first: its ledger, related-instance search and convention rules apply in every mode.
+Read `references/review-continuity.md` first: its ledger, related-instance search and convention rules apply in every mode. Then read the reference for the reviewer in play, which holds how the script runs it and its gotchas: `references/codex.md` or `references/claude.md` for change and document modes, `references/coderabbit.md` for CodeRabbit findings in hosted triage mode and what a throttled CodeRabbit review means for a gate.
 
 1. **Load the ledger** for this repository and branch, the same key before and after the PR exists (for a document, its path). Missing means a first pass.
 2. **Write the prompt file** in scratch space: the caller's scope verbatim as OUT OF SCOPE / IN SCOPE (a Scope Brief when one exists), then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` (or a stated requirement, when there is no change folder) the work doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Add the ledger text, including open findings and the evidence and fix SHAs behind earlier dispositions: a scratch-file path alone is not readable by every reviewer. For a document, add what decision it supports and what would change it.
@@ -38,7 +38,7 @@ Read `references/review-continuity.md` first: its ledger, related-instance searc
 
 **Convergence.** A pass converges when its triage and the ledger leave no unresolved blocker. A repeated settled finding without new evidence is recorded but doesn't block; a quiet pass never erases an earlier open finding. After three passes with blockers left, return them for the user; don't start a fourth. The limit is per review round. A round runs from its first pass until it converges, and its fix batches stay inside it: a pass after a fix batch is the round's next pass, not a new round. A new round starts only after the previous one converged (a later delta review after re-evaluation or a hosted fix batch) or when the user authorizes one. The pass count lives in the ledger and carries across invocations: resuming a round continues its count, it doesn't restart it. Only the user can authorize another round after the limit; record that authorization in the ledger, and the new round gets up to three passes of its own. A fix that changes reviewed behaviour needs review of the delta and whatever depends on it.
 
-**Unavailable.** On `STATUS=ERROR`, fix a setup error the script names and rerun; otherwise record the review as unavailable with its reason. A reviewer that can't run, a rate limit or a skipped required reviewer is unmet coverage, never a pass, and a required review that is unmet blocks autonomous merge.
+**Unavailable.** On `STATUS=ERROR`, fix a setup error the script names and rerun; otherwise record the review as unavailable with its reason. A cross-model reviewer that can't run or is rate-limited is unmet coverage, never a pass, and a required review that is unmet blocks autonomous merge. A throttled CodeRabbit review is the one exception, and only as `references/coderabbit.md` defines it.
 
 ## Result
 
@@ -54,8 +54,6 @@ A converged change review is summarized for the caller's record as `Cross-review
 
 ## Gotchas
 
-- **Codex reads `AGENTS.md` only**, not `CLAUDE.md` or `REVIEW.md`. In a repository with a `REVIEW.md`, the review applies its rules only when `AGENTS.md` has a `## Code Review Rules` section pointing at it. If Codex flags something `REVIEW.md` explicitly allows, check whether the pointer exists and whether the rule actually covers the finding; assume neither a missing pointer nor a false premise. Record the evidence and any warranted clarification with the convention procedure in the review-continuity reference.
-- **Never call `codex review --base`**: it refuses a prompt alongside `--base`, so it can't carry the scope and reviews work the change deliberately left out. The script passes the range inside the prompt instead.
-- **`claude -p` needs the network.** Under a sandbox that blocks it, the review fails with a connection error; the host adapters reference in `dev` says how to escalate safely.
+Reviewer-specific gotchas live in that reviewer's reference.
+
 - **A document's digest names a snapshot.** Edits made after the review started are not covered; review the new digest. Keep the review record (summary, reviewer, the converged digest) in the ledger and the caller's report, never in the reviewed file: writing it there changes the digest it names.
-- **Codex `-c` keys split on every dot and keep quotes literally.** `mcp_servers."x".enabled` addresses a key named `"x"`, not server `x`, and a server name containing `.` can't be addressed at all. The script uses bare segments, refuses such names, and re-lists the servers under its overrides before running.
