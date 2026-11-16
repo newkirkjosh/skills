@@ -61,7 +61,7 @@ Research findings are presented as 2-3 bullets per area — no essays.
 **Conversation flow:**
 1. Present research findings
 2. Ask one question at a time to fill gaps Claude couldn't research
-3. Draft `viability.md` with a provisional verdict, then send it to `cross-review` in document mode (the other model family, read-only), asking it to challenge the go/no-go: the assumption most likely to change the verdict and the evidence for it. Revise the draft and review the new digest until it converges. If the reviewer is unavailable, say so in the summary section; don't substitute a self-review.
+3. Draft `viability.md` with a provisional verdict, then send it to `cross-review` in document mode (the other model family, read-only), asking it to challenge the go/no-go: the assumption most likely to change the verdict and the evidence for it. Revise the draft and review the new digest until it converges. The `## Cross-Model Review` section holds only the template's fixed pointer from the first review on, so the converged digest names the final file and nothing is edited after it. Record the review itself (reviewer, passes, what it challenged, how the verdict changed, the converged `sha256:` digest) in the document's review ledger (the review-continuity reference in `cross-review`) and in your summary to the user, never in `viability.md`. If the reviewer is unavailable, replace the pointer with `Unavailable: <reason>` (no digest covers the draft then) and say so to the user; don't substitute a self-review.
 4. State verdict: **Go** / **Go with constraints** / **No-go**
 
 **`viability.md` template:**
@@ -91,7 +91,7 @@ Research findings are presented as 2-3 bullets per area — no essays.
 [Only present if verdict is "Go with constraints" — specific scope limits. Omit this section header entirely for "Go" or "No-go" verdicts.]
 
 ## Cross-Model Review
-[2-3 sentences: what the reviewer challenged, how the verdict changed, and the reviewed digest]
+Reviewed by the other model family with `cross-review` in document mode. The review record and the reviewed digest are in this document's review ledger, not here, so the digest covers this file as written.
 ```
 
 ---

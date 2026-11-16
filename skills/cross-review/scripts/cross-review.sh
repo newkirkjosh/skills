@@ -6,7 +6,9 @@
 #        cross-review.sh <codex|claude> --document <file> <prompt-file>
 #
 # Change mode reviews the committed changes between the merge base of
-# <base-ref> and HEAD; the header line names the reviewed head SHA.
+# <base-ref> and HEAD, from a worktree with nothing uncommitted or untracked
+# (refused before, ERROR if it appears during review); the header line names
+# the reviewed head SHA.
 # Document mode reviews a snapshot of one draft file that need not be
 # committed; the header line names the snapshot's sha256 content digest.
 #
@@ -55,17 +57,26 @@ brief=$(cat "$prompt_file") || die "cannot read prompt file: $prompt_file"
 # nobody to approve an escape. A review that inherits MCP servers can hang
 # forever on its first tool call. `-c mcp_servers={}` merges rather than
 # replaces, so disable each by name, from the resolved list; refuse to run if
-# the list can't be read.
+# the list can't be read. Codex splits a `-c` key on every dot and keeps quote
+# characters literally (`mcp_servers."x".enabled` names a key `"x"`), so only a
+# bare segment reaches a server, and a name containing `.` or `=` can't be
+# addressed at all: refuse it. Then list the servers again with the overrides
+# applied and refuse to run unless every one reports disabled.
 codex_opts() {
   command -v jq >/dev/null || die "jq is not on PATH"
   opts=(-c 'sandbox_mode="read-only"' -c 'approval_policy="never"')
   servers=$(codex mcp list --json) || die "codex mcp list failed; refusing to run with unknown MCP servers"
   names=$(jq -r '.[].name' <<<"$servers") || die "could not parse codex mcp list output"
   while IFS= read -r name; do
-    [ -n "$name" ] && opts+=(-c "mcp_servers.\"$name\".enabled=false")
+    [ -n "$name" ] || continue
+    case $name in *[.=]*) die "MCP server name '$name' can't be disabled with -c; refusing to run with it enabled" ;; esac
+    opts+=(-c "mcp_servers.$name.enabled=false")
   done <<<"$names"
   [ -n "${CROSS_REVIEW_MODEL:-}" ] && opts+=(-c "model=\"$CROSS_REVIEW_MODEL\"")
   [ -n "${CROSS_REVIEW_EFFORT:-}" ] && opts+=(-c "model_reasoning_effort=\"$CROSS_REVIEW_EFFORT\"")
+  after=$(codex mcp list --json "${opts[@]}") || die "codex rejected the MCP overrides; refusing to run"
+  enabled=$(jq -r '.[] | select(.enabled != false) | .name' <<<"$after") || die "could not parse codex mcp list output"
+  [ -z "$enabled" ] || die "MCP servers still enabled after the overrides: $(tr '\n' ' ' <<<"$enabled")"
   mcp_disabled=$(grep -c . <<<"$names")
 }
 claude_opts() {
@@ -106,6 +117,12 @@ else
   merge_base=$(git merge-base "$base" HEAD) || die "no merge base between $base and HEAD"
   head=$(git rev-parse HEAD) || die "cannot read HEAD"
   [ -n "$(git diff --name-only "$merge_base" HEAD)" ] || die "nothing to review: HEAD has no changes against $base"
+  # The reviewer reads surrounding code from the worktree, so it must be
+  # exactly HEAD: an uncommitted or untracked file would be reviewed as if it
+  # were part of the head SHA the header names.
+  dirty=$(git status --porcelain --untracked-files=all) || die "git status failed"
+  [ -z "$dirty" ] || die "worktree has uncommitted or untracked changes; commit or remove them before review:
+$dirty"
   if [ "$reviewer" = codex ]; then
     codex_opts
     # `codex review` rejects --base together with a prompt, so the range
@@ -128,6 +145,8 @@ $brief"
   rc=$?
   # A HEAD that moved while the review ran makes the header's SHA wrong.
   [ "$(git rev-parse HEAD)" = "$head" ] || { echo "cross-review: HEAD moved during review" >&2; rc=1; }
+  # So does a worktree edited while it ran: the reviewer may have read it.
+  [ -z "$(git status --porcelain --untracked-files=all)" ] || { echo "cross-review: worktree changed during review" >&2; rc=1; }
 fi
 
 echo "REVIEWER_EXIT=$rc"

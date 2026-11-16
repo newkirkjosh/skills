@@ -79,7 +79,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 
 | Existing state | Entry point |
 |---|---|
-| No `openspec/changes/<feat-name>/` folder | Phase 0: Scope Brief and OpenSpec setup |
+| No change folder, active or archived (found nowhere above) | Phase 0: Scope Brief and OpenSpec setup |
 | Worktree, branch or PR exists, but no change folder | Reconstruct the change folder there from its commits (brief, proposal, stories, design note, tasks), commit it, then re-run detection |
 | Change folder exists, no `scope-brief.md` | Reconstruct the brief (see `references/scope-brief.md`), then re-run detection |
 | Change folder exists, no `issues.md` | Phase 1: Issue creation |
@@ -89,7 +89,10 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | Branch exists, no open PR, the layer's contract has unchecked items | Phase 3: Evaluation (fix pass) |
 | Branch exists, no open PR, the layer's contract is all checked, no `Cross-review:` line | Phase 4: Cross-model review |
 | Branch exists, no open PR, the layer's contract is all checked and has its `Cross-review:` line | Phase 4: Archive move if not yet made, then Phase 5 |
+| Draft PR open (from Phase 3 step 1), no `sprint-contract.md` section for the layer | Phase 3: Evaluation (start) |
+| Draft PR open (from Phase 3 step 1), the layer's contract has unchecked items | Phase 3: Evaluation (fix pass, or a fresh evaluator once what was `INCOMPLETE` is available) |
 | Draft PR open (from Phase 3 step 1), the layer's contract all checked, no `Cross-review:` line | Phase 4: Cross-model review; `ship` marks the draft ready |
+| Ready PR open, the layer's contract has unchecked items (a `re-evaluation-needed` run that stopped) | Phase 5: resume `re-evaluation-needed` at its fresh evaluator |
 | PR open for the layer | Phase 5: Completion |
 | All sub-issues in `issues.md` are closed | Phase 6: Cleanup |
 
@@ -136,7 +139,7 @@ Run the review with the `cross-review` skill in change mode, before the PR is op
 1. **Review.** Skip it only for a `narrow` docs-only change: record `Cross-review: skipped (narrow docs-only)` as in step 3, tell the user, and go on. Otherwise give `cross-review` the Scope Brief verbatim as the scope, the worktree and `origin/<default>`, and the ledger.
 2. **Triage and fix.** In-scope blocking findings go to a fresh implementer as a fix list, all of them in one pass; out-of-scope ones are recorded with the exclusion that covers them. Commit each fix pass (`fix(<scope>): …`) before the next review, and record its `behavioral: yes|no` classification in the ledger. A behavior-changing fix re-runs Phase 3 with a fresh evaluator before the next pass, which makes a new evaluator PASS SHA. Converge as `cross-review` describes (at most three passes, then surface the remaining blockers and stop for the user). An unavailable reviewer is recorded as unavailable; continue only to the PR handoff, since an unavailable required review blocks autonomous merge.
 3. **Record** it in the layer's `sprint-contract.md` section: `Cross-review: <reviewer>, <passes> pass(es), converged at <short-sha>` (or `Cross-review: unavailable: <reason>`, or the skip from step 1), and save the final pass's output as `cross-review.md` in the change folder, to post on the PR; commit both with the change folder.
-4. **Archive move.** Once `sprint-contract.md` is final and review is done, make the archive move the candidate head's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`.
+4. **Archive move.** Once `sprint-contract.md` is final and review is done, make the archive move the candidate head's last commit: `git mv openspec/changes/<feat-name> openspec/changes/archive/<feat-name>`. Merging then closes the issue (`Closes #<n>`) and archives the change together, with no follow-up PR to `main`. If the folder is already under `openspec/changes/archive/<feat-name>/` (an earlier layer's PR archived it, or this layer already made the move), there is nothing to move: skip this step and keep using the archived path wherever this file names the change folder.
 5. **Classify** every commit after the evaluator PASS SHA that has no record yet (the contract, `cross-review.md` and archive commits included) as `behavioral: yes|no` in the ledger, by its actual effect. Then go to Phase 5.
 
 **Phase 5 — Completion**
@@ -151,7 +154,7 @@ Invoke `ship` and follow its Called by dev section, passing the Scope Brief, the
 
 After `ship` returns verified merge evidence:
 1. Read `issues.md`, and check each identifier's state: Linear via the `linear` skill (`get_issue`, `statusType`), GitHub via `gh issue view <n> --json state`. Read only; `ship` wrote them.
-2. If any issue is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop.
+2. If any layer's issue (every `issues.md` line except the `parent:` or `epic:` one, which `ship` never closes) is not closed (`completed`/`cancelled` on Linear, `CLOSED` on GitHub), surface the open identifiers and stop.
 3. Confirm the change folder is under `openspec/changes/archive/` on the default branch (Phase 4 moved it in the PR). If it isn't, report it; there is no post-merge archive PR.
 4. Clean up from the main checkout: `wt remove <branch>`, which removes the worktree and deletes the branch only when its changes are already in the default branch (squash merges included). If it keeps the branch, report why instead of forcing it. Then `git push origin --delete <branch>`, and re-check status for anything now behind.
 
