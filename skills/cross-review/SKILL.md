@@ -26,7 +26,7 @@ Hosted triage assesses findings another reviewer already made; it runs no model 
 
 Read `references/review-continuity.md` first: its ledger, related-instance search and convention rules apply in every mode.
 
-1. **Load the ledger** for this repository and branch or PR (for a document, its path). Missing means a first pass.
+1. **Load the ledger** for this repository and branch, the same key before and after the PR exists (for a document, its path). Missing means a first pass.
 2. **Write the prompt file** in scratch space: the caller's scope verbatim as OUT OF SCOPE / IN SCOPE (a Scope Brief when one exists), then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` (or a stated requirement, when there is no change folder) the work doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Add the ledger text, including open findings and the evidence and fix SHAs behind earlier dispositions: a scratch-file path alone is not readable by every reviewer. For a document, add what decision it supports and what would change it.
 3. **Run the reviewer** (change and document modes) as a long command, logging to scratch space. `<skill-dir>` is this skill's real directory:
    - change: `bash <skill-dir>/scripts/cross-review.sh <codex|claude> <worktree> <base-ref> <prompt-file> > <log> 2>&1`
