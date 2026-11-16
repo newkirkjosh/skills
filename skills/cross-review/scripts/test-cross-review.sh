@@ -94,6 +94,8 @@ if [ -n "$real" ]; then
 else
   echo "skip installed-codex MCP check (codex not on PATH)"
 fi
+# Mandatory assertions must not depend on the optional installed CLI check.
+cr codex "$repo" "$base" "$work/brief.md"
 check "codex: runs codex review" '[ "$(head -n 1 "$work/codex.args")" = review ]'
 check "codex: no --base (codex rejects it with a prompt)" '! grep -qx -- "--base" "$work/codex.args"'
 check "codex: prompt carries the range and the brief" 'grep -q "git diff $base...HEAD" "$work/codex.stdin" && grep -q "only the empty state" "$work/codex.stdin"'
