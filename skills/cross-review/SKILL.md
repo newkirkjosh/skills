@@ -10,7 +10,7 @@ metadata:
 
 One review procedure for a change, a hosted review's findings, or a decision document. The reviewer is the model family that did not write the work: Codex when you run on Claude Code, Claude when you run on Codex.
 
-**Explicit use only.** It reviews and returns a result. It never edits the reviewed work, commits, posts, replies to or resolves threads, pushes or merges, and it starts no other reviewers. The caller (`dev`, `ship`, `discovery`, or the user) applies fixes and does every service write. Its rules end when it returns the result.
+**Explicit use only.** It reviews and returns a result. It never edits the reviewed work, commits, posts, replies to or resolves threads, pushes or merges, and it starts no other reviewers. The caller (`dev`, `discovery`, or the user) applies fixes and does every service write. Its rules end when it returns the result.
 
 ## Modes
 
@@ -44,7 +44,7 @@ Read `references/review-continuity.md` first: its ledger, related-instance searc
 
 Return exactly these five fields, plus the findings:
 
-- **Reviewed:** the SHA (change, hosted triage) or `sha256:<digest>` (document), plus for a change the merge base from the script's `merge_base=` (`ship` reuses a review only on the same base).
+- **Reviewed:** the SHA (change, hosted triage) or `sha256:<digest>` (document), plus for a change the merge base from the script's `merge_base=` (`dev`'s completion reuses a review only on the same base).
 - **Coverage:** reviewer, mode, passes run, and what was reviewed; or `unavailable: <reason>`.
 - **Dispositions:** each finding's ID and disposition, with evidence.
 - **Unresolved blockers:** open in-scope blockers, or none.

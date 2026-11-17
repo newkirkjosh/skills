@@ -1,6 +1,6 @@
 # Host adapters
 
-Read this before the first spawn when the coordinator runs on a host other than Claude Code, or in a headless session; `ship`, `team` and `cross-review` point here for the same waits. `dev`'s steps are written as operations; the example syntax in `SKILL.md` is Claude Code's. Adapted from fx/skills `dev/references/host-adapters.md` (see `LICENSE.txt`); the Codex facts there were verified against codex-cli 0.145–0.151 and are not re-verified here. When one turns out wrong, fix this file.
+Read this before the first spawn when the coordinator runs on a host other than Claude Code, or in a headless session; `completion.md`, `team` and `cross-review` point here for the same waits. `dev`'s steps are written as operations; the example syntax in `SKILL.md` is Claude Code's. Adapted from fx/skills `dev/references/host-adapters.md` (see `LICENSE.txt`); the Codex facts there were verified against codex-cli 0.145–0.151 and are not re-verified here. When one turns out wrong, fix this file.
 
 ## Operations
 

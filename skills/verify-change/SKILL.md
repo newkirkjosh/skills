@@ -11,7 +11,7 @@ metadata:
 
 ## When to Use
 
-**Explicit use only.** The user names this skill, or a workflow calls it: `dev`'s evaluator follows it when a repository's `AGENTS.md` names it as the way to verify the app, and `ship` may run it for a test plan item that needs the running app. The run ends at its report; a later request doesn't inherit it.
+**Explicit use only.** The user names this skill, or a workflow calls it: `dev`'s evaluator follows it when a repository's `AGENTS.md` names it as the way to verify the app, and `dev` may run it for a test plan item that needs the running app. The run ends at its report; a later request doesn't inherit it.
 
 It answers one question per check: **does the running app do what the change claims?** Unit tests and screenshot tests are someone else's job; this skill exists for the gap between "the build is green" and "the screen does it".
 

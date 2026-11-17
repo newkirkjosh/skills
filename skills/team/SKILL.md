@@ -1,6 +1,6 @@
 ---
 name: team
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Runs dev for several approved changes at once: starts one dev session per change in its own terminal tab, orders them by dependency, keeps them moving without the user watching, and reports each PR merged or merge-ready."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Runs dev for several approved changes at once: starts one dev session per change in its own terminal tab, orders them by dependency, keeps them moving without the user watching, merges each PR itself once it has re-checked every merge gate, and reports each PR merged, merge-ready or blocked."
 license: MIT (idea adapted from fx/skills team by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -17,7 +17,7 @@ metadata:
 
 ## What it is
 
-`team` is a launcher and supervisor for `dev`, not a second lifecycle. Each change runs in its **own `dev` session**, in its own terminal tab and worktree, with its own context: `dev` already says a single session juggling several changes runs out of context. `team` writes no code, opens no PRs and merges nothing itself. What it adds is what an unattended batch needs: dependency order, at most three sessions at once, a standing instruction to run without pausing, and someone checking every session so a stall is noticed by `team`, not the user. Each session's completion runs `ship` under its own `dev` invocation, so it pushes and opens its PR without a confirmation prompt; its merge still follows the repository's Merge policy.
+`team` is a launcher and supervisor for `dev`, not a second lifecycle. Each change runs in its **own `dev` session**, in its own terminal tab and worktree, with its own context: `dev` already says a single session juggling several changes runs out of context. `team` writes no code and opens no PRs. It is the one workflow that merges: `dev` stops at merge-ready, and `team` merges after re-checking every gate itself (step 4, Merge gate), as in fx's `team`. What it adds is what an unattended batch needs: dependency order, at most three sessions at once, a standing instruction to run without pausing, and someone checking every session so a stall is noticed by `team`, not the user. Each session's completion runs under its own `dev` invocation, so it pushes and opens its PR without a confirmation prompt; the merge still follows the repository's Merge policy.
 
 ## Session operations
 
@@ -56,9 +56,9 @@ For each change that is unblocked, while fewer than three sessions are live:
 
    <the run's brief, verbatim>
 
-   This session runs under team, unattended. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Merge only if the repository's Merge policy grants it. End your final message with exactly one line:
+   This session runs under team, unattended. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then tells you to continue for close-out and cleanup. End your final message with exactly one line:
+   TEAM: MERGE-READY <PR URL> <head SHA> <ledger path>
    TEAM: DONE <PR URL> merged
-   TEAM: DONE <PR URL> merge-ready
    TEAM: BLOCKED <one-sentence reason>
    ```
 
@@ -72,9 +72,19 @@ Run one **Wait** per live session, with a 10-minute timeout, as a long command (
 |---|---|
 | Timed out, still working | Check for progress: new commits (`wt list --format=json`), PR state, and a **Read** of its last 40 lines. Something moved: record it and wait again. Nothing moved for two checks in a row (about 20 minutes): report the session to the user with what it last showed, and keep waiting. |
 | `blocked` | An approval or question dialog. **Read** it. Never answer it yourself: tell the user what it asks and which tab it's in. |
-| `idle` or `done`, ending `TEAM: DONE … merged` | The line is a claim: confirm it with `gh pr view <n> --json state,mergeCommit` (`MERGED`, with a merge commit) before marking it merged. Only then start whatever it unblocked (step 3). **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes once its current CI run has finished: never mid-run, since a push cancels or invalidates the run it is waiting on. |
-| `idle` or `done`, ending `TEAM: DONE … merge-ready` or `TEAM: BLOCKED` | Record it for the report. Changes that depend on it stay unstarted. |
+| `idle` or `done`, ending `TEAM: MERGE-READY …` | Run the Merge gate below. Merged: start whatever it unblocked (step 3), and **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes once its current CI run has finished: never mid-run, since a push cancels or invalidates the run it is waiting on. Not merged: record it as merge-ready (or blocked, with the failing gate) for the report; changes that depend on it stay unstarted. |
+| `idle` or `done`, ending `TEAM: DONE … merged` | The session finished close-out and cleanup. Confirm the PR with `gh pr view <n> --json state,mergeCommit` (`MERGED`, with a merge commit) and record it as merged. |
+| `idle` or `done`, ending `TEAM: BLOCKED` | Record it for the report. Changes that depend on it stay unstarted. |
 | `idle` or `done` with no `TEAM:` line | It stopped without finishing. **Prompt** it once: "Continue the dev run for <feat-name>. If you are stopped, end with the TEAM line that says why." If it goes idle again without one, record it as stalled and report it. |
+
+**Merge gate.** A `MERGE-READY` line is a claim, never evidence. Merge only when you have checked every gate yourself, on the SHA the line names, with no push in between:
+
+1. `gh pr view <n> --json state,headRefOid` shows the PR open with exactly that head.
+2. The repository's `AGENTS.md` has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user (`gh pr diff <n> --name-only`).
+3. A fresh `pr-status.sh` exit-0 report for that SHA, run as step 6 of the `completion` reference in `dev` says: policy file verified against repository authority, every required check successful, each configured reviewer completed on that SHA (a throttled CodeRabbit review counts only as that step allows), zero unresolved threads.
+4. The session's ledger (the path on the line) shows a converged cross-review covering that head under completion step 2, every blocking finding fixed, and every commit after the evaluator PASS SHA recorded `behavioral: no`. A missing or unreadable ledger is an unmet gate.
+
+All hold: `gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`, confirm `MERGED`, then **Prompt** the session: "PR merged as <merge commit>. Continue the dev run for <feat-name>." It closes out the tracker, cleans up and ends with `TEAM: DONE … merged`. Any gate fails or is unknown: don't merge; record why.
 
 `idle` is not done: a session that ended its turn mid-run looks exactly like one that finished, and only the `TEAM:` line tells them apart. Never treat silence as progress.
 

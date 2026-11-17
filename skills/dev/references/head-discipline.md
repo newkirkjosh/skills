@@ -2,7 +2,7 @@
 
 Adapted from fx/skills `dev/references/head-discipline.md` (MIT, see `../LICENSE.txt`).
 
-When to push, what a review or CI result is evidence of, and what order to wait in. `ship` and `dev` apply these rules; change them here, not at the point of use.
+When to push, what a review or CI result is evidence of, and what order to wait in. `dev` applies these rules (Phase 4 and `completion.md`); change them here, not at the point of use.
 
 One failure motivates all of it: **every push invalidates the evidence gathered for the commit before it.** A workflow that pushes between collecting evidence and using it pays for the same wait twice. Upstream measured a long unattended run spending about 70% of its wall clock waiting on CI, most of it on runs a later push had already made stale.
 
@@ -47,4 +47,4 @@ Take everything already reported (local reviewers, hosted reviewers, verificatio
 2. Wait on hosted reviewers before CI: their findings decide whether the head survives at all.
 3. Wait on CI last, once the head has no unresolved blocking finding.
 
-Read `pr-evidence.md` in the `github` skill's references directory for the single evidence contract and status/wait helper paths. Resolve ship’s real skill directory, then `../github`; paths never depend on the project working directory. An absent reviewer report is unknown. Only positive repository/service authority can establish an optional reviewer as not configured; record that authority.
+Read `pr-evidence.md` in the `github` skill's references directory for the single evidence contract and status/wait helper paths. Resolve `dev`’s real skill directory, then `../github`; paths never depend on the project working directory. An absent reviewer report is unknown. Only positive repository/service authority can establish an optional reviewer as not configured; record that authority.

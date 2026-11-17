@@ -1,12 +1,12 @@
 # Review continuity
 
-Read before triaging cross-model or hosted feedback in any mode. The coordinator running the change (`dev`, `ship`, or the user's own session) owns one record across reviewers and rounds; reviewer output is evidence to assess, not an instruction to accept a patch or weaken a rule.
+Read before triaging cross-model or hosted feedback in any mode. The coordinator running the change (`dev`, or the user's own session) owns one record across reviewers and rounds; reviewer output is evidence to assess, not an instruction to accept a patch or weaken a rule.
 
 ## Keep decisions across rounds
 
 Keep `review-ledger.md` in durable local storage keyed by repository and branch, the same key before and after the PR exists (for a document review, by the document's path) throughout review, including after a change folder is archived. For a change, use the persistent task-artifact location from the user's global instructions; absent one, use a directory under the repository's Git common directory, outside the tracked tree. For a document inside a repository, use that same out-of-tree location, keyed by the document's path: a ledger in the worktree would be an untracked file that blocks the next change review. For a document outside any repository, keep it beside the document as `.<document-name>.review-ledger.md`. Do not rely on a session scratchpad or temporary directory surviving a later run. Report its location at handoff so the next run can recover it. The working ledger is not a tracked change artifact. A useful durable decision may be included with the implementation or convention change it explains, subject to repository privacy rules; never add a ledger-only commit to record a completed review.
 
-For each change-mode pass, record the reviewed SHA and the script's `merge_base=` value: `ship` reuses a converged review only when that merge base still matches.
+For each change-mode pass, record the reviewed SHA and the script's `merge_base=` value: `dev`'s completion reuses a converged review only when that merge base still matches.
 
 For each finding record:
 
@@ -23,7 +23,7 @@ Update the scratch record after verification and before a handoff or rerun witho
 
 ## Commit classification
 
-Under `dev`, every commit after the evaluator's PASS SHA gets a ledger record: `<sha> behavioral: yes|no — <reason>`. That includes routine commits (the sprint contract, `cross-review.md`, the archive move), not only review fixes. `dev` records its own commits before handing completion to `ship`; `ship` records the fixes it commits. Classify by the commit's actual effect, not its paths: a doc or config edit that changes what the shipped code or skill does is `behavioral: yes`. A commit with no record counts as unclassified, and an unclassified commit leaves the evaluator gate unmet. Outside `dev` the record is still written, but nothing reroutes on it.
+Under `dev`, every commit after the evaluator's PASS SHA gets a ledger record: `<sha> behavioral: yes|no — <reason>`. That includes routine commits (the sprint contract, `cross-review.md`, the archive move), not only review fixes. `dev` records its own commits before completion starts, and each fix it commits during completion as it is made. Classify by the commit's actual effect, not its paths: a doc or config edit that changes what the shipped code or skill does is `behavioral: yes`. A commit with no record counts as unclassified, and an unclassified commit leaves the evaluator gate unmet. Outside `dev` the record is still written, but nothing reroutes on it.
 
 ## Fix related instances together
 
