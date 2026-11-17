@@ -1,0 +1,46 @@
+# Completion
+
+Phase 5 and the Phase 6 close-out: from an evaluated, cross-reviewed, archived candidate to a merge-ready PR, then the tracker writes after a merge. The push and wait order (candidate head, SHA-scoped evidence, one fix pass per push, review before CI) is `head-discipline.md` in this directory; read it before step 2.
+
+**Sibling skills.** Resolve `dev`'s real directory (follow the loaded skill's symlink), and take its siblings from there: `../github` for PR, thread and evidence mechanics and the helpers in its `scripts/`, `../cross-review` for review and triage. Never resolve them from the project's working directory or an installed link: a new skill may not be linked yet.
+
+## Rules
+
+- **Authority.** Completion runs under the `dev` invocation the user (or `team`) started: pushing and opening or updating the PR need no further confirmation. `dev` never merges (step 6). Reading another skill never widens what the user asked for.
+- **Caller gate.** The evaluator passed at SHA S (the layer's `Evaluated at:` line), and every commit after S has a ledger record `behavioral: no` (review-continuity reference in `cross-review`). The contract, review-record and archive commits are recorded before Phase 5 starts; every fix committed here is recorded as it is made. A missing record is unmet.
+- **Fixes.** Classify each in-scope completion fix `behavioral: yes|no` before committing it. A non-behavioral fix goes to a fresh implementer (`implementer.md`) with the Scope Brief and the fix list (the few-lines-of-wording exception in Roles still applies), then local checks, a commit and its classification, a review of the committed delta, then one push. A behavior-changing fix is not pushed: run the re-evaluation loop in Phase 5 of `SKILL.md`, then resume here at step 2, which pushes once.
+- **Archive.** The archive move is already in the candidate head as Phase 4's last commit. Re-evaluation edits `openspec/changes/archive/<feat-name>/sprint-contract.md` in place; the folder never moves back.
+- **PR-only evidence.** If Phase 3 published a candidate (a draft, or an update to an open PR) to get evidence only a PR produces, completion is not merge-ready until evaluation and review cover the resulting head. An already-ready PR is reported as not merge-ready, not converted to a draft.
+
+## Steps
+
+0. **Detect what is done.** Read the branch, its commits against the default branch, the PR (none, draft, open, merged) and its head, the ledger, and the review result and its SHA. Skip a step only when its recorded evidence is valid for this change and this head; unknown evidence is unmet. A merged PR (a user or `team` merge) goes to Close-out once `gh pr view <n> --json state,mergeCommit` shows `MERGED`.
+1. **Local checks.** Run the project's local checks (the completion criteria in its `AGENTS.md`). Red locally means fix first: a push that fails CI costs a full pipeline.
+2. **Local review covers the candidate.** Reuse Phase 4's result only when it converged at the candidate head, or every commit after its SHA is a review-record or archive commit (or a fix reviewed by its own delta review) with a `behavioral: no` record. Reuse also needs the same base: the merge base the review covered (the script's `merge_base=`, recorded in the ledger) must equal the merge base of the head and the PR's current base (before a PR exists, the base step 3 will open it against; after opening, check the actual base again), so a retargeted PR (a stacked PR after its parent merges) gets a fresh review. `Cross-review: skipped (narrow docs-only)` counts as covered unless the repository requires a review. Reuse never overrides a repository requirement for review on the exact current head; when that requirement exists, review the candidate head including the record and archive commits. An unavailable reviewer is recorded as unavailable: a Merge policy that requires a converged review can't be met, and the report says so.
+3. **Publish.** Push once, then open the PR if none exists, or update it, using the `github` pull-request reference and the repository's `AGENTS.md` (labels, project, `Closes` reference from `issues.md`). Mark a draft ready only after the converged review. Post the review result (`cross-review.md` from the change folder) unless a PR comment already has that exact body (`gh pr view <n> --json comments`). Then link the tracker: on GitHub the body's `Closes #<n>` links it and the board item moves as `AGENTS.md` says; on Linear, read the mapped issue's comments first and comment the PR URL only if none has it yet, then move it to the team's review state if it isn't there (the `linear` skill). A re-entry thus never posts either comment twice. Read each write back.
+4. **Settle hosted review first.** Fetch every thread, review body and comment for the head with `github`, triage them with `cross-review` in hosted triage mode, and classify each in-scope fix. A throttled CodeRabbit review (rate-limited or paused) is reported once and skipped, never waited out: settle what it already delivered and move on (the `coderabbit` reference in `cross-review`). A blocking finding is settled only by a fix: a reply closes a thread, never a blocker. A non-blocking finding is fixed or answered with evidence. Batch the fixes, rerun local checks, commit and classify them, review the committed delta, then push once (by the Fixes rule). Reply with each disposition and its evidence, and resolve bot threads, through `github`. A fix push starts this step again.
+5. **Wait for CI last**, on the head that survived review (the `github` evidence reference for the waiter). On failure, read every failed job's log, fix all of them as one classified batch, rerun local checks, commit and classify the batch, review the committed delta, then push once, and go back to step 4. A failure that matches an already-filed flake may be rerun once (`gh run rerun --job`) instead; cite the issue. After the second red run on the same cause, stop and report it.
+6. **Verify every gate, then hand off.** Re-check on the current head with no push in between:
+   - a fresh `pr-status.sh` exit-0 report for that SHA, with the policy file verified against repository authority, every required check matched and successful, and each configured reviewer completed on that SHA (a skipped, absent or rate-limited required reviewer is unmet, even beside a green check; a throttled CodeRabbit review is not required once its delivered threads are settled and the skip is recorded, as the `coderabbit` reference in `cross-review` says, unless the Merge policy names CodeRabbit as required);
+   - the local cross-review covers the candidate under step 2's reuse rule;
+   - every blocking finding fixed, every other finding fixed or dismissed with evidence, and zero unresolved review threads after pagination to exhaustion;
+   - the caller gate (above).
+
+   **`dev` never merges.** When every gate holds, report `merge-ready`: the PR URL, the head SHA, review coverage, the ledger location, the tracker state, and whether the repository's Merge policy would let `team` merge it (no policy, or a path it reserves for the user, means the merge is the user's). When a gate fails or is unknown, report `blocked` with the failures or missing evidence. The user merges, or asks for the merge, or `team` merges after its own re-check.
+
+## Close-out
+
+Runs from Phase 6 step 0 after a verified merge, for the merged branch's own layer only (the issue its PR closes or links):
+
+- **GitHub:** `Closes #<n>` closes the issue at merge; read it back as `CLOSED` and move the board item as `AGENTS.md` says.
+- **Linear:** read the mapped issue's state and move it to the team's `completed` state only if it isn't there yet, so a re-entry never moves it twice.
+
+Never close the `parent:` or `epic:` line in `issues.md`. Stopping at `merge-ready` leaves the issue in review from step 3.
+
+## Gotchas
+
+- **Headless runs wait in the foreground.** When nothing can wake you mid-run (`claude -p`, `codex exec`, a scheduled job), a backgrounded waiter's result never arrives: follow the headless rules in `host-adapters.md` when waiting for checks, and never end the turn while one is outstanding.
+- Each extra push to a branch with `cancel-in-progress` CI throws away the running pipeline. Pushing a "quick fix" while CI runs has cost whole slow runs; local checks first, then one push.
+- A green run on an earlier commit says nothing about the head. Re-check right before handing off; whoever merges uses `--match-head-commit`, which fails if a push slipped in.
+- Merge commits and rebase merges are never used; squash only.
+- When the branch lives in a worktree, `--delete-branch` can't delete the local branch. Phase 6 cleans up with `wt remove <branch>` from the main checkout; never force-delete it.

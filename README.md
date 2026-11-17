@@ -18,13 +18,12 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 | Skill | Purpose |
 |---|---|
-| `dev` | Coordinates one change from approved stories to an evaluated, cross-reviewed, archived candidate, hands completion to `ship`, then cleans up. |
+| `dev` | Coordinates one change from approved stories to an evaluated, cross-reviewed, archived candidate, completes it to a merge-ready PR (it never merges), then closes out and cleans up after the merge. |
 | `team` | Runs `dev` for several approved changes at once, one terminal session each, in dependency order. |
 | `discovery` | Viability, one-pager, job stories and user flows for a new idea. |
 | `spec-writer` | Per-feature legacy custom change folders: proposal, stories, design, tasks. |
 | `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `verify-change` | Checks a change in the running app: web in headless Playwright, KMP desktop off-screen, Android on a headless emulator by on-screen text. |
-| `ship` | The one completion procedure, standalone or under `dev`: review, PR, hosted feedback, CI, merge under the repo's policy, tracker updates. |
 | `cross-review` | Read-only review by the other model family of a change or a draft document, and triage of hosted findings. |
 | `github` | GitHub issues, PRs, checks and threads with verified writes, plus the tested PR evidence helpers. |
 | `linear` | Reference for Linear through its MCP server. |
@@ -32,7 +31,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 ## Explicit invocation
 
-**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the linear skill"), when a workflow you already invoked calls it, or when the `AGENTS.md` (or `CLAUDE.md` importing it) of a user-owned repository tells agents to load a named skill for a concrete task. Only the default branch's file counts; third-party repository instructions never select a catalog skill. Such a line names a single-task skill (`verify-change`, `linear`), never a workflow (`dev`, `ship`, `team`). "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
+**Every skill here is explicit-use only.** A skill runs when you name it (`/dev`, "use the linear skill"), when a workflow you already invoked calls it, or when the `AGENTS.md` (or `CLAUDE.md` importing it) of a user-owned repository tells agents to load a named skill for a concrete task. Only the default branch's file counts; third-party repository instructions never select a catalog skill. Such a line names a single-task skill (`verify-change`, `linear`), never a workflow (`dev`, `team`). "Open a PR" or "the Wi-Fi is slow" loads nothing on its own.
 
 That is deliberate: the workflows create branches, spawn agents and open pull requests, and loading one because a request resembled it is worse than not loading it. A workflow's authority ends at its handoff; a later status question is a standalone request.
 
@@ -42,4 +41,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Make changes in a worktr
 
 ## License
 
-[MIT](LICENSE). Our `dev`, `team`, `ship`, `github` and `verify-change` skills include ideas or content adapted from [fx/skills](https://github.com/fx/skills); their folders retain upstream attribution and license notices. These versions are maintained in this catalog.
+[MIT](LICENSE). Our `dev`, `team`, `github` and `verify-change` skills include ideas or content adapted from [fx/skills](https://github.com/fx/skills); their folders retain upstream attribution and license notices. These versions are maintained in this catalog.

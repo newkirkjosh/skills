@@ -50,7 +50,7 @@ metadata:
 5. Output the change folder path
 
 **Archive action:**
-Receives an explicit archive instruction from `dev` (never self-triggers). Moves `openspec/changes/<feat-name>/` → `openspec/changes/archive/<feat-name>/` with `git mv`, as the last commit before `dev` hands completion to `ship`. Does not verify issue state: the issues close when that PR merges. Later edits (a re-evaluation) go to the archived folder in place; it never moves back.
+Receives an explicit archive instruction from `dev` (never self-triggers). Moves `openspec/changes/<feat-name>/` → `openspec/changes/archive/<feat-name>/` with `git mv`, as the last commit before `dev`'s completion phase. Does not verify issue state: the issues close when that PR merges. Later edits (a re-evaluation) go to the archived folder in place; it never moves back.
 
 **`proposal.md` template:**
 ```markdown

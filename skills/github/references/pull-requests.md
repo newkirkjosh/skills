@@ -1,6 +1,6 @@
 # Pull requests and hosted feedback
 
-Read before opening or updating a PR, posting a review result, or fetching, replying to and resolving hosted feedback. This is mechanics; the caller (`ship`, or the user's request) decides what to post and when, and its authority covers only the PR in scope.
+Read before opening or updating a PR, posting a review result, or fetching, replying to and resolving hosted feedback. This is mechanics; the caller (`dev`, or the user's request) decides what to post and when, and its authority covers only the PR in scope.
 
 ## Opening and updating
 

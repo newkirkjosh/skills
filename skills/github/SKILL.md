@@ -1,6 +1,6 @@
 ---
 name: github
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. GitHub service mechanics through gh and the REST and GraphQL APIs: issues, pull requests, checks and review threads with complete pagination, head-scoped evidence, bounded waits and writes verified by reading them back, plus the tested PR evidence helpers ship uses before a guarded merge."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. GitHub service mechanics through gh and the REST and GraphQL APIs: issues, pull requests, checks and review threads with complete pagination, head-scoped evidence, bounded waits and writes verified by reading them back, plus the tested PR evidence helpers dev and team use before a guarded merge."
 license: MIT (PR evidence helper concepts adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: reference
@@ -9,9 +9,9 @@ metadata:
 
 # GitHub
 
-How to carry out a GitHub operation correctly. What to do (scope, issue hierarchy, review policy, when to merge) belongs to the workflow in charge (`dev`, `ship`) or the user's request, and to the repository's `AGENTS.md`; this skill never decides it.
+How to carry out a GitHub operation correctly. What to do (scope, issue hierarchy, review policy, when to merge) belongs to the workflow in charge (`dev`, `team`) or the user's request, and to the repository's `AGENTS.md`; this skill never decides it.
 
-**Explicit use only.** It runs the operation it was asked for, reads the result back and stops. It never starts `dev` or `ship`, never scaffolds a change folder or spec, and grants no merge permission. A standalone request ("edit issue #12's title", "list the open threads on #34") produces that operation and its readback, nothing more.
+**Explicit use only.** It runs the operation it was asked for, reads the result back and stops. It never starts `dev` or `team`, never scaffolds a change folder or spec, and grants no merge permission. A standalone request ("edit issue #12's title", "list the open threads on #34") produces that operation and its readback, nothing more.
 
 ## Rules
 
@@ -38,7 +38,7 @@ Callers resolve these paths from this skill's real directory: resolve the loaded
 
 The merge command is `gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`, run right after a fresh `pr-status.sh` exit-0 report for that same `<sha>`, with no push in between: the head guard makes the merge fail if a commit slipped in. Squash only.
 
-An explicitly authorized standalone merge ("merge #34") runs the same collection `ship` uses: the policy file verified against repository authority, then `pr-status.sh` for the current head. It reports every repository gate it holds no evidence for as missing (a required converged cross-review, an evaluator result, an unresolved thread) and merges only when the repository's Merge policy grants it and nothing is missing. In a repository whose Merge policy requires review evidence that only a ledger records, a bare merge request with no ledger therefore stops and points to `ship`.
+An explicitly authorized standalone merge ("merge #34") runs the same collection `dev`'s completion uses: the policy file verified against repository authority, then `pr-status.sh` for the current head. It reports every repository gate it holds no evidence for as missing (a required converged cross-review, an evaluator result, an unresolved thread) and merges only when the repository's Merge policy grants it and nothing is missing. In a repository whose Merge policy requires review evidence that only a ledger records, a bare merge request with no ledger therefore reports that evidence as missing and stops; `dev` keeps that ledger.
 
 ## Gotchas
 
