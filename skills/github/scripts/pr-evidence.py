@@ -197,7 +197,7 @@ def coverage(d):
 
 def current_rate_limit(d, pr, repo):
     comments = [c for c in d['issue_comments'] if c.get('user', {}).get('login') == 'coderabbitai[bot]'
-                and re.search(r'rate limit(ed| exceeded)', c['body'], re.I)]
+                and re.search(r'rate limit(ed| exceeded)|review limit reached', c['body'], re.I)]
     if not comments:
         return False
     def timestamp(value):
