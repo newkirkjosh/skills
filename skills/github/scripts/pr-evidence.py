@@ -195,6 +195,14 @@ def coverage(d):
     return result
 
 
+def rate_limited_check(c):
+    # CodeRabbit completes a throttled run as neutral, titled "Review rate limited".
+    output = c.get('output') or {}
+    title, summary = output.get('title') or '', output.get('summary') or ''
+    return (isinstance(title, str) and title.strip().casefold() == 'review rate limited') or (
+        isinstance(summary, str) and re.search(r'^Result: Rate limited\b', summary, re.M) is not None)
+
+
 def current_rate_limit(d, pr, repo):
     comments = [c for c in d['issue_comments'] if c.get('user', {}).get('login') == 'coderabbitai[bot]'
                 and re.search(r'rate limit(ed| exceeded)|review limit reached', c['body'], re.I)]
@@ -257,6 +265,8 @@ def main():
                         state, rc = ('PENDING', 3) if str(c['id']) == after else ('PAUSED', 7)
                     elif c['conclusion'] == 'success':
                         state, rc = 'PASS', 0
+                    elif c['conclusion'] == 'neutral' and rate_limited_check(c):
+                        state, rc = 'RATE_LIMITED_EVIDENCE', 5
                     else:
                         state, rc = 'FAIL', 1
                 if c and not (c['status'] == 'completed' and c['conclusion'] == 'skipped' and str(c['id']) == after):

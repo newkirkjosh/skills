@@ -100,8 +100,8 @@ def sample(workflows=None, checks=None):
 def workflow(state='completed'):
     return dict(status=state, conclusion='success' if state=='completed' else None)
 
-def check(identifier, conclusion='success', status='completed', app=1):
-    return dict(id=identifier, name='CodeRabbit', status=status, conclusion=conclusion, app={'id':app})
+def check(identifier, conclusion='success', status='completed', app=1, output=None):
+    return dict(id=identifier, name='CodeRabbit', status=status, conclusion=conclusion, app={'id':app}, **({'output':output} if output is not None else {}))
 
 def cycles(mode, snapshots, minutes, expected, after=''):
     clock=[0]; seen=[]
@@ -127,6 +127,20 @@ result,seen=cycles('coderabbit',[sample(checks=[check(7,'skipped')]),sample(chec
 assert len(seen)==2 and result['state']=='PAUSED'
 result,seen=cycles('coderabbit',[sample(checks=[check(7,'skipped')])],1,3,'7')
 assert result['wait_after_run']=='7'
+# A throttled run completes neutral with a "Review rate limited" title: throttled, not FAIL.
+limited={'title':'Review rate limited','summary':'Result: Rate limited - Review rate limited'}
+result,seen=cycles('coderabbit',[sample(checks=[check(7,'neutral',output=limited)])],1,5)
+assert result['state']=='RATE_LIMITED_EVIDENCE' and result['run']==7 and len(seen)==1
+result,seen=cycles('coderabbit',[sample(checks=[check(7,'neutral',output={'title':None,'summary':'Result: Rate limited - Review rate limited'})])],1,5)
+assert result['state']=='RATE_LIMITED_EVIDENCE'
+# Any other neutral or failed run stays FAIL, and a newer run supersedes an old throttled one.
+for out in ({'title':'Review failed','summary':'Result: Failed'}, {}, {'title':'Rate limited notes','summary':'Mentions rate limited code'}):
+    result,seen=cycles('coderabbit',[sample(checks=[check(7,'neutral',output=out)])],1,1)
+    assert result['state']=='FAIL', out
+result,seen=cycles('coderabbit',[sample(checks=[check(7,'failure',output=limited)])],1,1)
+assert result['state']=='FAIL'
+result,seen=cycles('coderabbit',[sample(checks=[check(7,'neutral',output=limited),check(8)])],1,0)
+assert result['state']=='PASS'
 
 # Real pagination consumes distinct sequential pages, checks counts, and fails closed.
 page1=[{'id':i} for i in range(100)]
