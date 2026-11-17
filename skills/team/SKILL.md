@@ -83,6 +83,7 @@ Run one **Wait** per live session, with a 10-minute timeout, as a long command (
 2. The repository's `AGENTS.md` has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user (`gh pr diff <n> --name-only`).
 3. A fresh `pr-status.sh` exit-0 report for that SHA, run as step 6 of the `completion` reference in `dev` says: policy file verified against repository authority, every required check successful, each configured reviewer completed on that SHA (a throttled CodeRabbit review counts only as that step allows), zero unresolved threads.
 4. The session's ledger (the path on the line) shows a converged cross-review covering that head under completion step 2, every blocking finding fixed, and every commit after the evaluator PASS SHA recorded `behavioral: no`. A missing or unreadable ledger is an unmet gate.
+5. Every review body and comment on the PR, read yourself up to the head, has a disposition: each blocking finding fixed, each other comment fixed or answered. `pr-status.sh` doesn't judge prose (its verdict is `CALLER_TRIAGE_REQUIRED`), so a comment posted after the session's hand-off is unmet until it is settled.
 
 All hold: `gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`, confirm `MERGED`, then **Prompt** the session: "PR merged as <merge commit>. Continue the dev run for <feat-name>." It closes out the tracker, cleans up and ends with `TEAM: DONE … merged`. Any gate fails or is unknown: don't merge; record why.
 

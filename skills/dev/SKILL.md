@@ -12,9 +12,11 @@ metadata:
 ## When to Use
 
 **Invocation.** The user names this skill with a feat-name, in any wording. These three are equivalent, and all re-run entry detection from scratch:
-- "start work on `<feat-name>`"
-- "what's next for `<feat-name>`"
-- "open a PR for `<feat-name>`"
+- "use dev to start work on `<feat-name>`"
+- "`/dev` what's next for `<feat-name>`"
+- "dev: open a PR for `<feat-name>`"
+
+Without the skill's name, none of them starts it (Invocation boundary).
 
 All three behave identically: entry detection runs first and decides the phase, whatever the wording. "Open a PR for feat-X" does not skip to Phase 5; it may enter Phase 3 if `sprint-contract.md` is absent or has unchecked items.
 
@@ -23,7 +25,7 @@ All three behave identically: entry detection runs first and decides the phase, 
 - **Start only on an explicit invocation**: the user names `dev` (`/dev`, "use dev for `<feat-name>`"), or `team` runs it for one change. Only the user or `team` starts it. Never load it because a request involves coding, implementation, GitHub, planning, review, or a phrase that resembles one of its phases.
 - **Its authority ends at its handoff**: the Phase 5 report (merge-ready or blocked), the Phase 6 report after a merge, or a stop for the user. Later messages are standalone requests unless the user invokes `dev` again; they don't inherit its orchestration.
 - **Incidental requests are not phases.** A status question, a branch sync, a PR metadata edit or an explicitly authorized merge is handled directly when it needs no substantive implementation judgment.
-- **`dev` never merges.** After the handoff, "merge it" is a standalone request: re-check the live gates and merge directly in the same session, through the `github` skill's standalone merge. Don't re-invoke `dev`, reload its internal skills or spawn a merge subagent. `team` is the only workflow that merges by itself, after re-checking every gate.
+- **`dev` never merges.** After the handoff, "merge it" is a standalone request: re-check the live gates (a fresh `pr-status.sh` report on the head and every gate in step 6 of `references/completion.md`) and merge directly in the same session with `--match-head-commit`. Don't re-invoke `dev`, load other skills for it or spawn a merge subagent. `team` is the only workflow that merges by itself, after re-checking every gate.
 - **The user may narrow, waive or stop a procedural pass** (skip a re-review, stop after Phase 3). Correctness, security, privacy and merge-gate requirements still hold, but `dev`'s orchestration never outranks a direct user instruction.
 - **Work outside `dev`** is a spike or proof of concept the user drives by hand, with no completion workflow.
 
