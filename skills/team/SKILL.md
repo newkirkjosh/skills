@@ -1,6 +1,6 @@
 ---
 name: team
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Runs dev for several approved changes at once: starts one dev session per change in its own terminal tab, orders them by dependency, keeps them moving without the user watching, merges each PR itself once it has re-checked every merge gate, and reports each PR merged, merge-ready or blocked."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Runs dev for several approved changes at once: one dev coordinator per change as a background subagent of this session, in dependency order, kept moving without the user watching, merging each PR itself once it has re-checked every merge gate, and reporting each change merged, merge-ready or blocked. Needs only the host agent's own tools, never a terminal or GUI workspace manager."
 license: MIT (idea adapted from fx/skills team by Marian Rudzynski; see LICENSE.txt)
 metadata:
   type: flexible
@@ -17,88 +17,95 @@ metadata:
 
 ## What it is
 
-`team` is a launcher and supervisor for `dev`, not a second lifecycle. Each change runs in its **own `dev` session**, in its own terminal tab and worktree, with its own context: `dev` already says a single session juggling several changes runs out of context. `team` writes no code and opens no PRs. It is the one workflow that merges: `dev` stops at merge-ready, and `team` merges after re-checking every gate itself (step 4, Merge gate), as in fx's `team`. What it adds is what an unattended batch needs: dependency order, at most three sessions at once, a standing instruction to run without pausing, and someone checking every session so a stall is noticed by `team`, not the user. Each session's completion runs under its own `dev` invocation, so it pushes and opens its PR without a confirmation prompt; the merge still follows the repository's Merge policy.
+`team` is a launcher and supervisor for `dev`, not a second lifecycle. Each change runs under its **own `dev` coordinator**, a background subagent of this session with its own context and worktree: `dev` already says a single session juggling several changes runs out of context. Subagents nest, so each coordinator spawns its own test author, implementer and evaluator. `team` writes no code and opens no PRs. It is the one workflow that merges: `dev` stops at merge-ready, and `team` merges after re-checking every gate itself (`references/merge-gate.md`), as in fx's `team`. What it adds is what an unattended batch needs: dependency order, a concurrency cap, a standing instruction to run without pausing, and someone checking every worker so a stall is noticed by `team`, not the user.
+
+It depends only on the host agent's own tools (spawn, wait, continue, stop) plus `git`, `gh` and `wt`, so it runs the same under any interface the user is trying.
+
+**v1 never recovers anything automatically.** One run per repository, in one interactive session. Any state `team` can't prove clean (an interrupted run, a worker it can't show stopped, an unverified merge, an interrupted sync, an unanswered permission prompt) stops that change with a **hold** that every later run honors until the user clears it (`references/run-state.md`).
 
 ## Session operations
 
-`team` needs a terminal workspace manager that runs agent sessions side by side and can do these five things. The user's global instructions name the tool and spell each operation; read them before step 3. If they name none, or the tool can't do one of these, say so and stop: there is no safe substitute.
+Concrete syntax, as in `dev`, is an example; the host adapters reference in `dev` has both hosts' operations.
 
-| Operation | What it must do |
-|---|---|
-| **Open** | Create a new tab at the repository root without taking the user's focus, and return its pane. |
-| **Start** | Start an agent of a given kind, under a name, in that pane, with this session's launch flags so it keeps the same permissions. |
-| **Prompt** | Submit a prompt to a named agent and confirm its turn started. |
-| **Wait** | Block until a named agent is `idle`, `done` or `blocked` (waiting at an approval or question dialog), with a timeout. |
-| **Read** | Return the last lines of a named agent's terminal. |
+| Operation | Claude Code | Codex |
+|---|---|---|
+| **Start** | `Agent`, general-purpose, `run_in_background: true`, tier `large`, and **no `name`**: a named spawn can become an agent-team teammate, with a different lifecycle. Record the returned agent ID. | `spawn_agent` with `fork_turns: "none"`, `task_name` `dev_` plus the feat-name with hyphens as underscores |
+| **Wait** | The completion notification, plus one heartbeat: a background command that just waits 10 minutes | `wait_agent` with `timeout_ms` 600000, before the turn ends |
+| **Continue** | `SendMessage` to the agent ID; it resumes in the background and its next final message arrives as a completion | `followup_task` |
+| **Check** | the worker's output file, new commits (`wt list --format=json`), PR state | new commits, PR state, the child's status |
+| **Stop** | `TaskStop` | `close_agent`, where the host has it |
+
+Only a `TEAM:` line in the final message of the invocation being waited on counts, and only with the latest invocation number.
 
 ## Steps
 
-### 1. Scope
+### 1. Lock and preflight
 
-1. Resolve the set of changes. Each needs a change folder (`openspec/changes/<feat-name>/` with `scope-brief.md`, `proposal.md` and `tasks.md`, which step 2 orders by), and an `architectural` one also needs the user's approval of its design (`dev` Phase 0). A change without either isn't ready: list it in the report as "needs `dev` Phase 0 first" and leave it out, rather than starting a session that will stop to ask.
-2. Write the run's brief: the user's request **verbatim**, the changes in scope, and anything they said is out of scope. It goes into every session's prompt beside that change's own `scope-brief.md`.
+1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop.
+2. Run `references/preflight.md`. Any failure: say which and stop.
+
+### 2. Scope
+
+1. Resolve the set of changes. Each needs a change folder (`openspec/changes/<feat-name>/` with `scope-brief.md`, `proposal.md` and `tasks.md`, which step 3 orders by), and an `architectural` one also needs the user's approval of its design (`dev` Phase 0). A change without either isn't ready: list it as "needs `dev` Phase 0 first" and leave it out. A held change is listed as `blocked: held (<reason>)` and left out. A change with a record from an earlier run that never reached a final state is inspected, reported and held.
+2. Write the run's brief: the user's request **verbatim**, the changes in scope, and anything they said is out of scope. It goes into every worker's prompt beside that change's own `scope-brief.md`.
 3. **Do not ask to confirm a clearly scoped request.** "All approved changes", a list of feat-names or a parent issue is the scope; start. Ask only when the scope is genuinely ambiguous or contradictory.
 
-### 2. Order
+### 3. Order
 
-Build the dependency order from each change's `proposal.md` and `tasks.md` (an explicit "depends on", or a layer that needs another change's code) and from blocking relations on the tracker issues. Two changes that edit the same files run one after the other even without a stated dependency: parallel branches touching one file end in conflicts after the first squash merge. Everything else may run together, **at most three sessions at once**: each one spawns its own subagents, and the user's plan has a session limit.
+Build the dependency order from each change's `proposal.md` and `tasks.md` (an explicit "depends on", or a layer that needs another change's code) and from blocking relations on the tracker issues. Two changes that edit the same files run one after the other even without a stated dependency: parallel branches touching one file end in conflicts after the first squash merge. A dependent starts only when its dependency is `done` (every layer merged and closed out), never after one layer's merge.
 
-### 3. Launch
+**Concurrency:** at most three `dev` workers on Claude Code. On Codex one at a time: slots are shared across the whole agent tree, and each worker needs room for its roles.
 
-For each change that is unblocked, while fewer than three sessions are live:
+### 4. Launch
 
-1. **Open** a tab labelled with the feat-name.
-2. **Start** an agent of this session's own kind (Claude Code or Codex) in it, named `dev-` plus the feat-name, cut so the whole name is at most 32 characters (lowercase letters, digits and hyphens; add `-2`, `-3` if two cut names collide). Key the ledger by feat-name, not by agent name. The cross-model review inside `dev` already brings in the other model.
-3. **Prompt** it with:
+For each unblocked change, within the concurrency cap:
+
+1. Write the change record's `launching` state and invocation number 1 (`references/run-state.md`), **then** **Start** the worker with:
 
    ```
-   Use the dev skill for <feat-name>, and run it to the end without pausing for confirmation.
+   Use the dev skill for <feat-name>, invocation 1, and run it to the end without pausing for confirmation. The repository's main checkout is <absolute path>; find or create this change's worktree through dev's entry detection.
 
    <the run's brief, verbatim>
 
-   This session runs under team, unattended. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then tells you to continue for close-out and cleanup. End your final message with exactly one line:
-   TEAM: MERGE-READY <PR URL> <head SHA> <ledger path>
-   TEAM: DONE <PR URL> merged
-   TEAM: BLOCKED <one-sentence reason>
+   This run is under team, unattended. Spawn sub-agents for the roles as dev describes[, and close each finished role agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
+   TEAM: MERGE-READY <PR URL> <head SHA> <ledger path> #<n>
+   TEAM: DONE <PR URL> merged #<n>
+   TEAM: BLOCKED needs approval: <operation> #<n>
+   TEAM: BLOCKED needs decision: <question> #<n>
+   TEAM: BLOCKED unavailable: <capability> #<n>
+   TEAM: BLOCKED <one-sentence reason> #<n>
    ```
 
-4. Record it in a ledger in scratch space outside the repository: change, agent name, pane, branch, PR, state, last progress seen and when.
+   (The bracketed clause is for Codex.)
+2. Record the agent ID and `running`.
 
-### 4. Supervise
+### 5. Supervise
 
-Run one **Wait** per live session, with a 10-minute timeout, as a long command (backgrounded on Claude Code; a waiter child on Codex, per the host adapters reference in `dev`). Each wake is one pass over the ledger. For the session that woke:
+Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass over every live change. On Claude Code, record the heartbeat's task ID and re-arm it as the pass's last step, only once it has fired, failed or been cancelled; an arm that fails is retried once in the same pass, and a second failure stops new work, reports every live change with its agent ID, and ends the run. For each change:
 
 | Result | Do |
 |---|---|
-| Timed out, still working | Check for progress: new commits (`wt list --format=json`), PR state, and a **Read** of its last 40 lines. Something moved: record it and wait again. Nothing moved for two checks in a row (about 20 minutes): report the session to the user with what it last showed, and keep waiting. |
-| `blocked` | An approval or question dialog. **Read** it. Never answer it yourself: tell the user what it asks and which tab it's in. |
-| `idle` or `done`, ending `TEAM: MERGE-READY …` | Run the Merge gate below. Merged: start whatever it unblocked (step 3), and **Prompt** every other live session that the default branch moved, so its `dev` merges it in and pushes once its current CI run has finished: never mid-run, since a push cancels or invalidates the run it is waiting on. Not merged: record it as merge-ready (or blocked, with the failing gate) for the report; changes that depend on it stay unstarted. |
-| `idle` or `done`, ending `TEAM: DONE … merged` | The session finished close-out and cleanup. Confirm the PR with `gh pr view <n> --json state,mergeCommit` (`MERGED`, with a merge commit) and record it as merged. |
-| `idle` or `done`, ending `TEAM: BLOCKED` | Record it for the report. Changes that depend on it stay unstarted. |
-| `idle` or `done` with no `TEAM:` line | It stopped without finishing. **Prompt** it once: "Continue the dev run for <feat-name>. If you are stopped, end with the TEAM line that says why." If it goes idle again without one, record it as stalled and report it. |
+| Still working | **Check** for progress. Something moved: record it and the time. Idle (measured from the recorded time) 20 minutes: tell the user, mentioning that it may be waiting on a permission prompt in this session. Idle 30 minutes on Claude Code: **Stop** it, and hold it once the host shows it stopped (or hold it as "stop unconfirmed"). On Codex, idleness is reported at 30 and 60 minutes and never stopped, since evaluator and review waits look idle there. |
+| A permission prompt from it is waiting | Never answer it. Tell the user. Still unanswered after 30 minutes on either host: **Stop** it where the host can, record `blocked: permission prompt unanswered`, and hold it. |
+| `MERGE-READY` | Run `references/merge-gate.md`. Merged: it re-invokes the worker for close-out. Not merged: record `merge-ready (<reason>)` or the gate that failed. |
+| `DONE … merged` | Confirm with `gh api repos/<owner>/<repo>/pulls/<n>` (`merged: true`) and that the change folder is archived on the default branch; record `done`; start whatever it unblocked. |
+| `BLOCKED needs decision` | Ask the user. Their answer goes back word for word in an explicit re-invocation ("Use the dev skill for <feat-name> again, invocation <n+1>: <answer>. Run entry detection from <main checkout path>."). |
+| `BLOCKED needs approval` / `unavailable` / other | Record it for the report, with the operation or reason verbatim. Never re-invoke it in this run: whether a running worker picks up widened permissions isn't established, so the user widens them and starts a new run. |
+| Final message with no `TEAM:` line | It ended its turn without finishing. Re-invoke it once ("Use the dev skill for <feat-name> again, invocation <n+1>. If you are stopped, end with the TEAM line that says why."). Again without one: `stalled`, held. If the message shows a denied or failed operation, record `blocked` instead, without re-invoking. |
+| Ended by the host (watchdog, error) | `stalled`, held. |
 
-**Merge gate.** A `MERGE-READY` line is a claim, never evidence. Merge only when you have checked every gate yourself, on the SHA the line names, with no push in between:
+A stopped, stalled or held change is never restarted, nudged or reassigned.
 
-1. `gh pr view <n> --json state,headRefOid` shows the PR open with exactly that head.
-2. The repository's `AGENTS.md` has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user (`gh pr diff <n> --name-only`).
-3. A fresh `pr-status.sh` exit-0 report for that SHA, run as step 6 of the `completion` reference in `dev` says: policy file verified against repository authority, every required check successful, each configured reviewer completed on that SHA (a throttled CodeRabbit review counts only as that step allows), zero unresolved threads.
-4. The session's ledger (the path on the line) shows a converged cross-review covering that head under completion step 2, every blocking finding fixed, and every commit after the evaluator PASS SHA recorded `behavioral: no`. A missing or unreadable ledger is an unmet gate.
-5. Every review body and comment on the PR, read yourself up to the head, has a disposition: each blocking finding fixed, each other comment fixed or answered. `pr-status.sh` doesn't judge prose (its verdict is `CALLER_TRIAGE_REQUIRED`), so a comment posted after the session's hand-off is unmet until it is settled.
+### 6. Report
 
-All hold: `gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`, confirm `MERGED`, then **Prompt** the session: "PR merged as <merge commit>. Continue the dev run for <feat-name>." It closes out the tracker, cleans up and ends with `TEAM: DONE … merged`. Any gate fails or is unknown: don't merge; record why.
-
-`idle` is not done: a session that ended its turn mid-run looks exactly like one that finished, and only the `TEAM:` line tells them apart. Never treat silence as progress.
-
-**Codex host.** The `dev` sessions live in their own tabs and survive this session's turn ending, but this session's supervision doesn't: on Codex, run each **Wait** through a waiter child and `wait_agent` on it before your turn ends, as the host adapters reference in `dev` describes.
-
-### 5. Report
-
-When nothing is live and nothing more can start, report one row per change: feat-name, PR, `merged` / `merge-ready` / `blocked: <reason>` / `stalled` / `not started: <why>`. Leave the tabs open so the user can read each session; close one only when the user asks.
+When nothing is live and nothing more can start: stop the outstanding heartbeat, remove the run lock, and report one row per change: feat-name, PR, `merged` / `merge-ready (<reason>)` / `blocked: <reason>` / `stalled` / `held: <reason>` / `not started: <why>`, each with its agent ID. Name the operations preflight couldn't prove (PR writes, tracker writes, merge rights), and the residual merge race when the repository doesn't require up-to-date branches.
 
 ## Gotchas
 
-- **Never hand one session several changes.** One change per session is the whole design; batching them into one `dev` run is the context blow-up this skill exists to avoid.
-- **Start needs a pane at a shell prompt, and a new tab's shell takes a few seconds to get there.** An agent start sent the moment the tab opens is typed into a shell that's still loading and lost, and a longer start timeout doesn't help: the command is typed at once. After Open, **Read** the pane until it shows a shell prompt (bounded, a few seconds), then Start. If no prompt appears within that bound, record and report the session as `not started`; never Start it or leave it running unattended. A pane already running something isn't at a prompt at all.
-- **Don't answer another session's dialogs.** A `blocked` session is waiting for the user, even when the answer looks obvious.
-- **Wave labels never go in PR titles.** Each `dev` session titles its own PR using the repository conventions; a wave or batch number in a title links the squash commit to an unrelated issue.
+- **Never hand one worker several changes.** One change per coordinator is the whole design; batching them into one `dev` run is the context blow-up this skill exists to avoid.
+- **No `name` on Claude Code spawns.** With agent teams enabled, a named `Agent` call can start a teammate instead of a subagent, which completes and shuts down differently.
+- **`idle` is not done.** A worker that ended its turn mid-run looks exactly like one that finished; only the `TEAM:` line with the latest invocation number tells them apart.
+- **Never infer that a lock, a launch or a worker is gone.** An old lock, a `launching` record with no agent ID, or a worker the host doesn't show stopped is the user's to check.
+- **Don't answer another agent's permission prompts.** They wait for the user, even when the answer looks obvious.
+- **Wave labels never go in PR titles.** Each worker titles its own PR using the repository conventions; a wave or batch number in a title links the squash commit to an unrelated issue.
 - **Merging is still per repository.** `team` grants no merge permission the repository's Merge policy doesn't; without one, every PR stops at merge-ready and the report says so.
