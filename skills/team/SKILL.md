@@ -100,7 +100,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 
 A stopped, stalled or held change is never restarted, nudged or reassigned.
 
-**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held.
+**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held. A change held as `no verifiable handoff` or `stalled` may still have roles running: **Stop** the worker and every role the host can show, and unless all are shown stopped, record `stop unconfirmed` in the hold, which keeps the slot and stops later runs before any probe.
 
 ### 6. Report
 
