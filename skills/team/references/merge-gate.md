@@ -6,7 +6,7 @@ A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate 
 
 ## Gates
 
-Start each pass with `git fetch origin` and pin `origin/<default>` to a SHA, recorded in the change record. A failed fetch ends the pass as unknown (gate 0), before any other gate. Then check gate 2 against that SHA: a policy refusal ends the attempt before anything can request a sync.
+Start each pass with `git fetch origin` and pin `origin/<default>` to a SHA, recorded in the change record. A failed fetch ends the pass as unknown (gate 0), before any other gate. Then, in this order: the PR identity and state checks of gate 0 and gate 1; gate 2 against the pinned SHA, so a policy refusal ends the attempt before anything can request a sync; gate 0's stale-base check; gates 3 to 5.
 
 0. **Base.** `gh api repos/<owner>/<repo>/pulls/<n>`: `state` is `open`, `base.repo.full_name` is this repository, `base.ref` its default branch, `head.sha` exactly the handoff head, and `head.repo.full_name` and `head.ref` are this repository and the worker's current layer branch, resolved from the change's `issues.md` and `dev`'s layer-branch rule, never from the `TEAM:` line. Then run `git merge-base --is-ancestor <default sha> <head>` with the pinned SHA:
    - exit 0: current;
@@ -52,7 +52,7 @@ gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f merge_method=squash -f sha
 Never `gh pr merge`: on a branch that requires a merge queue it may enqueue the PR or enable auto-merge, and `team` does neither. The REST call merges directly or fails.
 
 - **Rejected:** only a structured GitHub error (HTTP 405, 409 or 422 with a message) proves it. Retire the intent and return **refused** with the message; supervision writes the final `merge-ready (<message>)` after closing the worker.
-- **Success or anything else** (a `gh` exit code alone, a timeout, an unparseable response): read `gh api repos/<owner>/<repo>/pulls/<n>` back. The intent retires only on `merged: true`, a `merge_commit_sha` equal to the SHA the PUT returned (when it returned one), `head.sha` the expected head, and `base.repo.full_name` and `base.ref` the expected base. Write `merged <merge sha>`, then re-invoke the worker (branch and worktree cleanup are `dev`'s Phase 6, which checks them first): "Use the dev skill for <feat-name> again, invocation <next>: PR <url> merged as <merge sha>. Run entry detection from <main checkout path>." It closes out, cleans up, and starts the next layer or ends `TEAM: DONE`.
+- **Success or anything else** (a `gh` exit code alone, a timeout, an unparseable response): read `gh api repos/<owner>/<repo>/pulls/<n>` back. The intent retires only on `merged: true`, a `merge_commit_sha` equal to the SHA the PUT returned (when it returned one), `head.sha` the expected head, and `base.repo.full_name` and `base.ref` the expected base. Write `merged <merge sha>`, run `git fetch origin` and confirm the merge commit is an ancestor of `origin/<default>` (if not, or if the fetch fails, hold the change), then re-invoke the worker (branch and worktree cleanup are `dev`'s Phase 6, which checks them first): "Use the dev skill for <feat-name> again, invocation <next>: PR <url> merged as <merge sha>. Run entry detection from <main checkout path>." It closes out, cleans up, and starts the next layer or ends `TEAM: DONE`.
 - **Readback doesn't match:** mark the intent `unknown`, hold the change, and put the run under the merge hold: nothing more merges.
 
 ## Residual race
