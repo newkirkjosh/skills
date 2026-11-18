@@ -34,6 +34,7 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 | Failed check, unresolved thread, or a late comment without a disposition (gates 3, 5) | **Re-invoked** once per head with the finding ("Use the dev skill for <feat-name> again, invocation <n>: <finding>. Run entry detection from <main checkout path>."), then **refused** |
 | PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** for re-evaluation, once per head, then **refused** |
 | Cross-review not converged, or not covering the head (gate 4) | **Re-invoked** once per head, then **refused** |
+| A required reviewer absent or skipped without the allowance in completion step 6, or the evidence policy unverifiable (gate 3) | **Refused** |
 | Ledger missing or unreadable (gate 4) | **Refused** |
 
 A refused change keeps `merge-ready (<reason>)` for the report.
