@@ -78,7 +78,7 @@ For each unblocked change, within the concurrency cap:
 
    (The bracketed clause is for Codex.)
 2. Record the agent ID and `running`.
-3. On Claude Code, arm the first heartbeat before ending the turn, so stall checks run even if no worker ever completes.
+3. On Claude Code, arm the first heartbeat before ending the turn, so stall checks run even if no worker ever completes. A failed arm follows the same rule as in step 5: retry once, then stop and hold every live change and end the run.
 
 ### 5. Supervise
 
