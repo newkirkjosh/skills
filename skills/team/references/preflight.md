@@ -18,6 +18,6 @@ The session's permission mode must not prompt for `dev`'s normal work, and its s
    - a read of the tracker the change folders name (`issues.md`);
    - that `cross-review`'s script and the other model's CLI start (`--version`).
 2. The probe coordinator spawns one **probe role** the way `dev` spawns its roles. The role creates a scratch worktree at the real worktrunk destination (`wt switch --create team-probe-<random> --no-cd`), writes a file in it and in the scratch directory the evaluator uses, lists its available tools, then removes the worktree and the branch.
-3. Both report. Any failure, a missing tool, or **a permission prompt surfacing during the probe** stops the run: a prompt here means `dev` would block on the same prompt later. A successful role spawn also proves nesting depth on the installed version (some versions defaulted to one layer).
+3. Both report, then stop (on Codex, close) both probes before any change starts. Any failure, a missing tool, or **a permission prompt surfacing during the probe** stops the run: a prompt here means `dev` would block on the same prompt later. A successful role spawn also proves nesting depth on the installed version (some versions defaulted to one layer).
 
 **Unproven until first use, and named in the run's report:** creating and updating a PR, tracker writes, and merge rights under branch rules. No check exists for them that doesn't perform them.

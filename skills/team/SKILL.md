@@ -81,20 +81,21 @@ For each unblocked change, within the concurrency cap:
 
 ### 5. Supervise
 
-Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass over every live change. On Claude Code, record the heartbeat's task ID and re-arm it as the pass's last step, only once it has fired, failed or been cancelled; an arm that fails is retried once in the same pass, and a second failure stops new work, reports every live change with its agent ID, and ends the run. For each change:
+Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass over every live change. On Claude Code, record the heartbeat's task ID and re-arm it as the pass's last step, only once it has fired, failed or been cancelled; an arm that fails is retried once in the same pass. A second failure ends the run: **Stop** every live worker, hold every change that was live (stopped, or `stop unconfirmed` where the host can't show it stopped, including its roles), then report and release the lock as in step 6. For each change:
 
 | Result | Do |
 |---|---|
 | Still working | **Check** for progress. Something moved: record it and the time. Idle (measured from the recorded time) 20 minutes: tell the user, mentioning that it may be waiting on a permission prompt in this session. Idle 30 minutes on Claude Code: **Stop** it, and hold it once the host shows it stopped (or hold it as "stop unconfirmed"). On Codex, idleness is reported at 30 and 60 minutes and never stopped, since evaluator and review waits look idle there. |
 | A permission prompt from it is waiting | Never answer it. Tell the user. Still unanswered after 30 minutes on either host: **Stop** it where the host can, record `blocked: permission prompt unanswered`, and hold it. |
+| Any result while a sync is pending | Handle the sync first (`references/run-state.md`, Sync record): retire it only on the matching `MERGE-READY` with a verified pushed head, then run the merge gate; anything else holds the change. |
 | `MERGE-READY` | Run `references/merge-gate.md`. Merged: it re-invokes the worker for close-out. Not merged: record `merge-ready (<reason>)` or the gate that failed. |
-| `DONE … merged` | Confirm with `gh api repos/<owner>/<repo>/pulls/<n>` (`merged: true`) and that the change folder is archived on the default branch; record `done`; start whatever it unblocked. |
+| `DONE … merged` | Confirm with `gh api repos/<owner>/<repo>/pulls/<n>` (`merged: true`) and that the change folder is archived on the default branch; record `done`; on Codex, **Stop** (close) the worker to free its slot; start whatever it unblocked. |
 | `BLOCKED needs decision` | Ask the user. Their answer goes back word for word in an explicit re-invocation ("Use the dev skill for <feat-name> again, invocation <n+1>: <answer>. Run entry detection from <main checkout path>."). |
 | `BLOCKED needs approval` / `unavailable` / other | Record it for the report, with the operation or reason verbatim. Never re-invoke it in this run: whether a running worker picks up widened permissions isn't established, so the user widens them and starts a new run. |
 | Final message with no `TEAM:` line | It ended its turn without finishing. Re-invoke it once ("Use the dev skill for <feat-name> again, invocation <n+1>. If you are stopped, end with the TEAM line that says why."). Again without one: `stalled`, held. If the message shows a denied or failed operation, record `blocked` instead, without re-invoking. |
 | Ended by the host (watchdog, error) | `stalled`, held. |
 
-A stopped, stalled or held change is never restarted, nudged or reassigned.
+A stopped, stalled or held change is never restarted, nudged or reassigned. On Codex, close every worker as soon as it reaches a final state, and the preflight probe as soon as it reports, so finished agents don't hold slots.
 
 ### 6. Report
 

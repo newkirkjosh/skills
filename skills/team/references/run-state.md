@@ -4,7 +4,7 @@
 
 ## Run lock
 
-`mkdir <state>/run` is the first thing a run does. It is atomic: it fails if the directory exists. Inside it, `owner` records the host session ID and the time.
+`mkdir -p <state>`, then plain `mkdir <state>/run` (no `-p`): the first thing a run does. The second is atomic and fails if the lock exists. Inside it, `owner` records the host session ID and the time.
 
 - **Held by someone else:** say so and stop. Never infer that the other run is gone, however old the lock looks. Only the user removes it.
 - One run per repository is what keeps two `team` runs from racing over a change or a merge.
@@ -33,7 +33,7 @@
 
 Write a hold, and stop that change, whenever its state can't be proven clean:
 
-- **An interrupted run.** A run that finds a change record without a final state (`merged`, `done`, `blocked`, `stalled`, or `merge-ready` with no live worker) inspects it, reports it and holds it. No reattach, no replayed close-out.
+- **An interrupted run.** The only final states are `done`, `blocked`, `stalled`, and `merge-ready` with its worker no longer needed. A run that finds a record in any other state (`launching`, `running`, `merging`, `merged`: a verified merge whose close-out or later layers never finished) inspects it, reports it and holds it. No reattach, no replayed close-out.
 - **A launch with no agent ID.**
 - **A worker or any role it started that the host can't show as stopped**, after a stop was requested.
 - **A merge intent that isn't retired** (below).
@@ -48,4 +48,4 @@ Before the merge call, `merge` records the PR, base repository and ref, base SHA
 
 ## Sync record
 
-Before asking a worker to sync with a moved default branch, write `sync`: invocation number, PR, layer, expected head SHA, and the captured default-branch SHA to merge. Retire it only after reading the worker's pushed head back from GitHub. Until then the change's branch isn't trusted, and anything other than a clean pushed result (a conflict, a mismatch, an interruption) holds the change.
+Before asking a worker to sync with a moved default branch, write `sync`: invocation number, PR, layer, expected head SHA, and the captured default-branch SHA to merge. While it is pending, no second sync is requested for that change. Retire it only when the worker's `MERGE-READY` carries the same invocation number and GitHub's PR head (read back with `gh api repos/<owner>/<repo>/pulls/<n>`) equals the head on that line, differs from the expected head, and has the captured default SHA as an ancestor (`git merge-base --is-ancestor`). Anything else (`BLOCKED sync conflict`, `BLOCKED sync interrupted`, another `BLOCKED`, a mismatch, an interruption) holds the change; it is never synced again by `team`.
