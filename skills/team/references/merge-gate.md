@@ -6,7 +6,7 @@ A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate 
 
 ## Gates
 
-Start each pass with `git fetch origin` and pin `origin/<default>` to a SHA, recorded in the change record; a failed fetch is unknown (gate 0). Then check gate 2 against that SHA: a policy refusal ends the attempt before anything can request a sync.
+Start each pass with `git fetch origin` and pin `origin/<default>` to a SHA, recorded in the change record. A failed fetch ends the pass as unknown (gate 0), before any other gate. Then check gate 2 against that SHA: a policy refusal ends the attempt before anything can request a sync.
 
 0. **Base.** `gh api repos/<owner>/<repo>/pulls/<n>`: `state` is `open`, `base.repo.full_name` is this repository, `base.ref` its default branch, `head.sha` exactly the handoff head, and `head.repo.full_name` and `head.ref` are this repository and the worker's current layer branch, resolved from the change's `issues.md` and `dev`'s layer-branch rule, never from the `TEAM:` line. Then run `git merge-base --is-ancestor <default sha> <head>` with the pinned SHA:
    - exit 0: current;

@@ -41,7 +41,7 @@ Only a `TEAM:` line in the final message of the invocation being waited on count
 
 ### 1. Lock and preflight
 
-1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop. A hold recording a worker not shown stopped means agent capacity can't be proven: report it, release the lock and stop, before spawning any probe, until the user clears it.
+1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop. Also inspect every change record repository-wide, in scope or not: one that isn't final gets a hold. A hold recording a worker not shown stopped, or any new hold from this scan, means agent capacity can't be proven: report it, release the lock and stop, before spawning any probe, until the user clears it.
 2. Run `references/preflight.md`. Any failure: say which, stop the probes, and remove the run lock once the host shows them stopped. If it can't show that, leave the lock and say so.
 
 ### 2. Scope
