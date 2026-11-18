@@ -16,7 +16,7 @@
 
 | File | Holds |
 |---|---|
-| `state` | `launching`, `running`, `merge-ready`, `merging`, `merged`, `done`, `blocked: <reason>`, `stalled` |
+| `state` | `launching`, `running`, `merge-pending`, `merging`, `merged`, and the final `done`, `merge-ready (<reason>)`, `blocked: <reason>`, `stalled` |
 | `agent` | the worker's agent ID as the host returned it (on Codex, not the `task_name` label) |
 | `invocation` | the latest invocation number sent to the worker |
 | `progress` | time of the last observed progress, and what moved |
@@ -33,7 +33,7 @@
 
 Write a hold, and stop that change, whenever its state can't be proven clean:
 
-- **An interrupted run.** The only final states are `done`, `blocked`, `stalled`, and `merge-ready` with its worker no longer needed. A run that finds a record in any other state (`launching`, `running`, `merging`, `merged`: a verified merge whose close-out or later layers never finished) inspects it, reports it and holds it. No reattach, no replayed close-out.
+- **An interrupted run.** The only final states are `done`, `blocked`, `stalled` and `merge-ready (<reason>)`, each written after its worker is confirmed closed where the host requires it. A run that finds a record in any other state (`launching`, `running`, `merge-pending`, `merging`, `merged`: a verified merge whose close-out or later layers never finished) inspects it, reports it and holds it. No reattach, no replayed close-out.
 - **A launch with no agent ID.**
 - **A worker or any role it started that the host can't show as stopped**, after a stop was requested.
 - **A merge intent that isn't retired** (below).

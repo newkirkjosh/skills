@@ -9,7 +9,7 @@ A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate 
 0. **Base.** `gh api repos/<owner>/<repo>/pulls/<n>`: `state` is `open`, `base.repo.full_name` is this repository, `base.ref` its default branch, `head.sha` exactly the handoff head. Then `git fetch origin`, resolve `origin/<default>` to a SHA, record it in the change record, and run `git merge-base --is-ancestor <default sha> <head>`:
    - exit 0: current;
    - exit 1: stale. Write the sync record (`run-state.md`) and re-invoke the worker: "Use the dev skill for <feat-name> again, invocation <n>: the default branch moved to <default sha>; sync PR <url> from head <head sha> and hand off again." At most two syncs per PR; a third move leaves it `merge-ready (base moved)`;
-   - any other exit, or a failed fetch: unknown. No merge this pass; retry next pass; two unknowns in a row leave it `merge-ready (base unknown)`.
+   - any other exit, or a failed fetch: unknown. Deferred: no merge this pass, `merge-pending`, retry next pass; two unknowns in a row leave it `merge-ready (base unknown)`.
 1. **Head.** Unchanged since the handoff (gate 0's `head.sha`).
 2. **Policy.** The repository's `AGENTS.md` on the default branch has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user (`gh pr diff <n> --name-only`).
 3. **Evidence.** A fresh `pr-status.sh` exit-0 report for that head, run as step 6 of the `completion` reference in `dev` says: policy file verified against repository authority, every required check successful, each configured reviewer completed on that head (a throttled CodeRabbit review counts only as that step allows), zero unresolved threads.
