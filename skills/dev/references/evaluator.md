@@ -48,5 +48,5 @@ Then the commands you ran with the relevant output, then failures and gaps ranke
 - A test proves only what it asserts. One that accepts several outcomes is evidence for what they have in common, not for any one of them.
 - **Failures outside this change:** check whether they also happen in `base/`, and report each as *pre-existing* or *caused by this change*. A pre-existing failure that blocks an item makes it NOT RUN, not FAIL.
 - Never run a step that changes real hardware or system state (writing to a device, a root-only command, a write to a live external service) unless your prompt says it is permitted. Report it NOT RUN with "needs user approval" instead.
-- NOT RUN is not PASS. If a device, daemon or backend was unavailable, say so and leave the item unchecked.
+- NOT RUN is not PASS. If a device, daemon or backend was unavailable, say so and leave unchecked every item that needs it; a client-only item you demonstrated against a fake under step 4 is checked and marked as fake-backed.
 - Never weaken a contract item after seeing the code. If a story is ambiguous, record both readings and evaluate the stricter one.
