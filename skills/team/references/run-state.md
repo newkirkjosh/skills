@@ -19,7 +19,7 @@
 | `state` | `launching`, `running`, `merge-pending`, `merging`, `merged`, and the final `done`, `merge-ready (<reason>)`, `blocked: <reason>`, `stalled` |
 | `agent` | the worker's agent ID as the host returned it (on Codex, not the `task_name` label) |
 | `invocation` | the latest invocation number sent to the worker |
-| `progress` | time of the last observed progress, and what moved |
+| `progress` | time of the last observed progress, and what moved; reset to now by every confirmed Start or Continue |
 | `merge` | the merge intent (below) |
 | `sync` | the pending sync record (below) |
 
@@ -48,4 +48,4 @@ Before the merge call, `merge` records the PR, base repository and ref, base SHA
 
 ## Sync record
 
-Before asking a worker to sync with a moved default branch, write `sync`: invocation number, PR, layer, expected head SHA, and the captured default-branch SHA to merge. While it is pending, no second sync is requested for that change. `dev` keeps its own progress in `sync-progress` in the same directory, outside the worktree. Retire the record only when the worker's `MERGE-READY` carries the same invocation number and GitHub's PR head (read back with `gh api repos/<owner>/<repo>/pulls/<n>`) equals the head on that line, differs from the expected head, and has the captured default SHA as an ancestor (`git merge-base --is-ancestor`). Anything else (`BLOCKED sync failed`, `BLOCKED sync interrupted`, `BLOCKED sync needs a clean worktree`, another `BLOCKED`, a mismatch, an interruption) holds the change; it is never synced again by `team`.
+Before asking a worker to sync with a moved default branch, write `sync`: invocation number, PR, layer, expected head SHA, and the captured default-branch SHA to merge. While it is pending, no second sync is requested for that change. `dev` keeps its own progress in `sync-progress` in the same directory, outside the worktree. Retire the record only when the worker's `MERGE-READY` carries the same invocation number, its PR URL is the recorded repository and PR, and GitHub's PR head (read back with `gh api repos/<owner>/<repo>/pulls/<n>`) equals the head on that line, differs from the expected head, and has the captured default SHA as an ancestor (`git merge-base --is-ancestor`). Anything else (`BLOCKED sync failed`, `BLOCKED sync interrupted`, `BLOCKED sync needs a clean worktree`, another `BLOCKED`, a mismatch, an interruption) holds the change; it is never synced again by `team`.

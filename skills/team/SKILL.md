@@ -98,7 +98,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 
 A stopped, stalled or held change is never restarted, nudged or reassigned. 
 
-**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead. A record that isn't final at a later run's start is held.
+**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap; if no slot can be shown free, start nothing more and go to the report. A record that isn't final at a later run's start is held.
 
 ### 6. Report
 
