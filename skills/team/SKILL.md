@@ -69,7 +69,7 @@ For each unblocked change, within the concurrency cap:
 
    <the run's brief, verbatim>
 
-   This run is under team, unattended. Spawn sub-agents for the roles as dev describes[, and close each finished role agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
+   This run is under team, unattended. Spawn sub-agents for the roles as dev describes[, and close each finished role agent; a close that fails ends your run with BLOCKED unavailable: close_agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
    TEAM: MERGE-READY <PR URL> <head SHA> <ledger path> #<i>
    TEAM: DONE <PR URL> merged #<i>   (only when every layer in issues.md is merged and closed out)
    TEAM: BLOCKED needs approval: <operation> #<i>
@@ -100,7 +100,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 
 A stopped, stalled or held change is never restarted, nudged or reassigned.
 
-**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held. A worker stopped on a timeout, or ended as `no verifiable handoff` or `stalled`, may still have roles running: **Stop** it and every role the host can show, and unless all are shown stopped, record `stop unconfirmed` in the hold, which keeps the slot and stops later runs before any probe.
+**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held. A worker stopped on a timeout, or ended as `no verifiable handoff`, `stalled` or `BLOCKED unavailable: close_agent`, may still have roles running or holding slots, so it is held: **Stop** it and every role the host can show, and unless all are shown stopped, record `stop unconfirmed` in the hold, which keeps the slot and stops later runs before any probe.
 
 ### 6. Report
 
