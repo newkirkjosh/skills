@@ -2,7 +2,7 @@
 
 A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate itself at the handoff, then **all of them again on one fresh set of observations** immediately before the merge call: the base SHA, PR files, Merge policy, checks, ledger and comments read in that final pass are the ones the merge relies on. Merges are serial: one run per repository, one merge at a time. Any gate that fails or can't be read means no merge; record why.
 
-`<owner>/<repo>`, `<n>` and the handoff head come from the `TEAM:` line and the change record. `<state>` is the run-state directory (`run-state.md`).
+`<owner>/<repo>`, the PR number `<n>` and the handoff head come from the `TEAM:` line and the change record. `<next>` is the change's next invocation number, recorded before sending (`run-state.md`); it is unrelated to the PR number. `<state>` is the run-state directory (`run-state.md`).
 
 ## Gates
 
@@ -10,7 +10,7 @@ Check gate 2 first: a policy refusal ends the attempt before anything can reques
 
 0. **Base.** `gh api repos/<owner>/<repo>/pulls/<n>`: `state` is `open`, `base.repo.full_name` is this repository, `base.ref` its default branch, `head.sha` exactly the handoff head. Then `git fetch origin`, resolve `origin/<default>` to a SHA, record it in the change record, and run `git merge-base --is-ancestor <default sha> <head>`:
    - exit 0: current;
-   - exit 1: stale. Write the sync record (`run-state.md`) and re-invoke the worker: "Use the dev skill for <feat-name> again, invocation <n>: the default branch moved to <default sha>; sync PR <url> from head <head sha> and hand off again." At most two syncs per PR; a third move leaves it `merge-ready (base moved)`;
+   - exit 1: stale. Write the sync record (`run-state.md`) and re-invoke the worker: "Use the dev skill for <feat-name> again, invocation <next>: the default branch moved to <default sha>; sync PR <url> from head <head sha> and hand off again." At most two syncs per PR; a third move leaves it `merge-ready (base moved)`;
    - any other exit, or a failed fetch: unknown. Deferred: no merge this pass, `merge-pending`, retry next pass; two unknowns in a row leave it `merge-ready (base unknown)`.
 1. **Head.** Unchanged since the handoff (gate 0's `head.sha`).
 2. **Policy.** The repository's `AGENTS.md` on the default branch has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user (`gh pr diff <n> --name-only`).
@@ -33,7 +33,7 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 | Required checks or reviewers still running (gate 3) | **Deferred**, for up to six passes, then **refused** |
 | Head differs from the handoff (gates 0, 1) | **Held**: something pushed outside the worker's handoff |
 | Merge policy forbids it or the PR touches a reserved path (gate 2) | **Refused** |
-| Failed check, unresolved thread, or a late comment without a disposition (gates 3, 5) | **Re-invoked** once per head with the finding ("Use the dev skill for <feat-name> again, invocation <n>: <finding>. Run entry detection from <main checkout path>."), then **refused** |
+| Failed check, unresolved thread, or a late comment without a disposition (gates 3, 5) | **Re-invoked** once per head with the finding ("Use the dev skill for <feat-name> again, invocation <next>: <finding>. Run entry detection from <main checkout path>."), then **refused** |
 | PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** for re-evaluation, once per head, then **refused** |
 | Cross-review not converged, or not covering the head (gate 4) | **Re-invoked** once per head, then **refused** |
 | A required reviewer absent or skipped without the allowance in completion step 6, or the evidence policy unverifiable (gate 3) | **Refused** |
@@ -52,7 +52,7 @@ gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f merge_method=squash -f sha
 Never `gh pr merge`: on a branch that requires a merge queue it may enqueue the PR or enable auto-merge, and `team` does neither. The REST call merges directly or fails.
 
 - **Rejected:** only a structured GitHub error (HTTP 405, 409 or 422 with a message) proves it. Retire the intent and return **refused** with the message; supervision writes the final `merge-ready (<message>)` after closing the worker.
-- **Success or anything else** (a `gh` exit code alone, a timeout, an unparseable response): read `gh api repos/<owner>/<repo>/pulls/<n>` back. The intent retires only on `merged: true`, a `merge_commit_sha` equal to the SHA the PUT returned (when it returned one), `head.sha` the expected head, and `base.repo.full_name` and `base.ref` the expected base. Write `merged <merge sha>`, then re-invoke the worker (branch and worktree cleanup are `dev`'s Phase 6, which checks them first): "Use the dev skill for <feat-name> again, invocation <n>: PR <url> merged as <merge sha>. Run entry detection from <main checkout path>." It closes out, cleans up, and starts the next layer or ends `TEAM: DONE`.
+- **Success or anything else** (a `gh` exit code alone, a timeout, an unparseable response): read `gh api repos/<owner>/<repo>/pulls/<n>` back. The intent retires only on `merged: true`, a `merge_commit_sha` equal to the SHA the PUT returned (when it returned one), `head.sha` the expected head, and `base.repo.full_name` and `base.ref` the expected base. Write `merged <merge sha>`, then re-invoke the worker (branch and worktree cleanup are `dev`'s Phase 6, which checks them first): "Use the dev skill for <feat-name> again, invocation <next>: PR <url> merged as <merge sha>. Run entry detection from <main checkout path>." It closes out, cleans up, and starts the next layer or ends `TEAM: DONE`.
 - **Readback doesn't match:** mark the intent `unknown`, hold the change, and put the run under the merge hold: nothing more merges.
 
 ## Residual race
