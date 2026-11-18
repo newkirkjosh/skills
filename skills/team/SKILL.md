@@ -41,7 +41,7 @@ Only a `TEAM:` line in the final message of the invocation being waited on count
 
 ### 1. Lock and preflight
 
-1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop. Also inspect every change record repository-wide, in scope or not: one that isn't final gets a hold. A hold recording a worker not shown stopped, or any new hold from this scan, means agent capacity can't be proven: report it, release the lock and stop, before spawning any probe, until the user clears it.
+1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop. Also inspect every change record repository-wide, in scope or not: one that isn't final gets a hold, recording `stop unconfirmed` unless the host shows its worker and roles stopped. A hold recording `stop unconfirmed`, or any new hold from this scan, means agent capacity can't be proven: report it, release the lock and stop, before spawning any probe, until the user clears it.
 2. Run `references/preflight.md`. Any failure: say which and remove the run lock if no probe was ever started. Otherwise stop the probes, and remove the lock only once the host shows them stopped and the probe coordinator's report confirms its scratch worktree, branch and files are gone. If either can't be shown (a spawn that may have happened, a role that never reported what it wrote), leave the lock and tell the user what to check.
 
 ### 2. Scope
@@ -100,7 +100,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 
 A stopped, stalled or held change is never restarted, nudged or reassigned.
 
-**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held. A change held as `no verifiable handoff` or `stalled` may still have roles running: **Stop** the worker and every role the host can show, and unless all are shown stopped, record `stop unconfirmed` in the hold, which keeps the slot and stops later runs before any probe.
+**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held. A worker stopped on a timeout, or ended as `no verifiable handoff` or `stalled`, may still have roles running: **Stop** it and every role the host can show, and unless all are shown stopped, record `stop unconfirmed` in the hold, which keeps the slot and stops later runs before any probe.
 
 ### 6. Report
 
