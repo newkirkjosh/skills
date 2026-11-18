@@ -78,6 +78,7 @@ For each unblocked change, within the concurrency cap:
 
    (The bracketed clause is for Codex.)
 2. Record the agent ID and `running`.
+3. On Claude Code, arm the first heartbeat before ending the turn, so stall checks run even if no worker ever completes.
 
 ### 5. Supervise
 
