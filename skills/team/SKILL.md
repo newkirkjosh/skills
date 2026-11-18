@@ -42,7 +42,7 @@ Only a `TEAM:` line in the final message of the invocation being waited on count
 ### 1. Lock and preflight
 
 1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop. Also inspect every change record repository-wide, in scope or not: one that isn't final gets a hold. A hold recording a worker not shown stopped, or any new hold from this scan, means agent capacity can't be proven: report it, release the lock and stop, before spawning any probe, until the user clears it.
-2. Run `references/preflight.md`. Any failure: say which, stop the probes, and remove the run lock once the host shows them stopped. If it can't show that, leave the lock and say so.
+2. Run `references/preflight.md`. Any failure: say which, stop the probes, and remove the run lock only once the host shows them stopped and the probe coordinator's report confirms its scratch worktree, branch and files are gone. If either can't be shown (a role that never reported what it wrote, say), leave the lock and tell the user what to check.
 
 ### 2. Scope
 
@@ -98,7 +98,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 | Final message with no current `TEAM:` line | `team` can't tell how far it got, so it is never re-invoked: record `blocked: no verifiable handoff` (with any denied or failed operation it shows) and hold it. |
 | Ended by the host (watchdog, error) | `stalled`, held. |
 
-A stopped, stalled or held change is never restarted, nudged or reassigned. 
+A stopped, stalled or held change is never restarted, nudged or reassigned.
 
 **Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held.
 
