@@ -42,7 +42,7 @@ Only a `TEAM:` line in the final message of the invocation being waited on count
 ### 1. Lock and preflight
 
 1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop.
-2. Run `references/preflight.md`. Any failure: say which and stop.
+2. Run `references/preflight.md`. Any failure: say which, stop the probes, and remove the run lock once the host shows them stopped. If it can't show that, leave the lock and say so.
 
 ### 2. Scope
 
