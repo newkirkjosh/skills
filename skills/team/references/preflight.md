@@ -16,7 +16,7 @@ The session's permission mode must not prompt for `dev`'s normal work, and its s
    - after step 2 returns the scratch worktree's path, `git push --dry-run origin HEAD:refs/heads/team-probe-<random>` from it, then removes that worktree and its branch;
    - `gh pr list --limit 1` and `gh api repos/<owner>/<repo> --jq .permissions.push` (must print `true`);
    - a read of the tracker the repository's `AGENTS.md` names (change folders may not have an `issues.md` yet);
-   - that `cross-review`'s script and the other model's CLI start (`--version`).
+   - that `cross-review`'s script is present and parses (`bash -n`), and the other model's CLI starts (`codex --version` or `claude --version`).
 2. The probe coordinator spawns one **probe role** the way `dev` spawns its roles. The role creates a scratch worktree at the real worktrunk destination (`wt switch --create team-probe-<random> --no-cd`), writes a file in it and in the scratch directory the evaluator uses, lists its available tools, and reports the worktree's path to the coordinator, which uses it and cleans it up.
 3. Both report, within 10 minutes. Then **Continue** the finished probe coordinator once and require a fresh final message, within another 10 minutes (a missed deadline is a preflight failure): after a merge, `team` depends on resuming a finished worker. Then stop (on Codex, close) both probes before any change starts. Any failure, a missing tool, or **a permission prompt surfacing during the probe** stops the run: a prompt here means `dev` would block on the same prompt later. A successful role spawn also proves nesting depth on the installed version (some versions defaulted to one layer).
 
