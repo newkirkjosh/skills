@@ -101,6 +101,7 @@ Then, checked in order, first match wins. Work proceeds one layer at a time, in 
 | `issues.md` exists, and the layer's branch is missing or has no commit outside `openspec/changes/` (`git diff --stat origin/<default>...<branch> -- . ':!openspec/changes'` is empty: the change folder, contract and review record live there, so a spec edit elsewhere under `openspec/` still counts as implementation) | Phase 2: Implementation |
 | No `sprint-contract.md` section for the layer, with or without a PR (draft or ready) | Phase 3: Evaluation (start) |
 | No PR or a draft PR, the layer's contract has unchecked items | Phase 3: Evaluation (fix pass, or a fresh evaluator once what was `INCOMPLETE` is available) |
+| The layer's contract is all checked, but its `Evaluated at:` SHA is missing or isn't an ancestor of the branch head | Phase 3: Evaluation (a fresh evaluator) |
 | The layer's contract is all checked, no `Cross-review:` line, with or without a PR (draft or ready) | Phase 4: Cross-model review; Phase 5 marks a draft ready |
 | No open PR, the layer's contract is all checked and has its `Cross-review:` line | Phase 4 steps 4–5 (archive move if not yet made, classify), then Phase 5 |
 | Ready PR open, the layer's contract has unchecked items (a re-evaluation run that stopped, or a fail on a PR opened outside `dev`) | Phase 5: resume its re-evaluation loop under Phase 3 steps 5–7 (a fix pass, or a fresh evaluator once what was `INCOMPLETE` is available) |

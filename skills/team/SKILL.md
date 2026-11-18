@@ -81,7 +81,7 @@ For each unblocked change, within the concurrency cap:
 
 ### 5. Supervise
 
-Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass over every live change. On Claude Code, record the heartbeat's task ID and re-arm it as the pass's last step, only once it has fired, failed or been cancelled; an arm that fails is retried once in the same pass. A second failure ends the run: **Stop** every live worker, hold every change that was live (stopped, or `stop unconfirmed` where the host can't show it stopped, including its roles), then report and release the lock as in step 6. For each change:
+Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass over every live change. On Codex, when only `merge-pending` handoffs remain and no child is running, wait 10 minutes with a long-running command before the next pass, so deferred gates don't spin. On Claude Code, record the heartbeat's task ID and re-arm it as the pass's last step, only once it has fired, failed or been cancelled; an arm that fails is retried once in the same pass. A second failure ends the run: **Stop** every live worker, hold every change that was live (stopped, or `stop unconfirmed` where the host can't show it stopped, including its roles), then report and release the lock as in step 6. For each change:
 
 | Result | Do |
 |---|---|

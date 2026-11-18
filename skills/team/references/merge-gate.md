@@ -24,6 +24,8 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 
 | Condition | Outcome |
 |---|---|
+| A repository-wide merge hold is in force (`run-state.md`), checked first | **Refused** (`merge hold`), for every change, without running the other gates or the merge call |
+| PR closed, or retargeted away from the default branch, with the expected head | **Held** |
 | Stale base (gate 0) | **Re-invoked** for a sync, at most twice, then **refused** |
 | Base or any GitHub read unknown or failing | **Deferred**, retried next pass; twice in a row, **refused** |
 | Required checks or reviewers still running (gate 3) | **Deferred**, for up to six passes, then **refused** |
@@ -31,6 +33,7 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 | Merge policy forbids it or the PR touches a reserved path (gate 2) | **Refused** |
 | Failed check, unresolved thread, or a late comment without a disposition (gates 3, 5) | **Re-invoked** once per head with the finding ("Use the dev skill for <feat-name> again, invocation <n>: <finding>. Run entry detection from <main checkout path>."), then **refused** |
 | PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** for re-evaluation, once per head, then **refused** |
+| Cross-review not converged, or not covering the head (gate 4) | **Re-invoked** once per head, then **refused** |
 | Ledger missing or unreadable (gate 4) | **Refused** |
 
 A refused change keeps `merge-ready (<reason>)` for the report.
@@ -47,7 +50,7 @@ Never `gh pr merge`: on a branch that requires a merge queue it may enqueue the 
 
 - **Rejected:** only a structured GitHub error (HTTP 405, 409 or 422 with a message) proves it. Record `merge-ready (<message>)` and retire the intent.
 - **Success or anything else** (a `gh` exit code alone, a timeout, an unparseable response): read `gh api repos/<owner>/<repo>/pulls/<n>` back. The intent retires only on `merged: true`, a `merge_commit_sha` equal to the SHA the PUT returned (when it returned one), `head.sha` the expected head, and `base.repo.full_name` and `base.ref` the expected base. Write `merged <merge sha>`, then re-invoke the worker (branch and worktree cleanup are `dev`'s Phase 6, which checks them first): "Use the dev skill for <feat-name> again, invocation <n>: PR <url> merged as <merge sha>. Run entry detection from <main checkout path>." It closes out, cleans up, and starts the next layer or ends `TEAM: DONE`.
-- **Readback doesn't match:** mark the intent `unknown`, hold the change, and merge nothing more in this run.
+- **Readback doesn't match:** mark the intent `unknown`, hold the change, and put the run under the merge hold: nothing more merges.
 
 ## Residual race
 
