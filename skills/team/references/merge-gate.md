@@ -13,7 +13,7 @@ Check gate 2 first: a policy refusal ends the attempt before anything can reques
    - exit 1: stale. Write the sync record (`run-state.md`) and re-invoke the worker: "Use the dev skill for <feat-name> again, invocation <next>: the default branch moved to <default sha>; sync PR <url> from head <head sha> and hand off again." At most two syncs per PR; a third move leaves it `merge-ready (base moved)`;
    - any other exit, or a failed fetch: unknown. Deferred: no merge this pass, `merge-pending`, retry next pass; two unknowns in a row leave it `merge-ready (base unknown)`.
 1. **Head.** Unchanged since the handoff (gate 0's `head.sha`).
-2. **Policy.** The repository's `AGENTS.md` on the default branch has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user: check both the current and previous path of every file (`gh api --paginate repos/<owner>/<repo>/pulls/<n>/files --jq '.[] | .filename, .previous_filename // empty'`), so a rename out of a reserved path counts.
+2. **Policy.** The repository's `AGENTS.md` on the default branch has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user: check both the current and previous path of every file (`gh api --paginate repos/<owner>/<repo>/pulls/<n>/files --jq '.[] | .filename, .previous_filename // empty'`), so a rename out of a reserved path counts. The endpoint returns at most 3,000 files: the number of records must equal the PR's `changed_files`, or coverage isn't proven and the merge is refused.
 3. **Evidence.** A fresh `pr-status.sh` exit-0 report for that head, run as step 6 of the `completion` reference in `dev` says: policy file verified against repository authority, every required check successful, each configured reviewer completed on that head (a throttled CodeRabbit review counts only as that step allows), zero unresolved threads.
 4. **Review coverage.** From the ledger (the path on the `TEAM:` line; missing or unreadable is unmet):
    - `git merge-base --is-ancestor <evaluator PASS sha> <head>` exits 0. Exit 1, a missing PASS SHA or an error means the evaluation doesn't cover this head: re-invoke the worker for re-evaluation, never merge.
@@ -34,7 +34,7 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 | Head differs from the handoff (gates 0, 1) | **Held**: something pushed outside the worker's handoff |
 | Merge policy forbids it or the PR touches a reserved path (gate 2) | **Refused** |
 | Failed check, unresolved thread, or a late comment without a disposition (gates 3, 5) | **Re-invoked** once per head with the finding ("Use the dev skill for <feat-name> again, invocation <next>: <finding>. Run entry detection from <main checkout path>."), then **refused** |
-| PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** for re-evaluation, once per head, then **refused** |
+| PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** with an explicit re-evaluation request ("…: re-evaluate this layer at head <sha>"), once per head, then **refused** |
 | Cross-review not converged, or not covering the head (gate 4) | **Re-invoked** once per head, then **refused** |
 | A required reviewer absent or skipped without the allowance in completion step 6, or the evidence policy unverifiable (gate 3) | **Refused** |
 | Ledger missing or unreadable (gate 4) | **Refused** |

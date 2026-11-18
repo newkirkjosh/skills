@@ -52,6 +52,8 @@ Only a `TEAM:` line in the final message of the invocation being waited on count
 
 ### 3. Order
 
+Held, blocked and not-ready changes stay in the graph as unsatisfied prerequisites; they are only ineligible to launch, so anything depending on them stays unstarted.
+
 Build the dependency order from each change's `proposal.md` and `tasks.md` (an explicit "depends on", or a layer that needs another change's code) and from blocking relations on the tracker issues. Two changes that edit the same files run one after the other even without a stated dependency: parallel branches touching one file end in conflicts after the first squash merge. A dependent starts only when its dependency is `done` (every layer merged and closed out), never after one layer's merge.
 
 **Concurrency:** at most three `dev` workers on Claude Code. On Codex one at a time: slots are shared across the whole agent tree, and each worker needs room for its roles.
