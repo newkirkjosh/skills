@@ -93,7 +93,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 | `DONE … merged` | `DONE` means every layer is finished, not one PR. Verify it: every layer in the change's `issues.md` maps to a merged PR (`gh api repos/<owner>/<repo>/pulls/<n>`, `merged: true`) and a closed issue, and the change folder is archived on the default branch. Any layer still open: treat the line as `BLOCKED done claimed early` and hold. Verified: finalize it as `done` (below); start whatever it unblocked. |
 | `BLOCKED needs decision` | Ask the user. Their answer goes back word for word in an explicit re-invocation ("Use the dev skill for <feat-name> again, invocation <n+1>: <answer>. Run entry detection from <main checkout path>."). |
 | `BLOCKED needs approval` / `unavailable` / other | Record it for the report, with the operation or reason verbatim. Never re-invoke it in this run: whether a running worker picks up widened permissions isn't established, so the user widens them and starts a new run. |
-| Final message with no `TEAM:` line | It ended its turn without finishing. Re-invoke it once ("Use the dev skill for <feat-name> again, invocation <n+1>. If you are stopped, end with the TEAM line that says why."). Again without one: `stalled`, held. If the message shows a denied or failed operation, record `blocked` instead, without re-invoking. |
+| Final message with no current `TEAM:` line | `team` can't tell how far it got, so it is never re-invoked: record `blocked: no verifiable handoff` (with any denied or failed operation it shows) and hold it. |
 | Ended by the host (watchdog, error) | `stalled`, held. |
 
 A stopped, stalled or held change is never restarted, nudged or reassigned. 
