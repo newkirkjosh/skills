@@ -8,12 +8,12 @@ A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate 
 
 Check gate 2 first: a policy refusal ends the attempt before anything can request a sync.
 
-0. **Base.** `gh api repos/<owner>/<repo>/pulls/<n>`: `state` is `open`, `base.repo.full_name` is this repository, `base.ref` its default branch, `head.sha` exactly the handoff head. Then `git fetch origin`, resolve `origin/<default>` to a SHA, record it in the change record, and run `git merge-base --is-ancestor <default sha> <head>`:
+0. **Base.** `gh api repos/<owner>/<repo>/pulls/<n>`: `state` is `open`, `base.repo.full_name` is this repository, `base.ref` its default branch, `head.sha` exactly the handoff head, and `head.repo.full_name` and `head.ref` are this repository and the worker's current layer branch, resolved from the change's `issues.md` and `dev`'s layer-branch rule, never from the `TEAM:` line. Then `git fetch origin`, resolve `origin/<default>` to a SHA, record it in the change record, and run `git merge-base --is-ancestor <default sha> <head>`:
    - exit 0: current;
    - exit 1: stale. Write the sync record (`run-state.md`) and re-invoke the worker: "Use the dev skill for <feat-name> again, invocation <next>: the default branch moved to <default sha>; sync PR <url> from head <head sha> and hand off again." At most two syncs per PR; a third move leaves it `merge-ready (base moved)`;
    - any other exit, or a failed fetch: unknown. Deferred: no merge this pass, `merge-pending`, retry next pass; two unknowns in a row leave it `merge-ready (base unknown)`.
 1. **Head.** Unchanged since the handoff (gate 0's `head.sha`).
-2. **Policy.** The repository's `AGENTS.md` on the default branch has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user (`gh pr diff <n> --name-only`).
+2. **Policy.** The repository's `AGENTS.md` on the default branch has a Merge policy that lets an agent merge under `team`, and the PR touches nothing it reserves for the user: check both the current and previous path of every file (`gh api --paginate repos/<owner>/<repo>/pulls/<n>/files --jq '.[] | .filename, .previous_filename // empty'`), so a rename out of a reserved path counts.
 3. **Evidence.** A fresh `pr-status.sh` exit-0 report for that head, run as step 6 of the `completion` reference in `dev` says: policy file verified against repository authority, every required check successful, each configured reviewer completed on that head (a throttled CodeRabbit review counts only as that step allows), zero unresolved threads.
 4. **Review coverage.** From the ledger (the path on the `TEAM:` line; missing or unreadable is unmet):
    - `git merge-base --is-ancestor <evaluator PASS sha> <head>` exits 0. Exit 1, a missing PASS SHA or an error means the evaluation doesn't cover this head: re-invoke the worker for re-evaluation, never merge.
@@ -27,7 +27,7 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 | Condition | Outcome |
 |---|---|
 | A repository-wide merge hold is in force (`run-state.md`), checked first | **Refused** (`merge hold`), for every change, without running the other gates or the merge call |
-| PR closed, or retargeted away from the default branch, with the expected head | **Held** |
+| PR closed, retargeted away from the default branch, or not the current layer's branch | **Held** |
 | Stale base (gate 0) | **Re-invoked** for a sync, at most twice, then **refused** |
 | Base or any GitHub read unknown or failing | **Deferred**, retried next pass; twice in a row, **refused** |
 | Required checks or reviewers still running (gate 3) | **Deferred**, for up to six passes, then **refused** |
