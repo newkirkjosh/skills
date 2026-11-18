@@ -25,7 +25,7 @@
 
 **Launch.** Write `state: launching` and the invocation number **before** calling the host to start the worker; write `agent` when the call returns. A record left at `launching` with no `agent` means the launch may or may not have happened.
 
-**Invocation numbers.** Every prompt to a worker carries `invocation <n>`, recorded before sending, and the worker ends its `TEAM:` line with `#<n>`. A line with any other number is stale and ignored, so an old `MERGE-READY` can never be acted on twice.
+**Invocation numbers.** Every prompt to a worker carries `invocation <i>`, recorded before sending, and the worker ends its `TEAM:` line with `#<i>`. A line with any other number is stale and ignored, so an old `MERGE-READY` can never be acted on twice.
 
 ## Holds
 

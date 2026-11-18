@@ -68,12 +68,12 @@ For each unblocked change, within the concurrency cap:
    <the run's brief, verbatim>
 
    This run is under team, unattended. Spawn sub-agents for the roles as dev describes[, and close each finished role agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
-   TEAM: MERGE-READY <PR URL> <head SHA> <ledger path> #<n>
-   TEAM: DONE <PR URL> merged #<n>   (only when every layer in issues.md is merged and closed out)
-   TEAM: BLOCKED needs approval: <operation> #<n>
-   TEAM: BLOCKED needs decision: <question> #<n>
-   TEAM: BLOCKED unavailable: <capability> #<n>
-   TEAM: BLOCKED <one-sentence reason> #<n>
+   TEAM: MERGE-READY <PR URL> <head SHA> <ledger path> #<i>
+   TEAM: DONE <PR URL> merged #<i>   (only when every layer in issues.md is merged and closed out)
+   TEAM: BLOCKED needs approval: <operation> #<i>
+   TEAM: BLOCKED needs decision: <question> #<i>
+   TEAM: BLOCKED unavailable: <capability> #<i>
+   TEAM: BLOCKED <one-sentence reason> #<i>
    ```
 
    (The bracketed clause is for Codex.)
@@ -91,7 +91,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 | Any result while a sync is pending | Handle the sync first (`references/run-state.md`, Sync record): retire it only on the matching `MERGE-READY` with a verified pushed head, then run the merge gate; anything else holds the change. |
 | `MERGE-READY` | Run `references/merge-gate.md`. Five outcomes: **merged** (it re-invokes the worker for close-out; state `merged`, still live); **re-invoked** (a sync or re-evaluation; state `running`, still live); **deferred** (a base read or other gate to retry; state `merge-pending`, the handoff stays queued and the gate runs again next pass, worker kept); **refused** (a terminal reason: the policy forbids it, the sync limit, a rejected merge call; final as `merge-ready (<reason>)`); **held** (a merge readback that doesn't verify; hold written, final). |
 | `DONE … merged` | `DONE` means every layer is finished, not one PR. Verify it: every layer in the change's `issues.md` maps to a merged PR (`gh api repos/<owner>/<repo>/pulls/<n>`, `merged: true`) and a closed issue, and the change folder is archived on the default branch. Any layer still open, or anything here that can't be read or mapped: record `blocked: done not verified` and hold, without starting dependents. Verified: finalize it as `done` (below); start whatever it unblocked. |
-| `BLOCKED needs decision` | Ask the user. Their answer goes back word for word in an explicit re-invocation ("Use the dev skill for <feat-name> again, invocation <n+1>: <answer>. Run entry detection from <main checkout path>."). |
+| `BLOCKED needs decision` | Ask the user. Their answer goes back word for word in an explicit re-invocation ("Use the dev skill for <feat-name> again, invocation <next>: <answer>. Run entry detection from <main checkout path>."). |
 | `BLOCKED needs approval` / `unavailable` / other | Record it for the report, with the operation or reason verbatim. Never re-invoke it in this run: whether a running worker picks up widened permissions isn't established, so the user widens them and starts a new run. |
 | Final message with no current `TEAM:` line | `team` can't tell how far it got, so it is never re-invoked: record `blocked: no verifiable handoff` (with any denied or failed operation it shows) and hold it. |
 | Ended by the host (watchdog, error) | `stalled`, held. |
