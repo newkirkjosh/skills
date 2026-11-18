@@ -41,7 +41,7 @@ Only a `TEAM:` line in the final message of the invocation being waited on count
 
 ### 1. Lock and preflight
 
-1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop.
+1. Take the run lock and scan for holds and unretired merge intents (`references/run-state.md`). Lock held by another run: say so and stop. A hold recording a worker not shown stopped means agent capacity can't be proven: report it, release the lock and stop, before spawning any probe, until the user clears it.
 2. Run `references/preflight.md`. Any failure: say which, stop the probes, and remove the run lock once the host shows them stopped. If it can't show that, leave the lock and say so.
 
 ### 2. Scope
@@ -100,7 +100,7 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 
 A stopped, stalled or held change is never restarted, nudged or reassigned. 
 
-**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, start nothing more and go to the report. A record that isn't final at a later run's start is held.
+**Finalizing.** A final state is written last: on Codex, **Stop** (close) the worker first and confirm it closed, so finished agents don't hold slots; if that can't be confirmed, hold the change instead, and keep counting that worker against the concurrency cap. On either host, any worker not shown stopped, including one whose Start or Continue couldn't be confirmed, holds its slot; if no slot can be shown free, launch nothing more, and keep supervising the workers still live until step 6 applies. A record that isn't final at a later run's start is held.
 
 ### 6. Report
 
