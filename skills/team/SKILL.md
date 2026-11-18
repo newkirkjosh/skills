@@ -29,11 +29,11 @@ Concrete syntax, as in `dev`, is an example; the host adapters reference in `dev
 
 | Operation | Claude Code | Codex |
 |---|---|---|
-| **Start** | `Agent`, general-purpose, `run_in_background: true`, tier `large`, and **no `name`**: a named spawn can become an agent-team teammate, with a different lifecycle. Record the returned agent ID. | `spawn_agent` with `fork_turns: "none"`, `task_name` `dev_` plus the feat-name with hyphens as underscores |
+| **Start** | `Agent`, general-purpose, `run_in_background: true`, tier `large`, and **no `name`**: a named spawn can become an agent-team teammate, with a different lifecycle. Record the returned agent ID. | `spawn_agent` with `fork_turns: "none"`, `task_name` `dev_` plus the feat-name with hyphens as underscores; record the agent ID it returns (the task name is only a label) |
 | **Wait** | The completion notification, plus one heartbeat: a background command that just waits 10 minutes | `wait_agent` with `timeout_ms` 600000, before the turn ends |
 | **Continue** | `SendMessage` to the agent ID; it resumes in the background and its next final message arrives as a completion | `followup_task` |
 | **Check** | the worker's output file, new commits (`wt list --format=json`), PR state | new commits, PR state, the child's status |
-| **Stop** | `TaskStop` | `close_agent`, where the host has it |
+| **Stop** | `TaskStop` | `close_agent` (required: preflight) |
 
 Only a `TEAM:` line in the final message of the invocation being waited on counts, and only with the latest invocation number.
 
@@ -69,7 +69,7 @@ For each unblocked change, within the concurrency cap:
 
    This run is under team, unattended. Spawn sub-agents for the roles as dev describes[, and close each finished role agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
    TEAM: MERGE-READY <PR URL> <head SHA> <ledger path> #<n>
-   TEAM: DONE <PR URL> merged #<n>
+   TEAM: DONE <PR URL> merged #<n>   (only when every layer in issues.md is merged and closed out)
    TEAM: BLOCKED needs approval: <operation> #<n>
    TEAM: BLOCKED needs decision: <question> #<n>
    TEAM: BLOCKED unavailable: <capability> #<n>
@@ -88,8 +88,8 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 | Still working | **Check** for progress. Something moved: record it and the time. Idle (measured from the recorded time) 20 minutes: tell the user, mentioning that it may be waiting on a permission prompt in this session. Idle 30 minutes on Claude Code: **Stop** it, and hold it once the host shows it stopped (or hold it as "stop unconfirmed"). On Codex, idleness is reported at 30 and 60 minutes and never stopped, since evaluator and review waits look idle there. |
 | A permission prompt from it is waiting | Never answer it. Tell the user. Still unanswered after 30 minutes on either host: **Stop** it where the host can, record `blocked: permission prompt unanswered`, and hold it. |
 | Any result while a sync is pending | Handle the sync first (`references/run-state.md`, Sync record): retire it only on the matching `MERGE-READY` with a verified pushed head, then run the merge gate; anything else holds the change. |
-| `MERGE-READY` | Run `references/merge-gate.md`. Merged: it re-invokes the worker for close-out. Not merged: record `merge-ready (<reason>)` or the gate that failed. |
-| `DONE … merged` | Confirm with `gh api repos/<owner>/<repo>/pulls/<n>` (`merged: true`) and that the change folder is archived on the default branch; record `done`; on Codex, **Stop** (close) the worker to free its slot; start whatever it unblocked. |
+| `MERGE-READY` | Run `references/merge-gate.md`. Three outcomes: **merged** (it re-invokes the worker for close-out; state `merged`, still live); **re-invoked** (a sync, a re-evaluation, or a gate to retry next pass; state `running`, still live, never closed); **refused** (a terminal reason: the policy forbids it, the sync limit, a rejected merge call; state `merge-ready (<reason>)`, final). |
+| `DONE … merged` | `DONE` means every layer is finished, not one PR. Verify it: every layer in the change's `issues.md` maps to a merged PR (`gh api repos/<owner>/<repo>/pulls/<n>`, `merged: true`) and a closed issue, and the change folder is archived on the default branch. Any layer still open: treat the line as `BLOCKED done claimed early` and hold. Verified: record `done`; on Codex, **Stop** (close) the worker; start whatever it unblocked. |
 | `BLOCKED needs decision` | Ask the user. Their answer goes back word for word in an explicit re-invocation ("Use the dev skill for <feat-name> again, invocation <n+1>: <answer>. Run entry detection from <main checkout path>."). |
 | `BLOCKED needs approval` / `unavailable` / other | Record it for the report, with the operation or reason verbatim. Never re-invoke it in this run: whether a running worker picks up widened permissions isn't established, so the user widens them and starts a new run. |
 | Final message with no `TEAM:` line | It ended its turn without finishing. Re-invoke it once ("Use the dev skill for <feat-name> again, invocation <n+1>. If you are stopped, end with the TEAM line that says why."). Again without one: `stalled`, held. If the message shows a denied or failed operation, record `blocked` instead, without re-invoking. |

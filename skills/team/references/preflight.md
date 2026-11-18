@@ -5,7 +5,7 @@ Run before taking anything into scope, after the run lock (`run-state.md`). Any 
 ## Host capabilities
 
 - **Claude Code:** background subagents, a completion notification when one finishes, its output file (to read progress), `TaskStop`, `SendMessage`, and a heartbeat that is actually delivered: start one background command that waits one minute and require its completion notification before going on.
-- **Codex:** `spawn_agent`, `wait_agent`, `followup_task`, nested delegation enabled for the installed backend, and either `close_agent` (so `dev` frees each finished role's slot) or an open-thread limit covering `team`, one `dev` and every role that `dev` may spawn over the change. No live output read is needed.
+- **Codex:** `spawn_agent`, `wait_agent`, `followup_task`, `close_agent` (finished agents keep their slots until closed, so every close in this skill depends on it), and nested delegation enabled for the installed backend. No live output read is needed.
 - **Not interactive** (`claude -p`, `codex exec`, a scheduled job; see Headless sessions in `dev`'s host-adapters reference): stop. `team` v1 needs a session the host can wake.
 
 ## Permissions, through the real delegation path

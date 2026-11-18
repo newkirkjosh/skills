@@ -17,7 +17,7 @@
 | File | Holds |
 |---|---|
 | `state` | `launching`, `running`, `merge-ready`, `merging`, `merged`, `done`, `blocked: <reason>`, `stalled` |
-| `agent` | the worker's agent ID (Claude Code) or task name (Codex) |
+| `agent` | the worker's agent ID as the host returned it (on Codex, not the `task_name` label) |
 | `invocation` | the latest invocation number sent to the worker |
 | `progress` | time of the last observed progress, and what moved |
 | `merge` | the merge intent (below) |
