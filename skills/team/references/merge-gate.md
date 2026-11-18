@@ -18,6 +18,23 @@ A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate 
    - The review range is `git rev-list <PASS sha>..<head> --not <recorded default sha>`: it includes merge commits from syncs and excludes the default-branch commits they bring in. A converged cross-review covers that head (completion step 2), every blocking finding is fixed, and every commit in the range is recorded `behavioral: no`.
 5. **Comments.** Every review body and comment on the PR, read yourself up to the head, has a disposition: each blocking finding fixed, each other comment fixed or answered. `pr-status.sh` doesn't judge prose (`CALLER_TRIAGE_REQUIRED`), so a comment posted after the handoff is unmet until it is settled.
 
+## Outcomes
+
+Every unmet gate maps to one outcome (`SKILL.md`, step 5):
+
+| Condition | Outcome |
+|---|---|
+| Stale base (gate 0) | **Re-invoked** for a sync, at most twice, then **refused** |
+| Base or any GitHub read unknown or failing | **Deferred**, retried next pass; twice in a row, **refused** |
+| Required checks or reviewers still running (gate 3) | **Deferred**, for up to six passes, then **refused** |
+| Head differs from the handoff (gates 0, 1) | **Held**: something pushed outside the worker's handoff |
+| Merge policy forbids it or the PR touches a reserved path (gate 2) | **Refused** |
+| Failed check, unresolved thread, or a late comment without a disposition (gates 3, 5) | **Re-invoked** once per head with the finding ("Use the dev skill for <feat-name> again, invocation <n>: <finding>. Run entry detection from <main checkout path>."), then **refused** |
+| PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** for re-evaluation, once per head, then **refused** |
+| Ledger missing or unreadable (gate 4) | **Refused** |
+
+A refused change keeps `merge-ready (<reason>)` for the report.
+
 ## Merge call
 
 With the final pass clean, write the merge intent (`pre-call`, then `submitted`), then:

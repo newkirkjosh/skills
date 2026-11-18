@@ -29,7 +29,7 @@
 
 ## Holds
 
-`<state>/holds/<feat-name>` contains one line: the reason and what is unverified. A held change is never started, continued, merged or cleaned up by any `team` run; it is reported as `blocked: held (<reason>)`. Only the user removes a hold, after checking the change by hand.
+`<state>/holds/<feat-name>` contains one line: the reason and what is unverified. A held change is never started, continued, merged or cleaned up by any `team` run; it is reported as `blocked: held (<reason>)`. Only the user removes a hold, after checking the change by hand: to release it, delete both `<state>/holds/<feat-name>` and the change's record directory `<state>/changes/<feat-name>/` (its state, merge intent and sync records), or the next run will hold it again.
 
 Write a hold, and stop that change, whenever its state can't be proven clean:
 
@@ -48,4 +48,4 @@ Before the merge call, `merge` records the PR, base repository and ref, base SHA
 
 ## Sync record
 
-Before asking a worker to sync with a moved default branch, write `sync`: invocation number, PR, layer, expected head SHA, and the captured default-branch SHA to merge. While it is pending, no second sync is requested for that change. Retire it only when the worker's `MERGE-READY` carries the same invocation number and GitHub's PR head (read back with `gh api repos/<owner>/<repo>/pulls/<n>`) equals the head on that line, differs from the expected head, and has the captured default SHA as an ancestor (`git merge-base --is-ancestor`). Anything else (`BLOCKED sync failed`, `BLOCKED sync interrupted`, `BLOCKED sync needs a clean worktree`, another `BLOCKED`, a mismatch, an interruption) holds the change; it is never synced again by `team`.
+Before asking a worker to sync with a moved default branch, write `sync`: invocation number, PR, layer, expected head SHA, and the captured default-branch SHA to merge. While it is pending, no second sync is requested for that change. `dev` keeps its own progress in `sync-progress` in the same directory, outside the worktree. Retire the record only when the worker's `MERGE-READY` carries the same invocation number and GitHub's PR head (read back with `gh api repos/<owner>/<repo>/pulls/<n>`) equals the head on that line, differs from the expected head, and has the captured default SHA as an ancestor (`git merge-base --is-ancestor`). Anything else (`BLOCKED sync failed`, `BLOCKED sync interrupted`, `BLOCKED sync needs a clean worktree`, another `BLOCKED`, a mismatch, an interruption) holds the change; it is never synced again by `team`.
