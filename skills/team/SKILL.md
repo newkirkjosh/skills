@@ -116,4 +116,5 @@ When nothing is live and nothing more can start: stop the outstanding heartbeat,
 - **Never infer that a lock, a launch or a worker is gone.** An old lock, a `launching` record with no agent ID, or a worker the host doesn't show stopped is the user's to check.
 - **Don't answer another agent's permission prompts.** They wait for the user, even when the answer looks obvious.
 - **Wave labels never go in PR titles.** Each worker titles its own PR using the repository conventions; a wave or batch number in a title links the squash commit to an unrelated issue.
+- **A long evaluation can look like a stall.** Workers follow the headless rules, so a Claude Code worker waits on its evaluator in the foreground and shows no progress meanwhile. One that passes the 30-minute idle limit is stopped and held, and the user decides what happens next.
 - **Merging is still per repository.** `team` grants no merge permission the repository's Merge policy doesn't; without one, every PR stops at merge-ready and the report says so.
