@@ -34,7 +34,7 @@
 Write a hold, and stop that change, whenever its state can't be proven clean:
 
 - **An interrupted run.** The only final states are `done`, `blocked`, `stalled` and `merge-ready (<reason>)`, each written after its worker is confirmed closed where the host requires it. A run that finds a record in any other state (`launching`, `running`, `merge-pending`, `merging`, `merged`: a verified merge whose close-out or later layers never finished) inspects it, reports it and holds it. No reattach, no replayed close-out.
-- **A launch with no agent ID, or a Start or Continue the host rejected or couldn't confirm.** The previous result is stale by then: record what couldn't be confirmed, and never resend. The worker may still be running, so it keeps counting against the concurrency cap until the host shows it stopped.
+- **A launch with no agent ID, or a Start or Continue the host rejected or couldn't confirm.** The previous result is stale by then: record what couldn't be confirmed, and never resend. The worker may still be running, so it keeps counting against the concurrency cap until the host shows it stopped, and unless the worker and its roles are shown stopped the hold records `stop unconfirmed`.
 - **A worker or any role it started that the host can't show as stopped**, after a stop was requested.
 - **A merge intent that isn't retired** (below).
 - **A sync that is pending, conflicted, or doesn't match its record.**
