@@ -14,6 +14,7 @@ The session's permission mode must not prompt for `dev`'s normal work, and its s
 
 1. Spawn a disposable **probe coordinator** exactly as a `dev` worker would be started (Session operations in `SKILL.md`). It checks, without changing anything outside a scratch branch:
    - after step 2 returns the scratch worktree's path, `git push --dry-run origin HEAD:refs/heads/team-probe-<random>` from it, then deletes exactly the files the role reported, removes that worktree and its branch without forcing, and confirms all of it is gone;
+   - before that cleanup, that a commit signs without a prompt, when the repository signs commits (`git config --get commit.gpgsign` prints `true`, or a branch rule requires signatures): in the scratch worktree, `git commit-tree -S "HEAD^{tree}" -p HEAD -m team-probe` must print a SHA whose `git cat-file commit <sha>` has a `gpgsig` header (`-S` is required: `commit-tree` ignores `commit.gpgsign`). It writes an unreferenced commit object and moves no branch, so the cleanup's non-forced branch delete still works. A locked signing agent fails here instead of on `dev`'s first commit, after a change has started;
    - `gh pr list --limit 1` and `gh api repos/<owner>/<repo> --jq .permissions.push` (must print `true`);
    - a read of the tracker the repository's `AGENTS.md` names (change folders may not have an `issues.md` yet);
    - that `cross-review`'s script is present and parses (`bash -n`), and the other model's CLI starts (`codex --version` or `claude --version`).
