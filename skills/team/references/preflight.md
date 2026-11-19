@@ -4,9 +4,9 @@ Run before taking anything into scope, after the run lock (`run-state.md`). Any 
 
 ## Host capabilities
 
+- **Not interactive** (`claude -p`, `codex exec`, a scheduled job; see Headless sessions in `dev`'s host-adapters reference): fail here, before anything below. `team` v1 needs a session the host can wake, and ending a turn in one of these ends the session.
 - **Claude Code:** background subagents, a completion notification when one finishes, its output file (to read progress), `TaskStop`, `SendMessage`, and a heartbeat that wakes an ended turn, since supervision depends on it. Check this first, before any probe: start one background `Bash` command, `sleep 60` with the heartbeat's `timeout: 600000`, then **end the turn**, telling the user that preflight is waiting for that wake and that a message from them before it arrives cancels the run. Preflight continues only when the command's completion notification starts the next turn. If a user message starts it instead, the wake is unproven: **Stop** the command and fail preflight.
 - **Codex:** `spawn_agent`, `wait_agent`, `followup_task`, `close_agent` (finished agents keep their slots until closed, so every close in this skill depends on it), and nested delegation enabled for the installed backend. No live output read is needed.
-- **Not interactive** (`claude -p`, `codex exec`, a scheduled job; see Headless sessions in `dev`'s host-adapters reference): stop. `team` v1 needs a session the host can wake.
 
 ## Permissions, through the real delegation path
 
