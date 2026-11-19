@@ -4,7 +4,7 @@ Run before taking anything into scope, after the run lock (`run-state.md`). Any 
 
 ## Host capabilities
 
-- **Claude Code:** background subagents, a completion notification when one finishes, its output file (to read progress), `TaskStop`, `SendMessage`, and a heartbeat that is actually delivered: start one background command that waits one minute, then run a bounded foreground wait of two minutes (`timeout 120 tail -f /dev/null`). If its completion notification hasn't arrived when that returns, preflight fails.
+- **Claude Code:** background subagents, a completion notification when one finishes, its output file (to read progress), `TaskStop`, `SendMessage`, and a heartbeat that is actually delivered: start one background `Bash` command, `sleep 60` with the heartbeat's `timeout: 600000`, then run a bounded foreground wait of two minutes (`timeout 120 tail -f /dev/null`). If its completion notification hasn't arrived when that returns, preflight fails.
 - **Codex:** `spawn_agent`, `wait_agent`, `followup_task`, `close_agent` (finished agents keep their slots until closed, so every close in this skill depends on it), and nested delegation enabled for the installed backend. No live output read is needed.
 - **Not interactive** (`claude -p`, `codex exec`, a scheduled job; see Headless sessions in `dev`'s host-adapters reference): stop. `team` v1 needs a session the host can wake.
 

@@ -30,7 +30,7 @@ Concrete syntax, as in `dev`, is an example; the host adapters reference in `dev
 | Operation | Claude Code | Codex |
 |---|---|---|
 | **Start** | `Agent`, general-purpose, `run_in_background: true`, tier `large`, and **no `name`**: a named spawn can become an agent-team teammate, with a different lifecycle. Record the returned agent ID. | `spawn_agent` with `fork_turns: "none"`, `task_name` `dev_` plus the feat-name with hyphens as underscores; record the agent ID it returns (the task name is only a label) |
-| **Wait** | The completion notification, plus one heartbeat: a background command that just waits 10 minutes | `wait_agent` with `timeout_ms` 600000, before the turn ends |
+| **Wait** | The completion notification, plus one heartbeat: a background `Bash` command, `sleep 540` with `timeout: 600000`, which stays inside the tool's limit | `wait_agent` with `timeout_ms` 600000, before the turn ends |
 | **Continue** | `SendMessage` to the agent ID; it resumes in the background and its next final message arrives as a completion | `followup_task` |
 | **Check** | the worker's output file, new commits (`wt list --format=json`), PR state | new commits, PR state, the child's status |
 | **Stop** | `TaskStop` | `close_agent` (required: preflight) |
