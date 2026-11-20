@@ -37,6 +37,7 @@ Every unmet gate maps to one outcome (`SKILL.md`, step 5):
 | PASS isn't an ancestor of the head, or the range isn't all `behavioral: no` (gate 4) | **Re-invoked** with an explicit re-evaluation request ("…: re-evaluate this layer at head <sha>"), once per head, then **refused** |
 | Cross-review not converged, or not covering the head (gate 4) | **Re-invoked** once per head, then **refused** |
 | A required reviewer absent or skipped without the allowance in completion step 6, or the evidence policy unverifiable (gate 3) | **Refused** |
+| A reviewer explicitly required by repository policy is throttled, including CodeRabbit when policy requires it (gate 3) | **Refused**: unmet required review goes to the user; do not wait out the cooldown. The completion step 6 allowance still applies when CodeRabbit is not explicitly required. |
 | Ledger missing or unreadable (gate 4) | **Refused** |
 
 A refused change keeps `merge-ready (<reason>)` for the report.
