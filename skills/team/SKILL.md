@@ -35,7 +35,7 @@ Concrete syntax, as in `dev`, is an example; the host adapters reference in `dev
 | **Check** | the worker's output file, new commits (`wt list --format=json`), PR state | new commits, PR state, the child's status |
 | **Stop** | `TaskStop` | `close_agent` (required: preflight) |
 
-Only a `TEAM:` line in the final message of the invocation being waited on counts, and only with the latest invocation number.
+Only a `TEAM:` line in the final report of the invocation being waited on counts as a handoff, and only with the latest invocation number. A Claude Code worker may yield an interim turn while waiting for a nested role’s completion notification (dev’s host adapters); that does not finish the invocation.
 
 ## Steps
 
@@ -69,7 +69,7 @@ For each unblocked change, within the concurrency cap:
 
    <the run's brief, verbatim>
 
-   This run is under team, unattended. Follow Headless sessions in dev's host-adapters reference, so your final message always ends this invocation: never end your turn while a role, review or waiter is outstanding, and a role whose spawn returned before its report stays outstanding until its completion notification arrives. Spawn sub-agents for the roles as dev describes[, and close each finished role agent; a close that fails ends your run with BLOCKED unavailable: close_agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
+   This run is under team, unattended. Follow Headless sessions in dev's host-adapters reference, so your final message always ends this invocation: do not deliver your final report while a role, review or waiter is outstanding. A role whose spawn returned before its report stays outstanding until its completion notification arrives. On Claude Code, if receiving that notification requires yielding the turn, send an interim waiting message naming the role, then resume on its completion; do not emit a TEAM handoff or spawn a replacement meanwhile. Spawn sub-agents for the roles as dev describes[, and close each finished role agent; a close that fails ends your run with BLOCKED unavailable: close_agent]. Stop only for something neither the brief nor the change folder covers: an architectural decision, work outside the scope, a destructive step. Never merge: team merges after its own check, then invokes you again. A denied or unavailable operation ends your run with a BLOCKED line; never work around it. End your final message with exactly one line, ending in this invocation's number:
    TEAM: MERGE-READY <PR URL> <head SHA> <ledger path> #<i>
    TEAM: DONE <PR URL> merged #<i>   (only when every layer in issues.md is merged and closed out, and its cleanup finished)
    TEAM: BLOCKED cleanup: <what remains> #<i>
@@ -97,7 +97,8 @@ Each wake (a completion, the heartbeat, or a `wait_agent` return) is one pass ov
 | `BLOCKED cleanup` | Record `blocked: cleanup: <what remains>` and hold it, without trying to finish the cleanup or starting dependents. |
 | `BLOCKED needs decision` | Finalize it as `blocked: needs decision: <question>`, with the question verbatim, and keep supervising the others. Never end the turn to wait for the answer: on Codex that interrupts live workers. The report asks the question, and the user's answer goes in the request for a new run, whose brief carries it to the worker. |
 | `BLOCKED needs approval` / `unavailable` / other | Finalize it with the operation or reason verbatim. Never re-invoke it in this run: whether a running worker picks up widened permissions isn't established, so the user widens them and starts a new run. |
-| Final message with no current `TEAM:` line | `team` can't tell how far it got, so it is never re-invoked: record `blocked: no verifiable handoff` (with any denied or failed operation it shows) and hold it. |
+| Claude Code interim waiting message without a current `TEAM:` line, naming an outstanding nested role | Treat as still working under the same invocation. Keep its slot and heartbeat, check progress under the existing idle limits, and wait for its resumed report. Never Continue it merely for yielding or reset the idle clock just because another waiting message arrived. |
+| Final message with no current `TEAM:` line (and no outstanding-role wait) | `team` can't tell how far it got, so it is never re-invoked: record `blocked: no verifiable handoff` (with any denied or failed operation it shows) and hold it. |
 | Ended by the host (watchdog, error) | `stalled`, held. |
 
 A stopped, stalled or held change is never restarted, nudged or reassigned.
@@ -112,7 +113,7 @@ When nothing is live and nothing more can start: stop the outstanding heartbeat,
 
 - **Never hand one worker several changes.** One change per coordinator is the whole design; batching them into one `dev` run is the context blow-up this skill exists to avoid.
 - **No `name` on Claude Code spawns.** With agent teams enabled, a named `Agent` call can start a teammate instead of a subagent, which completes and shuts down differently.
-- **`idle` is not done.** A worker that ended its turn mid-run looks exactly like one that finished; only the `TEAM:` line with the latest invocation number tells them apart.
+- **`idle` is not done.** A worker that ended its turn mid-run looks exactly like one that finished; only the `TEAM:` line with the latest invocation number establishes a handoff. An explicit interim nested-role wait stays running under the existing idle limits.
 - **Never infer that a lock, a launch or a worker is gone.** An old lock, a `launching` record with no agent ID, or a worker the host doesn't show stopped is the user's to check.
 - **Don't answer another agent's permission prompts.** They wait for the user, even when the answer looks obvious.
 - **Wave labels never go in PR titles.** Each worker titles its own PR using the repository conventions; a wave or batch number in a title links the squash commit to an unrelated issue.
