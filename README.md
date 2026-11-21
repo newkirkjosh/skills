@@ -24,6 +24,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 | `spec-writer` | Per-feature legacy custom change folders: proposal, stories, design, tasks. |
 | `arch-review` | Module boundaries, layer responsibilities and dependency direction. |
 | `verify-change` | Checks a change in the running app: web in headless Playwright, KMP desktop off-screen, Android on a headless emulator by on-screen text. |
+| `learn` | Turns conversation corrections into verified catalog improvements in an isolated worktree, left for review. |
 | `cross-review` | Read-only review by the other model family of a change or a draft document, and triage of hosted findings. |
 | `github` | GitHub issues, PRs, checks and threads with verified writes, plus the tested PR evidence helpers. |
 | `linear` | Reference for Linear through its MCP server. |
@@ -41,4 +42,4 @@ Read [AGENTS.md](AGENTS.md) and [REVIEW.md](REVIEW.md). Make changes in a worktr
 
 ## License
 
-[MIT](LICENSE). Our `dev`, `team`, `github` and `verify-change` skills include ideas or content adapted from [fx/skills](https://github.com/fx/skills); their folders retain upstream attribution and license notices. These versions are maintained in this catalog.
+[MIT](LICENSE). Our `dev`, `team`, `github`, `learn` and `verify-change` skills include ideas or content adapted from [fx/skills](https://github.com/fx/skills); their folders retain upstream attribution and license notices. These versions are maintained in this catalog.
