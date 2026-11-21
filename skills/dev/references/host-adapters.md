@@ -17,6 +17,12 @@ Read this before the first spawn when the coordinator runs on a host other than 
 | Instructions the host reads | `CLAUDE.md` (which imports `AGENTS.md`) | `AGENTS.md` only; never `CLAUDE.md` or `REVIEW.md` |
 | Skills directory | `~/.claude/skills` | `~/.agents/skills` |
 
+## Claude Code completion and stopping
+
+Record each nested role’s agent/task ID when it starts. A normal handoff includes every role ID, its terminal completion notification or task result, and any owned process cleanup. Correlate terminal evidence with the exact ID; prose saying “finished”, a quiet output file or a parent’s completion alone proves nothing about its descendants.
+
+When stopping, apply `TaskStop` to each known active task that the host lets the caller address, including descendants, and retain the returned per-ID stop confirmation. A completion notification for that same ID also establishes a terminal state. Do not assume stopping a coordinator recursively stops its roles, invent a nested-status API, or infer a stop from a failed lookup. The supervisor uses the worker’s ID/evidence inventory and the host’s actual task results; if descendant IDs or terminal evidence were never exposed, keep `stop unconfirmed` and report what the user must inspect. Verify launched processes separately. A verified stop releases proven capacity; it never substitutes for a successful evaluator or a valid lifecycle handoff.
+
 ## Codex gotchas
 
 - **Wait before ending a native run.** Use `wait_agent` on outstanding native children before the final response; whether ending a turn preserves them is host-dependent. A host-managed background delegate can have a different wait contract: follow the tool’s returned instructions, including yielding when completion will wake the session. Do not transfer that exception to native children or one-shot processes.
