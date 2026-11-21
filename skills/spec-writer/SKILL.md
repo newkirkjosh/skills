@@ -31,7 +31,7 @@ For an archive instruction from `dev`, use Archive action below instead of setup
 
 **Change folder location:** `openspec/changes/<change-name>/` inside the project repo. The change name is kebab-cased with the change type as prefix: `feat-` for a story group ("Onboarding" → `feat-onboarding`), `fix-` for a bug, `chore-` for non-feature work. Stories live in a `specs/` subdirectory within the change folder.
 
-**Bug fixes and other changes with no story group:** write `proposal.md` with `**Story group:** none (<where the bug was found>)`, and write `specs/stories.md` from the bug itself: one story for the broken behaviour from the user's side, plus one for the regression guard if the fix adds one. Everything else is unchanged.
+**Bug fixes and other changes with no story group:** use `**Story group:** none (<source of the requested change>)` in `proposal.md`. Derive `specs/stories.md` from the requested observable outcome and acceptance criteria; no discovery artifact or invented story group is required. For a bug, include the broken behaviour from the user’s side, plus a regression-guard story if the fix adds one. Everything else is unchanged.
 
 **Artifacts and their sources:**
 
@@ -48,14 +48,14 @@ For an archive instruction from `dev`, use Archive action below instead of setup
 
 ## Step 3: Write proposal and stories
 
-1. Resolve which story group the change covers from the request and discovery artifacts; confirm it only when ambiguous.
-2. Write `proposal.md` and `specs/stories.md` using the source rules above and templates below. For a bug without a story group, use the bug-specific rule above.
+1. If the request or discovery artifacts name a story group, resolve it and confirm only when ambiguous. Otherwise use the no-story-group path above for a bug, chore or other requested change.
+2. Write `proposal.md` and `specs/stories.md` using the source rules above and templates below. For a change without a story group, use the no-story-group rule above.
 3. Carry the Scope Brief’s exclusions into non-goals and its Also update items into the planned scope. Leave plan checkboxes unticked.
 
 ## Step 4: Produce the design and layer tasks
 
-1. For a bounded change, write the short design note; otherwise invoke `arch-review` and preserve its output verbatim in `design.md`.
-2. Derive ordered tasks from that design and the stories. Use only the project’s layer names and order, omitting empty layers.
+1. Preserve an existing design that still satisfies the scope and stories. If `design.md` is missing or invalid, produce it: write the short design note for a bounded change, or, for other changes, invoke `arch-review` and preserve its output verbatim.
+2. Derive missing or invalid tasks from the preserved or newly produced design and the stories. Use only the project’s layer names and order, omitting empty layers.
 3. Write `tasks.md`. Do not create `issues.md` or `sprint-contract.md`; their later owners remain unchanged.
 
 ## Step 5: Verify the artifacts and hand off

@@ -25,7 +25,7 @@ The workflow `dev` runs in its Phase 1 when Linear is the tracker. Read the main
 **Conversation flow:**
 1. Check for `issues.md` in the change folder — if present, output existing identifiers and stop
 2. Read `proposal.md`, `specs/stories.md`, and `tasks.md`
-3. Take team and project from the project's `AGENTS.md`. If it names none, ask the user once, then record the answer there so the next run doesn't ask
+3. Resolve any team/project explicitly requested by the caller first, otherwise use the project's `AGENTS.md`. If still ambiguous, ask the user once. Record the answer in `AGENTS.md` only when that local edit is authorized; without that authority, use the confirmed identifiers for this operation without editing instructions.
 4. Check existing labels with `list_issue_labels` for the team; create missing ones with `save_issue_label` (team-scoped, `teamId` = the team UUID)
 5. Create parent issue, then sub-issues referencing it via `parentId`
 6. Write `issues.md` anchor file immediately

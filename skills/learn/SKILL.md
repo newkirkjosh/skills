@@ -84,11 +84,13 @@ New prerequisites must reflect verified capabilities, not a remembered tool name
 
 ## Step 7: Show the diff and hand off
 
-1. Show the changed files and diff from the edit worktree:
+1. List the edit worktree’s changed files, then show this learning’s tracked diff (including staged changes):
    ```bash
-   git -C <edit-worktree> diff --stat
-   git -C <edit-worktree> diff
+   git -C <edit-worktree> status --short
+   git -C <edit-worktree> diff HEAD --stat -- <learning-paths>
+   git -C <edit-worktree> diff HEAD -- <learning-paths>
    ```
+   Show the full contents of each untracked file belonging to this learning too; Git diff omits them. Identify unrelated dirty files without including their contents in the handoff.
 2. Report the lesson, authoritative source, edit worktree, changed behavior, checks and remaining limitations. If nothing changed, explain the no-op with its evidence.
 3. Leave the changes uncommitted by default. If publishing was separately authorized, follow that repository’s review and merge rules. Successful learning checks do not grant merge permission.
 4. State whether guidance is only edited, merged or installed. Existing symlinks read the released source on the next skill load. Link a new skill only after merge, using the installer from the main checkout; never repoint installed links to an unmerged worktree. Report stale copied installs rather than overwriting them.

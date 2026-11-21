@@ -9,7 +9,7 @@ Research consumer products and publish findings as a source-linked comparison pa
 
 ## Step 0: Confirm topic and intent
 
-**Explicit use only.** The user names this skill or an active workflow calls it. An incidental product mention does not select it. Once invoked, resolve topic and intent before dispatching research. This workflow ends at the sourced page/report; later conversation does not inherit its rules.
+**Explicit use only.** The user names this skill or an already-active, explicitly invoked workflow calls it by name. An incidental product mention does not select it. Once invoked, resolve topic and intent before dispatching research. This workflow ends at the sourced page/report; later conversation does not inherit its rules.
 
 - **No topic given** (bare command invocation, or the conversation doesn't
   name a product/category): ask directly what they want researched. Don't

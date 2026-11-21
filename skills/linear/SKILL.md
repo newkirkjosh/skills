@@ -26,7 +26,7 @@ If the Linear tools are missing or only an `authenticate` tool exists, call it a
 
 Issues reference teams, projects, labels and states by name, and each of those is scoped. Resolve only those needed for the requested operation:
 
-1. **Team and project.** Use the identified issue’s team/project or the project’s `AGENTS.md`. If a required identifier remains ambiguous, list candidates (`list_teams`, `list_projects`) and ask the user once. Record a reusable mapping in `AGENTS.md` only when that local edit is authorized; a status lookup needs no instruction-file edit.
+1. **Team and project.** Resolve team/project destinations explicitly named in the request first; use the identified issue’s current team/project or the project’s `AGENTS.md` only as a fallback. If a required identifier remains ambiguous, list candidates (`list_teams`, `list_projects`) and ask the user once. Record a reusable mapping in `AGENTS.md` only when that local edit is authorized; a status lookup needs no instruction-file edit.
 2. **Labels.** `list_issue_labels` for the team. Labels can be team-scoped or workspace-wide; note a missing label for the authorized write in Step 3, using `save_issue_label` and the team’s UUID, never a duplicate of an existing name.
 3. **States.** `list_issue_statuses` for the team. Teams rename and add states; use the names it returns, matched by their `type` (`backlog`, `unstarted`, `started`, `completed`, `canceled`).
 

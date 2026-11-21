@@ -7,7 +7,7 @@ metadata:
 
 # Arch Review
 
-**Explicit use only.** The user or an active workflow names this skill for a structural decision. It returns a design recommendation; it does not implement the design or start a lifecycle. Its rules end at that report.
+**Explicit use only.** The user names this skill, or an already-active, explicitly invoked workflow calls it by name for a structural decision. It returns a design recommendation; it does not implement the design or start a lifecycle. Its rules end at that report.
 
 ## Step 1: Frame the structural decision
 

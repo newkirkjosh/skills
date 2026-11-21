@@ -43,7 +43,7 @@ For hosted triage, use the supplied findings and pinned head directly; skip prom
 
 ## Step 4: Triage and update dispositions
 
-**Triage** each finding against the scope and current code. Blocking and in scope: open, for the caller to fix. Out of scope: recorded with the exclusion that covers it. Wrong premise or immaterial: rejected with evidence. Then run the related-instance search for each accepted defect. Record everything in the ledger.
+**Triage** each finding against the scope and reviewed version: the pinned head for change/hosted triage, or the reviewed snapshot for a document. An uncommitted fix or a later document edit is not evidence for that version. Blocking and in scope: open, for the caller to fix. Out of scope: recorded with the exclusion that covers it. Wrong premise or immaterial: rejected with evidence. Then run the related-instance search for each accepted defect. Record everything in the ledger.
 
 ## Step 5: Return the result and convergence state
 

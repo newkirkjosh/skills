@@ -11,7 +11,7 @@ metadata:
 
 ## When to Use
 
-**Explicit use only.** The user names this skill, or a workflow calls it: `dev`'s evaluator follows it when a repository's `AGENTS.md` names it as the way to verify the app, and `dev` may run it for a test plan item that needs the running app. The run ends at its report; a later request doesn't inherit it.
+**Explicit use only.** The user names this skill, or an already-active, explicitly invoked workflow calls it by name: `dev`'s evaluator follows it when a repository's `AGENTS.md` names it as the way to verify the app, and `dev` may run it for a test plan item that needs the running app. The run ends at its report; a later request doesn't inherit it.
 
 It answers one question per check: **does the running app do what the change claims?** Unit tests and screenshot tests are someone else's job; this skill exists for the gap between "the build is green" and "the screen does it".
 
@@ -23,7 +23,7 @@ It answers one question per check: **does the running app do what the change cla
 
 ## Step 2: Choose the target and prepare resources
 
-1. Pick the target the change shows up on; choose multiple targets only when shared behavior differs by platform.
+1. Pick the target the change shows up on. Include every target the caller requests. Add other targets only when shared behavior differs by platform.
 2. Check that the required run recipes, credentials/session setup and isolated device/display are available. Record affected checks as NOT RUN when a required recipe is missing rather than guessing it.
 3. Prepare only the resources needed by the selected checks, recording ownership so cleanup can target what this run started.
 
