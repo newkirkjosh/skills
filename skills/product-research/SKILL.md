@@ -9,12 +9,7 @@ Research consumer products and publish findings as a source-linked comparison pa
 
 ## Step 0: Confirm topic and intent
 
-This skill can trigger three ways: an explicit request ("research the best
-Brooks running shoe"), a bare `/product-research` invocation with no topic
-attached, or an incidental mention while talking about something else
-("my running shoes are falling apart"). Only the first case has both a
-topic and clear intent already established — the other two need a check
-before any dispatching happens.
+**Explicit use only.** The user names this skill or an already-active, explicitly invoked workflow calls it by name. An incidental product mention does not select it. Once invoked, resolve topic and intent before dispatching research. This workflow ends at the sourced page/report; later conversation does not inherit its rules.
 
 - **No topic given** (bare command invocation, or the conversation doesn't
   name a product/category): ask directly what they want researched. Don't
@@ -30,6 +25,8 @@ before any dispatching happens.
 Don't dispatch any agents until both the topic and the intent to research
 it are confirmed.
 
+**Result:** a named product/category and confirmed research intent, or a missing-topic question.
+
 ## Step 1: Determine request shape
 
 - **Single-category research** — a specific item type, optionally a brand
@@ -40,6 +37,8 @@ it are confirmed.
 If ambiguous, prefer single-category — it's the narrower interpretation. If
 you're not confident which shape fits, say which one you're assuming in
 your first reply so the user can redirect before agents dispatch.
+
+**Result:** single-category or style-matching scope.
 
 ## Step 2: Resolve budget and depth
 
@@ -59,6 +58,8 @@ your first reply so the user can redirect before agents dispatch.
   "thorough", "exhaustive", or similar, use `deep` (cross-reference
   multiple review sites, forums, and retailer ratings). Never ask about
   depth — infer it, defaulting to quick.
+
+**Result:** a budget/tier and quick/deep research depth.
 
 ## Step 3: Build a style brief (style-matching requests only)
 
@@ -94,13 +95,15 @@ dispatching agents, e.g.:
 
 This gives the user a chance to correct scope before agents run.
 
+**Result:** the self-contained style brief and bounded list of item types, or an unavailable-reference blocker.
+
 ## Step 4: Dispatch research agent(s)
 
 - **Single-category:** dispatch one background research delegate.
 - **Style-matching:** dispatch one background delegate **per item type**,
   all in parallel — these are independent lookups with no shared state.
 
-Each delegate is a general-purpose agent running in the background (on
+Before dispatch, read the host adapters reference in `dev` for the host’s delegation and wait contract. Each delegate is a general-purpose agent running in the background (on
 Claude Code, `Agent` with `subagent_type: general-purpose` and
 `run_in_background: true`; that syntax is only an example). On a host
 without background delegation, run the same lookups yourself in this
@@ -141,12 +144,13 @@ proceed with the agents that did report, and note the missing item
 type/category explicitly in the output page instead of silently omitting
 it.
 
+**Result:** source-linked candidate notes for each completed item type and explicit gaps for failed categories.
+
 ## Step 5: Assemble and publish
 
 Once all dispatched agents have reported back:
 
-1. Load the `artifact-design` skill before writing any HTML — it governs
-   layout/typography choices for the page.
+1. Verify the returned notes cover each requested category, distinguish sourced facts from judgments, and disclose missing evidence. Use the host’s available page/artifact tools and the user’s presentation conventions for the HTML; do not require an unavailable design skill.
 2. Build one HTML page:
    - Single-category: one section for that category.
    - Style-matching: one section per item type, preceded by a short intro
@@ -171,3 +175,11 @@ Once all dispatched agents have reported back:
    category).
 5. Reply to the user with the page link, if published, and the local
    copy's path.
+
+**Result:** the sourced comparison page, its local path and any published link, with missing categories disclosed. End this invocation here.
+
+## Gotchas
+
+- A style-reference fetch that failed supplies no evidence for a guessed brief.
+- A missing research category must remain visible in the final page. Do not invent candidates to make the table look complete.
+- Publishing availability does not prove a page was published; report a link only after the host confirms it.

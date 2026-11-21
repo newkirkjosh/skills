@@ -12,7 +12,9 @@ One review procedure for a change, a hosted review's findings, or a decision doc
 
 **Explicit use only.** It reviews and returns a result. It never edits the reviewed work, commits, posts, replies to or resolves threads, pushes or merges, and it starts no other reviewers. The caller (`dev`, `discovery`, or the user) applies fixes and does every service write. Its rules end when it returns the result.
 
-## Modes
+## Step 1: Select the review mode and version
+
+Identify the caller’s requested scope and choose one mode below. Establish its input and version identity before reviewing; do not count hosted triage as a new model pass.
 
 | Mode | Input | Reviewed version |
 |---|---|---|
@@ -22,19 +24,30 @@ One review procedure for a change, a hosted review's findings, or a decision doc
 
 Hosted triage assesses findings another reviewer already made; it runs no model and never claims a cross-model pass happened. A change still needs change mode for a cross-model result.
 
-## Procedure
+## Step 2: Load the ledger and prepare the request
 
 Read `references/review-continuity.md` first: its ledger, related-instance search and convention rules apply in every mode. Then read the reference for the reviewer in play, which holds how the script runs it and its gotchas: `references/codex.md` or `references/claude.md` for change and document modes, `references/coderabbit.md` for CodeRabbit findings in hosted triage mode and what a throttled CodeRabbit review means for a gate.
 
 1. **Load the ledger** for this repository and branch, the same key before and after the PR exists (for a document, its path). Missing means a first pass.
-2. **Write the prompt file** in scratch space: the caller's scope verbatim as OUT OF SCOPE / IN SCOPE (a Scope Brief when one exists), then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` (or a stated requirement, when there is no change folder) the work doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Add the ledger text, including open findings and the evidence and fix SHAs behind earlier dispositions: a scratch-file path alone is not readable by every reviewer. For a document, add what decision it supports and what would change it.
-3. **Run the reviewer** (change and document modes) as a long command, logging to scratch space. `<skill-dir>` is this skill's real directory:
+2. **Write the prompt file** (change/document modes only) in scratch space: the caller's scope verbatim as OUT OF SCOPE / IN SCOPE (a Scope Brief when one exists), then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` (or a stated requirement, when there is no change folder) the work doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Add the ledger text, including open findings and the evidence and fix SHAs behind earlier dispositions: a scratch-file path alone is not readable by every reviewer. For a document, add what decision it supports and what would change it.
+
+## Step 3: Run the reviewer or enter hosted triage
+
+For hosted triage, use the supplied findings and pinned head directly; skip prompt preparation and reviewer execution. For change/document mode:
+
+**Run the reviewer** (change and document modes) as a long command, logging to scratch space. `<skill-dir>` is this skill's real directory:
    - change: `bash <skill-dir>/scripts/cross-review.sh <codex|claude> <worktree> <base-ref> <prompt-file> > <log> 2>&1`
    - document: `bash <skill-dir>/scripts/cross-review.sh <codex|claude> --document <file> <prompt-file> > <log> 2>&1`
 
-   The last line is `STATUS=COMPLETED` or `STATUS=ERROR`; a log without one is still running. Never poll it and never put a timeout on it: a real review takes many minutes and prints nothing until it finishes. Wait the way the host does (the host adapters reference in `dev`). The script reviews committed changes only, so an uncommitted fix is never reviewed; it refuses a worktree with uncommitted or untracked files, since the reviewer would read them as part of the head SHA, and reports `STATUS=ERROR` if the worktree changes while it runs.
-4. **Triage** each finding against the scope and current code. Blocking and in scope: open, for the caller to fix. Out of scope: recorded with the exclusion that covers it. Wrong premise or immaterial: rejected with evidence. Then run the related-instance search for each accepted defect. Record everything in the ledger.
-5. **Return the result** (below). The caller fixes the open findings in one batch, commits them (for a change) or edits the draft (for a document), and asks again for the next pass, with the ledger.
+   The last line is `STATUS=COMPLETED` or `STATUS=ERROR`; a log without one is still running. Never poll it and never put a timeout on it: a real review takes many minutes and prints nothing until it finishes. Wait the way the host does (the host adapters reference in `dev`). In change mode, the script reviews committed changes only, so an uncommitted fix is never reviewed; it refuses a worktree with uncommitted or untracked files, since the reviewer would read them as part of the head SHA, and reports `STATUS=ERROR` if the worktree changes while it runs.
+
+## Step 4: Triage and update dispositions
+
+**Triage** each finding against the scope and reviewed version: the pinned head for change/hosted triage, or the reviewed snapshot for a document. An uncommitted fix or a later document edit is not evidence for that version. Blocking and in scope: open, for the caller to fix. Out of scope: recorded with the exclusion that covers it. Wrong premise or immaterial: rejected with evidence. Then run the related-instance search for each accepted defect. Record everything in the ledger.
+
+## Step 5: Return the result and convergence state
+
+**Return the result** (below). The caller fixes the open findings in one batch, commits them (for a change) or edits the draft (for a document), and asks again for the next pass, with the ledger.
 
 **Convergence.** A pass converges when its triage and the ledger leave no unresolved blocker. A repeated settled finding without new evidence is recorded but doesn't block; a quiet pass never erases an earlier open finding. After three passes with blockers left, return them for the user; don't start a fourth. The limit is per review round. A round runs from its first pass until it converges, and its fix batches stay inside it: a pass after a fix batch is the round's next pass, not a new round. A new round starts only after the previous one converged (a later delta review after re-evaluation or a hosted fix batch) or when the user authorizes one. The pass count lives in the ledger and carries across invocations: resuming a round continues its count, it doesn't restart it. Only the user can authorize another round after the limit; record that authorization in the ledger, and the new round gets up to three passes of its own. A fix that changes reviewed behaviour needs review of the delta and whatever depends on it.
 
@@ -48,7 +61,7 @@ Return exactly these five fields, plus the findings:
 - **Coverage:** reviewer, mode, passes run, and what was reviewed; or `unavailable: <reason>`.
 - **Dispositions:** each finding's ID and disposition, with evidence.
 - **Unresolved blockers:** open in-scope blockers, or none.
-- **Evidence:** the ledger location and the final pass's log.
+- **Evidence:** the ledger location and the final pass’s log; for hosted triage, the supplied review/comment locations and an explicit statement that no new model pass ran.
 
 A converged change review is summarized for the caller's record as `Cross-review: <reviewer>, <passes> pass(es), converged at <short-sha>`.
 

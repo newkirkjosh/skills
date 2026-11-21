@@ -11,23 +11,29 @@ metadata:
 
 ## When to Use
 
-**Explicit use only.** The user names this skill, or a workflow calls it: `dev`'s evaluator follows it when a repository's `AGENTS.md` names it as the way to verify the app, and `dev` may run it for a test plan item that needs the running app. The run ends at its report; a later request doesn't inherit it.
+**Explicit use only.** The user names this skill, or an already-active, explicitly invoked workflow calls it by name: `dev`'s evaluator follows it when a repository's `AGENTS.md` names it as the way to verify the app, and `dev` may run it for a test plan item that needs the running app. The run ends at its report; a later request doesn't inherit it.
 
 It answers one question per check: **does the running app do what the change claims?** Unit tests and screenshot tests are someone else's job; this skill exists for the gap between "the build is green" and "the screen does it".
 
-## Inputs
+## Step 1: Resolve the checks and run recipes
 
 1. **The checks.** From the caller (a sprint contract, a PR test plan), each one observable: "after adding a book, the Library tab lists it", never "works correctly". Without checks, derive them from the diff and say you did.
 2. **How this repository runs.** Read its `AGENTS.md` and rule files first: the build command per target, the app ID, how to start the backend and seed data, which server URL each target uses, how to get a signed-in user, and setup that gates screens (for example, an account and a group). These recipes belong in the repository’s `AGENTS.md`; report a missing recipe. Project specifics live there, not here. Missing ones are a gap to report, not something to guess.
 3. **This machine's recipes.** The off-screen display and emulator settings are in the user's global instructions. Use them as written.
 
+## Step 2: Choose the target and prepare resources
+
+1. Pick the target the change shows up on. Include every target the caller requests. Add other targets only when shared behavior differs by platform.
+2. Check that the required run recipes, credentials/session setup and isolated device/display are available. Record affected checks as NOT RUN when a required recipe is missing rather than guessing it.
+3. Prepare only the resources needed by the selected checks, recording ownership so cleanup can target what this run started.
+
 ### Backend
 
 Start what the app needs: a database container with a unique name, then the server. Wait for readiness with a bounded poll on its port or health endpoint. Keep the container names and process PIDs; after stopping the emulator, stop the backend resources in reverse startup order, including on failure.
 
-## Targets
+## Step 3: Run each observable check
 
-Pick the target the change shows up on; verify on more than one only when the change is shared code whose behaviour differs by platform.
+Use the selected platform procedure below. For each check, establish its starting state, perform the named action, observe the result and capture evidence. Record PASS, FAIL or NOT RUN immediately; a later successful check does not erase an earlier failure.
 
 ### Android (emulator)
 
@@ -82,7 +88,9 @@ Without a workspace, install a pinned Playwright into a throwaway directory, nev
 )
 ```
 
-## Report
+## Step 4: Clean up and report
+
+Stop the app, managed emulator and backend resources this run started, in reverse startup order, including after failures. Use the recorded ownership/PIDs and the target procedure; report cleanup that could not be verified. Then return the check results below and stop.
 
 One row per check, nothing else counts as evidence:
 

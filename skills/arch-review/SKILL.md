@@ -7,11 +7,37 @@ metadata:
 
 # Arch Review
 
-## When to Use
-- Request involves how to structure a system, module, or service
-- Evaluating whether a proposed design is sound
-- Deciding between approaches with structural implications
-- Reviewing existing code for architectural problems (layer violations, tight coupling, unclear boundaries)
+**Explicit use only.** The user names this skill, or an already-active, explicitly invoked workflow calls it by name for a structural decision. It returns a design recommendation; it does not implement the design or start a lifecycle. Its rules end at that report.
+
+## Step 1: Frame the structural decision
+
+1. Read the caller’s scope, current design and relevant project instructions.
+2. Name the boundary or dependency under decision, the requirements it must satisfy and the constraints already fixed by the user.
+3. Identify the modules and callers affected. Inspect only what is needed to understand those relationships; ask about a missing constraint only when it could change the recommendation.
+
+**Result:** a concrete design question and the evidence needed to compare answers.
+
+## Step 2: Trace the existing responsibilities
+
+1. Map each affected module to its current purpose and public responsibilities.
+2. Trace the relevant dependency direction and layer responsibilities using the principles below.
+3. Identify the demonstrated coupling, layer violation or unclear ownership. Separate observed problems from hypothetical future needs.
+
+**Result:** the specific structural problem and the boundaries a solution must preserve.
+
+## Step 3: Compare options and recommend
+
+1. Present at least two concrete options as a trade-off table. Compare simplicity, testability, scalability and maintainability against the stated requirements.
+2. Challenge any element added only for a hypothetical future requirement.
+3. Recommend one option, name what it sacrifices, and explain when the alternative would be preferable.
+
+**Result:** a reasoned choice, its cost and any unresolved decision the user must make.
+
+## Step 4: Return the design
+
+Report the proposed boundaries, responsibility and dependency changes, the comparison and the recommendation. Keep unrelated refactoring out of the report. Surface over-engineering without removing it yourself. When `spec-writer` is the caller, return the design text for its `design.md`; the caller owns artifact creation and approval.
+
+**Result:** an actionable recommendation or a clearly stated missing decision. Stop here.
 
 ## Principles
 
@@ -33,6 +59,11 @@ metadata:
 - Always name what is sacrificed by the recommended option
 - Do not propose unrelated refactoring alongside the architecture review
 - Flag over-engineering but do not unilaterally remove it — surface it to the user
+
+## Gotchas
+
+- Do not turn a structural review into implementation or a neighboring cleanup. The caller owns those actions.
+- A familiar pattern is not a reason by itself; show which requirement earns its trade-off.
 
 ## Examples
 *Not required for flexible skills, but illustrative:*
