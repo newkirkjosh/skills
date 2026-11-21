@@ -13,17 +13,21 @@ metadata:
 - Starting work on a story group — "set up spec-writer for X", "create change folder for X"
 - Archiving a completed feature — "archive feat-X" (only when explicitly instructed by `dev`, as the last commit of the change's own PR, after its sprint contract and cross-model review are final)
 
-**Explicit use only** — always an explicit act: the user names this skill, or `dev` calls it.
+**Explicit use only** — always an explicit act: the user names this skill, or `dev` calls it. Its handoff is the verified artifact path, not an implementation or publication run; later requests do not inherit it.
 
-**Entry detection** — before creating, check `openspec/changes/<feat-name>/` in the project repo:
+## Step 1: Detect setup or archive state
+
+Before creating, check `openspec/changes/<feat-name>/` in the project repo:
 
 | Existing state | Action |
 |---|---|
-| Folder does not exist | Create folder and all artifacts |
+| Folder does not exist | Create the setup artifacts in Steps 2–4; leave later-owned artifacts absent |
 | Folder exists, artifacts complete | Output folder path, skip creation |
 | Archive instruction received | Move folder to `openspec/changes/archive/<feat-name>/` — do not check issue state (the move ships in the change's PR, so merging archives it) |
 
-## Principles
+For an archive instruction from `dev`, use Archive action below instead of setup. For a complete existing folder, report its path and stop. For a partial folder, identify what is missing and preserve valid existing artifacts while completing the requested setup.
+
+## Step 2: Resolve scope and artifact sources
 
 **Change folder location:** `openspec/changes/<change-name>/` inside the project repo. The change name is kebab-cased with the change type as prefix: `feat-` for a story group ("Onboarding" → `feat-onboarding`), `fix-` for a bug, `chore-` for non-feature work. Stories live in a `specs/` subdirectory within the change folder.
 
@@ -42,15 +46,27 @@ metadata:
 
 **Layers** come from the project, never from this skill: the layer names and their order in the repository's `AGENTS.md`, or the rules in `openspec/config.yaml` if it has them. If the project names no layers, ask the user once and suggest they add them to `AGENTS.md`.
 
-**Conversation flow:**
-1. Confirm which story group this change covers
-2. Derive `proposal.md` and `specs/stories.md` from discovery artifacts — no questions needed
-3. Invoke `arch-review` to produce `design.md`, or for a `bounded` change write the short design note yourself
-4. Write `tasks.md` with ordered implementation steps broken by layer
-5. Output the change folder path
+## Step 3: Write proposal and stories
 
-**Archive action:**
+1. Resolve which story group the change covers from the request and discovery artifacts; confirm it only when ambiguous.
+2. Write `proposal.md` and `specs/stories.md` using the source rules above and templates below. For a bug without a story group, use the bug-specific rule above.
+3. Carry the Scope Brief’s exclusions into non-goals and its Also update items into the planned scope. Leave plan checkboxes unticked.
+
+## Step 4: Produce the design and layer tasks
+
+1. For a bounded change, write the short design note; otherwise invoke `arch-review` and preserve its output verbatim in `design.md`.
+2. Derive ordered tasks from that design and the stories. Use only the project’s layer names and order, omitting empty layers.
+3. Write `tasks.md`. Do not create `issues.md` or `sprint-contract.md`; their later owners remain unchanged.
+
+## Step 5: Verify the artifacts and hand off
+
+Check that each story’s outcome has acceptance criteria, tasks stay within the scope and cover the applicable layers, and every file follows its source rule. Report the change folder path, created/reused files and any missing input, then return to the caller. Do not start implementation or mark work evaluated.
+
+## Archive action: Move only when dev instructs it
+
 Receives an explicit archive instruction from `dev` (never self-triggers). Moves `openspec/changes/<feat-name>/` → `openspec/changes/archive/<feat-name>/` with `git mv`, as the last commit before `dev`'s completion phase. Does not verify issue state: the issues close when that PR merges. Later edits (a re-evaluation) go to the archived folder in place; it never moves back.
+
+## Artifact templates
 
 **`proposal.md` template:**
 ```markdown

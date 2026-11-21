@@ -13,6 +13,40 @@ How to carry out a GitHub operation correctly. What to do (scope, issue hierarch
 
 **Explicit use only.** It runs the operation it was asked for, reads the result back and stops. It never starts `dev` or `team`, never scaffolds a change folder or spec, and grants no merge permission. A standalone request ("edit issue #12's title", "list the open threads on #34") produces that operation and its readback, nothing more.
 
+## Step 1: Resolve the requested operation
+
+1. Read the user’s request or workflow handoff and the repository’s `AGENTS.md`.
+2. Establish the repository and exact target (issue, PR, thread, check or branch). Resolve an ambiguous target before writing.
+3. For an outward write, confirm that existing authority covers that action and check repository visibility. A read-only request grants no write authority.
+
+**Result:** one scoped operation and its target, or the missing identity/authority that blocks it.
+
+## Step 2: Load the applicable mechanics
+
+1. Check installed `gh` help and current API documentation as required by Rules.
+2. Read only the reference needed: pull requests and feedback, PR evidence/waits, or OpenSpec issue mapping (listed below).
+3. For comments, identify the authenticated account and whether the thread author is a bot or human. Prepare multiline bodies in files.
+
+**Result:** the current command/schema and the reference governing this operation.
+
+## Step 3: Collect current state
+
+1. Read the target and every collection needed for the operation, paginating to exhaustion.
+2. For PR evidence, pin the head and compare it again after collection. Treat errors, truncation and missing reports as unknown.
+3. For a merge, apply Merging below before proceeding. For a wait, use the host’s monitoring contract or the bounded reference helpers.
+
+**Result:** complete, current evidence, or an explicit unknown state that prevents the dependent action.
+
+## Step 4: Execute and verify
+
+Perform only the authorized operation. Read the changed object back and verify the relevant fields. Replies and resolutions are separate writes with separate readbacks. If a write’s outcome is unknown, inspect the target before attempting it again.
+
+**Result:** verified changed state, or a reported failure/unknown outcome; never infer success from exit status alone.
+
+## Step 5: Report and stop
+
+Return the target link or identifier, the observed result and any missing evidence. For reads, answer from the complete collection; for writes, say what the readback verified. Do not create lifecycle artifacts or start another workflow.
+
 ## Rules
 
 - **Docs, not memory.** Confirm commands, flags and fields from installed `gh <command> --help`, `gh api` and the GitHub REST and GraphQL docs before the first call. Fields and defaults change.

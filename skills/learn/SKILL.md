@@ -8,52 +8,108 @@ metadata:
 
 # Learn
 
-Make a correction survive the next session by fixing the instruction that caused it. Use the conversation’s demonstrated mistake, user correction and verified outcome as evidence. A plausible lesson without evidence is a proposal, not a new rule.
+Turn a demonstrated correction from the current conversation into a targeted skill improvement. Follow the steps in order. A plausible lesson without evidence stays a proposal.
 
-**Explicit use only.** Running this skill authorizes a targeted catalog edit and its local validation. It ends at the diff and report. Committing, pushing, opening a PR, installing or changing other repositories needs authority from the user’s request; this skill supplies none on its own. A later request does not inherit its rules.
+**Explicit use only.** This invocation authorizes targeted catalog edits and local validation. It ends at the diff and report. Commit, push, PR, install and writes outside the owning catalog require authority from the user’s request; this skill supplies none on its own. Later requests do not inherit this workflow.
 
-## 1. Identify the lesson and its owner
+## Step 1: Locate the source catalog
 
-For each requested learning, state the observed failure, its cause, the desired decision and the evidence behind it. Read the relevant earlier messages or artifacts when available; do not invent missing history. If the cause is unresolved, investigate what can be verified and report the remaining question instead of encoding a guess.
+1. Take the directory this skill was loaded from, resolve its symlinks, and find its Git root:
+   ```bash
+   readlink -f <loaded-skill-directory>
+   git -C <resolved-directory> rev-parse --show-toplevel
+   ```
+2. Read that root’s `AGENTS.md`. Inspect its remote, branch, worktree list and status to establish which catalog and checkout you found.
+3. Locate the skill implicated by the correction and resolve its source too. If it belongs to a different catalog, use that catalog’s instructions and source; never redirect its fix into this one.
 
-Route by what the lesson changes:
+Edit source checkouts, never copied installs, plugin caches or generated bundles. If no source can be established, report the candidates and ask for the missing source location before writing. A symlink identifies a source; it does not authorize editing the default checkout that installed skills point to.
 
-| Lesson | Owner |
-|---|---|
-| A reusable skill decision or missing step | The skill or reference that owns that decision |
-| A verified project convention or review misunderstanding | That project’s designated instructions or review rules; `cross-review` already owns convention learning |
-| A machine recipe, personal preference or private project fact | The existing machine, memory or project source, outside the public catalog |
-| A transient outage, run status or unverified suspicion | The run’s evidence/report; no permanent rule |
+**Result:** the owning catalog root and target skill path, or a specific source-location blocker.
 
-For a lesson outside the catalog, name the appropriate destination and the proposed correction. Do not edit it unless the request also authorizes that destination. Do not turn a repo-specific exception into a global prohibition. In particular, learning from a reviewer’s false premise must not weaken a genuine requirement or merge gate.
+## Step 2: Extract the demonstrated lesson
 
-## 2. Find the authoritative source
+1. Read the user’s correction and the relevant earlier messages or artifacts. Do not invent omitted history.
+2. Summarize the lesson in four short fields:
+   - **Observed:** what the skill did or failed to do.
+   - **Cause:** the instruction or missing decision that produced it.
+   - **Change:** what the agent should decide differently next time.
+   - **Evidence:** the user correction, actual outcome or verified capability supporting that change.
+3. Separate a demonstrated cause from a suspicion. If unresolved, investigate what can be verified; report the remaining question instead of encoding a guess.
 
-Resolve the loaded skill’s own directory through symlinks and locate its Git root; inspect its remote, `AGENTS.md`, status and worktrees. Follow the relevant target skill’s source too: a domain skill may belong to another catalog. Never redirect its fix into this catalog just because this is where `learn` lives.
+**Result:** one evidence-backed lesson per requested correction. No evidence-backed catalog lesson means no catalog edit.
 
-Edit the source checkout, never a copied install, plugin cache or generated skill bundle. If the source cannot be established, report the candidates and ask for the missing source location; make no speculative write. A symlinked installed entry is evidence of the source, not permission to edit its target on the default branch.
+## Step 3: Choose the policy owner and check for duplicates
 
-Check the target repository’s own instructions before editing. In this catalog, create a worktree from the default branch for a new learning, or use the explicitly selected change’s worktree. Never edit the default checkout that installed skills point to. Preserve unrelated dirty work; use a fresh worktree instead of resetting, stashing or mixing it into the learning. If the requested change depends on dirty work whose ownership is unclear, stop that edit and explain the dependency.
+1. Route the lesson by what it changes:
 
-## 3. Fix the decision once
+   | Lesson | Destination |
+   |---|---|
+   | Reusable skill decision or missing step | The skill or reference owning that decision |
+   | Verified project convention or review misunderstanding | That project’s designated instructions or review rules; `cross-review` owns convention learning |
+   | Machine recipe, personal preference or private project fact | The existing machine, memory or project source, outside the public catalog |
+   | Transient outage, run status or unverified suspicion | The run’s report; no permanent rule |
 
-Search the owning skill and its callers for the failing instruction and equivalent cases. Check existing guidance and in-flight fixes before adding anything: if the correction is already present or pending in another change, identify it and report a no-op rather than duplicating or silently extending that work.
+2. Search that owner, its callers and available in-flight fixes for the same correction. If already present before this edit, or pending in another change, identify the source/change and report a no-op. The selected worktree’s own learning edit still proceeds through verification and handoff. Distinguish pending from released.
+3. For an outside-catalog destination, report the proposed correction and where it belongs. Edit it only if the request also authorizes that destination. Do not turn a project exception into a global prohibition or use a reviewer’s false premise to weaken a real requirement.
 
-Prefer rewriting or removing an incorrect instruction to appending another warning. Put policy in its owner and mechanics in the applicable reference or helper; update callers only when their contracts change. Keep the condition, required action and reason specific enough to distinguish the failure from a nearby valid case. New prerequisites must reflect a verified capability, not a remembered tool name or CLI version.
+**Result:** a named file and decision to change, or an explained no-op/outside-scope proposal.
 
-Use placeholders in public examples. Keep credentials, personal details, machine paths, private project names and session/run notes out of the patch, its fixtures and commit messages. Extract the general decision without copying the conversation. Preserve required licenses and provenance; a lesson does not authorize importing another catalog wholesale.
+## Step 4: Prepare an isolated edit
 
-## 4. Verify and hand off
+1. Follow the owning repository’s worktree rules. In this catalog, create a worktree from the default branch for a new learning, or use the change’s explicitly selected worktree.
+2. Read the target file and the references/callers that govern the same decision before changing it.
+3. Preserve unrelated dirty work. Use a fresh worktree instead of resetting, stashing or mixing it into the learning. If the requested change depends on dirty work whose ownership is unclear, stop that edit and explain the dependency.
 
-Run the target catalog’s required validators and reference/privacy checks, plus the meaningful helper tests when executable behavior changes. Exercise the changed decision on the originating case and one nearby counterexample, using isolated fixtures where live side effects are unnecessary. Report simulated checks as simulated and unrun checks as NOT RUN. A prose-only change still needs a decision check; matching its wording is not behavioral evidence.
+**Result:** the exact edit worktree and relevant files, with unrelated work preserved. Never edit the default checkout used by installed symlinks.
 
-Inspect the diff for duplicated rules, contradictory callers, leaked details and unintended files. Show which source tree and files changed, the lesson and evidence, validation results and remaining limitations. Leave the changes uncommitted by default, with the worktree path and command to inspect the diff. If publishing was separately authorized, follow the repository’s review and merge rules; do not treat a successful learning check as merge permission.
+## Step 5: Make the smallest complete correction
 
-Symlink installs read the released source on the next load. A new skill is linked only after merge, using the catalog’s installer from its main checkout. Do not repoint installed links to an unmerged worktree. Report stale copied installs rather than overwriting them.
+1. Rewrite or remove the failing instruction before adding another warning. Put policy in its owner and mechanics in the applicable reference/helper.
+2. State the condition, required action and reason. For a procedure that left the agent guessing, write ordered actions and an explicit completion or stop condition; broad principles alone are insufficient.
+3. Search for equivalent instances in scope and update callers whose contracts changed. Avoid duplicating the same policy across skills.
+4. Remove private details from the patch and examples. Use placeholders; never copy credentials, personal details, machine paths, private project names or session/run notes into public guidance, fixtures or commit messages. Preserve required licenses and provenance.
+
+New prerequisites must reflect verified capabilities, not a remembered tool name or CLI version. Do not import another catalog wholesale to solve a narrow learning.
+
+**Result:** one coherent diff addressing the demonstrated cause and its related in-scope instances.
+
+## Step 6: Verify the changed decision
+
+1. Run the catalog’s required validators and reference/privacy checks. Run meaningful helper tests when executable behavior changes.
+2. Apply the changed instructions to the originating case: identify the action they now produce and the evidence that it resolves the failure.
+3. Apply them to a nearby valid case that must still work. Use isolated fixtures where live side effects are unnecessary. Label instruction replay or simulation accurately; mark unrun checks NOT RUN. A wording match is not behavioral evidence.
+4. Inspect the diff for contradictory callers, duplicate rules, private details and unintended files. Fix demonstrated failures, then rerun the affected checks.
+
+**Result:** named checks and outcomes for the original failure and counterexample, with any limitation explicit.
+
+## Step 7: Show the diff and hand off
+
+1. Show the changed files and diff from the edit worktree:
+   ```bash
+   git -C <edit-worktree> diff --stat
+   git -C <edit-worktree> diff
+   ```
+2. Report the lesson, authoritative source, edit worktree, changed behavior, checks and remaining limitations. If nothing changed, explain the no-op with its evidence.
+3. Leave the changes uncommitted by default. If publishing was separately authorized, follow that repository’s review and merge rules. Successful learning checks do not grant merge permission.
+4. State whether guidance is only edited, merged or installed. Existing symlinks read the released source on the next skill load. Link a new skill only after merge, using the installer from the main checkout; never repoint installed links to an unmerged worktree. Report stale copied installs rather than overwriting them.
+
+**Result:** a reviewable diff or evidenced no-op, with the source and release state unambiguous. End this invocation here.
+
+## Example: An underspecified learning procedure
+
+Request: “Use learn: the skill lists principles but leaves the agent guessing what to do next.”
+
+1. Resolve the loaded skill to its source catalog and read its authoring instructions.
+2. Record the observed ambiguity, the missing sequence, the requested ordered procedure and the user’s correction as evidence.
+3. Choose the procedure in `learn` as the owner. Check whether that rewrite already exists or is pending.
+4. Prepare an isolated worktree and read the current procedure.
+5. Rewrite it as ordered actions with a result at each step, preserving source discovery, privacy and authorization boundaries.
+6. Replay this request through the new sequence. As a counterexample, replay a correction already fixed in an open PR: it must produce an evidenced no-op instead of another edit.
+7. Show the diff, checks and worktree path; leave the edit uncommitted unless publishing was separately requested.
 
 ## Gotchas
 
-- A successful workaround is not automatically the right permanent rule. Verify its cause and preserve the legitimate alternative case.
-- A correction already under review is still pending, not released. Name the existing change and its state; do not claim future sessions are fixed yet.
-- Do not append a rule for every error. If the agent had the right instruction and ignored it, clarify only the demonstrated ambiguity or report that no catalog change is justified.
-- Fixing the source and activating it are different outcomes. Report the edited tree precisely, and distinguish an uncommitted diff from merged, installed guidance.
+- A workaround is not automatically a permanent rule. Verify its cause and preserve the legitimate alternative case.
+- A pending fix is not released. Identify its state rather than claiming future sessions are already fixed.
+- If the agent had the right instruction and ignored it, clarify only a demonstrated ambiguity or report that no catalog change is justified.
+- Editing the correct source and activating it are different outcomes. Report both precisely.

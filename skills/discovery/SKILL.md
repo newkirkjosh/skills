@@ -7,16 +7,9 @@ metadata:
 
 # Discovery
 
-## When to Use
+## Step 1: Resolve the project and entry phase
 
-**Invocation.** The user names this skill, for example:
-- "start discovery for X"
-- "let's do product discovery"
-- "is X worth building"
-- "define the MVP for X"
-- "I have an idea for X"
-
-**Explicit use only** — discovery is always an intentional act, never started without the user naming it.
+**Explicit use only** — discovery is always an intentional act, never started without the user naming it. Its handoff is the discovery artifacts and their state, or the specific unresolved decision; it does not start implementation. Its rules end at that report.
 
 **Plans directory** — `<plans-dir>` is the plans directory the global CLAUDE.md names, else `~/Developer/docs/plans`.
 
@@ -42,7 +35,7 @@ If the project folder does not exist, create it at `<plans-dir>/<project-name>/`
 - Reviewing architecture of an existing project (use `arch-review`)
 - Mid-project scope change (start at the relevant phase directly)
 
-## Principles
+## Step 2: Run the selected phase
 
 ### Phase 0: Viability
 
@@ -109,6 +102,11 @@ Reviewed by the other model family with `cross-review` in document mode. The rev
 Claude determines project type from the viability conversation or by asking one question:
 - **Commercial potential** (intended for external users, possible monetization, market gap identified) → Lean Canvas format → `lean-canvas.md`
 - **Personal/passion project** (self-use, hobby, learning, small collaboration) → Lighter format → `one-pager.md`
+
+**Conversation flow:**
+1. Use the viability findings to draft the detected format, keeping each field to 1–3 sentences.
+2. Present the MVP scope and constraints. If fields remain unresolved, ask 2–3 focused questions together, using the viability context for answers already established.
+3. Write the selected file once its scope is established; do not create both formats for the same decision.
 
 **Lean Canvas template (`lean-canvas.md`):**
 
@@ -246,6 +244,11 @@ Mermaid is used only when a flow has branching logic, conditional paths, or mult
 **Screen inventory:**
 Appended at the end of `user-flows.md` — a flat list of every screen with a one-line description and the job stories it serves.
 
+**Execution order:**
+1. Trace each job story into a user path, including the relevant error and empty states.
+2. Choose text or Mermaid per flow using the rules above, then map every named screen into the inventory with the stories it serves.
+3. Check for stories without a flow and flow screens missing from the inventory. Resolve the gaps and write `user-flows.md`.
+
 **`user-flows.md` template:**
 ```markdown
 # User Flows: <Project Name>
@@ -271,6 +274,13 @@ Appended at the end of `user-flows.md` — a flat list of every screen with a on
 
 ---
 
+## Step 3: Verify the artifacts and hand off
+
+1. Check the viability review state against its ledger and current digest; a pointer or existing file alone does not prove completion.
+2. Check that the one-pager/canvas reflects the viability constraints, stories stay within MVP scope, and the flows and inventory cover those stories. Report missing artifacts and unresolved questions rather than implying they are complete.
+3. Return the project directory, artifact paths, viability verdict and review state, MVP scope, story groups and screen list. For a stopped provisional review, report the blockers and authorization needed for another round instead of moving to the next phase.
+4. Name the available downstream inputs below, then stop. The user or already-active caller decides whether to invoke the next skill.
+
 ### Integration with Existing Pipeline
 
 | Downstream skill | Input from discovery |
@@ -293,6 +303,11 @@ discovery
 - Mermaid diagrams only for branching/multi-entry flows — linear flows always use numbered text
 - Viability (Phase 0) cannot be skipped for new ideas with no existing artifacts
 - Format detection for Phase 1 (Lean Canvas vs. one-pager) is determined from viability conversation — ask one question only if unclear
+
+## Gotchas
+
+- Existing discovery files do not prove the current viability draft was reviewed; use the digest and ledger.
+- An artifact handoff does not authorize creating a branch, tracker issue or implementation run.
 
 ## Examples
 
