@@ -78,6 +78,10 @@ Fixture index:
 
 **T9. Closed PR beats a live worktree.** Facts: the PR closed unmerged, the change is not on the default branch, and the worktree still holds it. Expected: the record returns to `open`; exactly one rule applies.
 
+**T10. Open PR beats a stale worktree.** Facts: the PR for the branch is open and holds the change; the local worktree switched branches and no longer holds it. Expected: the record stays `applied`; the worktree is not consulted.
+
+**T11. PR opened after the record.** Facts: the record names a repository, branch and worktree path but no PR; the worktree was later removed and a PR for that branch is open and holds the change. Expected: the review finds the PR by branch and the record stays `applied`; it is not reopened because the worktree is gone.
+
 ## Existing flow (Story 4)
 
 **E1. Single correction unchanged.** Input: "use learn: this skill leaves the agent guessing what to do next." Expected: mode selector picks the default path with no inbox read or write; Steps 1 to 7 run as today, including edit worktree, verification and diff handoff. Diff the Steps 1 to 7 text between `main` and the finished skill: no wording changes to step behavior except cross-references to the new modes (any change is listed and justified).
