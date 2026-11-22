@@ -48,7 +48,7 @@ Every transition needs checked evidence, quoted in the record's `Applied` or `Cl
 |---|---|---|
 | `open` | `applied` | Worktree or PR, file and the edited text that addresses this record, all three written in `Applied`. |
 | `applied` | `shipped` | The PR is merged (`gh pr view`) and the recorded text is present in the file on the default branch (`git show <remote>/<default>:<file>` after a fetch). |
-| `applied` | `open` | Any of: PR closed unmerged; worktree gone and no PR; PR merged but the recorded text is absent from the default branch. Write why in `Applied`. |
+| `applied` | `open` | Any of: PR closed unmerged; worktree gone and no PR; PR merged but the recorded text is absent from the default branch; worktree present or PR open but the recorded text is no longer there (the edit was reverted or overwritten). Write why in `Applied`. |
 | `applied` | stays `applied` | Worktree present or PR open, and the recorded text is present there. |
 | `open` | `closed` | The owner no longer holds the decision (for example the step was removed, shown by reading the skill on the default branch), or the outside destination the record was routed to (a project's instructions, the user's memory) now holds the fix, shown by reading it. |
 
