@@ -4,23 +4,21 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
-Evaluated at: ed025aa2b907152ed7e7f5d6f85e7a5dd699a9bc
+Evaluated at: 673ec3e0ca51eab954ca83918b2f90db33eda733
 
-All behavioral items are instruction replay of `specs/manual-checks.md` against the finished skill (fresh evaluator, export of the head above), not live runs.
+All behavioral items are instruction replay of `specs/manual-checks.md` and seven added edge cases against the finished skill (fresh evaluator, history-free export of the head above), not live runs.
 
 - [x] Note writes exactly one record with every required field and status `open`, with no catalog edit, worktree, commit or PR (C1)
-- [x] No inbox named: report and write nothing (C2)
-- [x] An inbox inside a catalog or public repository is refused; no inbox path in the skill (C3)
-- [x] An unsupported lesson is asked about, or recorded with Cause `unestablished`, never guessed (C4)
-- [x] A duplicate note is written and cites the earlier record (C5)
-- [x] Review reads open and applied records and skips shipped and closed (R1), grouped by skill and decision (R2)
-- [x] Recurrence orders investigation but never proves; a group with no demonstrated cause gets no edit and stays open (R3, R4)
+- [x] No inbox named: report and write nothing; an inbox whose nearest existing ancestor is in a catalog or public checkout, or whose visibility can't be determined, is refused (C2, C3)
+- [x] An unsupported lesson is asked about, or recorded with Cause `unestablished` (C4); a repeat is written and cites the earlier record (C5)
+- [x] Review reads open and applied records, skips shipped and closed, and groups by owning skill and decision (R1, R2)
+- [x] Recurrence orders investigation but never proves; cause, owner and duplicates come from Steps 1-3 before any edit; a group with no cause stays open (R3, R4)
 - [x] Project and preference lessons are routed outside the catalog (R5); closing needs evidence, never non-recurrence or elapsed time (R6)
-- [x] A ranked summary and the user's approval come before any worktree or edit (R7); approved edits run in one worktree through Steps 4-7 (R8)
-- [x] An applied record names its worktree or PR, file and edited text (R9); review makes no publish decision (R10); an empty inbox stops (R11)
-- [ ] Applied records move to shipped only with a merged PR and the text on the default branch, back to open when the PR closed, the worktree is gone, or the recorded text is gone, and stay applied otherwise (T1-T7). FAIL at ed025aa: the Record step is the only writer but says "Never set `shipped` here", so no step can write shipped (T1)
-- [ ] A record whose fix is pending in another change stays open and names that change (story 2). FAIL at ed025aa: `Related` is defined as earlier record file names, so where the change reference goes is unspecified
+- [x] A ranked summary and the user's approval come before any worktree, catalog edit or record write; no answer writes nothing (R7)
+- [x] Approved edits run through Steps 4-7, one worktree per owning catalog; a record-only approval creates no worktree (R8, R10, R11)
+- [x] An applied record names its worktree or PR, file and edited text (R9)
+- [x] Shipped means the recorded text is on the owning catalog's default branch, by PR or otherwise, written in the Record step after approval; closed PR, gone worktree or missing text reopens; unverifiable applied records are reported and asked about (T1-T7)
+- [x] A fix pending in another change keeps the record open with the change in `Pending`; an exact fix already on the default branch closes it with evidence
 - [x] The single-correction Steps 1-7 are unchanged and an ambiguous request takes that flow (E1, E2)
-- [x] Description keeps the explicit-use opener, names both modes, under 1024 characters; `agentskills validate`, `check-descriptions.sh`, `check-refs.sh`, script tests and `bash -n` pass (S1, S2, S5, S6)
-- [x] README `learn` row updated (S4)
-- [x] Private-term check (S3): coordinator-supplied, `scripts/check-private.sh` in the git worktree with `privacy.public=true` exited 0 at 60161f0; the commit hook ran the local term list on every commit
+- [x] Description keeps the explicit-use opener, names both modes, 613 characters; `agentskills validate`, `check-descriptions.sh`, `check-refs.sh`, all script tests and `bash -n` pass (S1, S2, S5, S6); README row updated (S4)
+- [x] Private-term check (S3): coordinator-supplied, `scripts/check-private.sh` in the git worktree with `privacy.public=true` exits 0
