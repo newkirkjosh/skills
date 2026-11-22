@@ -7,7 +7,7 @@ Record format, location rule and status rules for `learn note` and `learn review
 The inbox is the learning inbox the global instructions name: a directory outside any catalog or public repository. This skill never states a path.
 
 - No inbox named: report that and write nothing, anywhere.
-- The named location resolves inside a Git working tree that is a skill catalog or a public repository (on first use the directory may not exist: check the nearest existing ancestor of the location with `git -C <ancestor> rev-parse --show-toplevel` and the repository's visibility, before creating or writing anything): refuse, report, write nothing. Records hold private context and a public push would publish them.
+- The named location resolves inside a Git working tree that is a skill catalog or a public repository (on first use the directory may not exist: check the nearest existing ancestor of the location with `git -C <ancestor> rev-parse --show-toplevel` and the repository's visibility (`gh repo view --json visibility` for a GitHub remote), before creating or writing anything): refuse, report, write nothing. If visibility cannot be determined (no remote, offline), also refuse and write nothing. Records hold private context and a public push would publish them.
 - Never copy record contents into the catalog: a catalog edit states the rule, not the record.
 
 ## Record
