@@ -7,7 +7,7 @@ Record format, location rule and status rules for `learn note` and `learn review
 The inbox is the learning inbox the global instructions name: a directory outside any catalog or public repository. This skill never states a path.
 
 - No inbox named: report that and write nothing, anywhere.
-- The named location resolves inside a Git working tree that is a skill catalog or a public repository (check with `git -C <dir> rev-parse --show-toplevel` and the repository's visibility): refuse, report, write nothing. Records hold private context and a public push would publish them.
+- The named location resolves inside a Git working tree that is a skill catalog or a public repository (on first use the directory may not exist: check the nearest existing ancestor of the location with `git -C <ancestor> rev-parse --show-toplevel` and the repository's visibility, before creating or writing anything): refuse, report, write nothing. Records hold private context and a public push would publish them.
 - Never copy record contents into the catalog: a catalog edit states the rule, not the record.
 
 ## Record
@@ -47,12 +47,13 @@ Every transition needs checked evidence, quoted in the record's `Applied` or `Cl
 | From | To | Evidence required |
 |---|---|---|
 | `open` | `applied` | Worktree or PR, file and the edited text that addresses this record, all three written in `Applied`. |
-| `applied` | `shipped` | The PR is merged (`gh pr view`) and the recorded text is present in the file on the default branch (`git show <remote>/<default>:<file>` after a fetch). |
-| `applied` | `open` | Any of: PR closed unmerged; worktree gone and no PR; PR merged but the recorded text is absent from the default branch; worktree present or PR open but the recorded text is no longer there (the edit was reverted or overwritten). Write why in `Applied`. |
+| `applied` | `shipped` | The recorded text is present in the file on the default branch (`git show <remote>/<default>:<file>` after a fetch), whether it landed by PR or otherwise. A merged PR is not required. |
+| `applied` | `open` | Any of: PR closed unmerged, or worktree gone and no PR, and in either case the recorded text is NOT on the default branch; PR merged but the recorded text is absent from the default branch; worktree present or PR open but the recorded text is no longer there (the edit was reverted or overwritten). Write why in `Applied`. |
 | `applied` | stays `applied` | Worktree present or PR open, and the recorded text is present there. |
-| `open` | `closed` | The owner no longer holds the decision (for example the step was removed, shown by reading the skill on the default branch), or the outside destination the record was routed to (a project's instructions, the user's memory) now holds the fix, shown by reading it. |
+| `applied` | stays `applied`, reported unverifiable | The `Applied` field is empty or incomplete, or the PR, worktree or default branch cannot be read. Report it as unverifiable in the summary; never guess a transition. |
+| `open` | `closed` | The owner no longer holds the decision (for example the step was removed, shown by reading the skill on the default branch), or the outside destination the record was routed to (a project's instructions, the user's memory) now holds the fix, shown by reading it, or Step 3 finds the exact fix already on the default branch, shown by reading it. A fix still pending in another change keeps the record `open`, with that change named in `Related`. |
 
-A merged PR alone never makes a record `shipped`; the text check decides.
+A merged PR alone never makes a record `shipped`, and a missing PR never blocks it; the text check on the default branch decides.
 
 ## Duplicates
 
