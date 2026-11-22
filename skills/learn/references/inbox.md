@@ -27,6 +27,7 @@ One Markdown file per lesson, named `<YYYY-MM-DD>-<skill>-<short-slug>.md` (the 
 - Evidence: <the user correction, outcome or verified capability>
 - Source: <where it happened: a short pointer such as a change or PR reference, never a transcript>
 - Related: <file names of earlier records this repeats, or empty>
+- Pending: <empty unless a fix is pending in another open change: that change or PR reference>
 - Applied: <empty until applied: worktree or PR, file, and the edited text>
 - Closed: <empty unless closed: the evidence>
 ```
@@ -50,10 +51,12 @@ Every transition needs checked evidence, quoted in the record's `Applied` or `Cl
 | `applied` | `shipped` | The recorded text is present in the file on the default branch (`git show <remote>/<default>:<file>` after a fetch), whether it landed by PR or otherwise. A merged PR is not required. |
 | `applied` | `open` | Any of: PR closed unmerged, or worktree gone and no PR, and in either case the recorded text is NOT on the default branch; PR merged but the recorded text is absent from the default branch; worktree present or PR open but the recorded text is no longer there (the edit was reverted or overwritten). Write why in `Applied`. |
 | `applied` | stays `applied` | Worktree present or PR open, and the recorded text is present there. |
-| `applied` | stays `applied`, reported unverifiable | The `Applied` field is empty or incomplete, or the PR, worktree or default branch cannot be read. Report it as unverifiable in the summary; never guess a transition. |
-| `open` | `closed` | The owner no longer holds the decision (for example the step was removed, shown by reading the skill on the default branch), or the outside destination the record was routed to (a project's instructions, the user's memory) now holds the fix, shown by reading it, or Step 3 finds the exact fix already on the default branch, shown by reading it. A fix still pending in another change keeps the record `open`, with that change named in `Related`. |
+| `applied` | stays `applied`, reported unverifiable | The `Applied` field is empty or incomplete, or the PR, worktree or default branch cannot be read. Report it in the review summary with the question (return it to `open`, or supply the missing reference); never guess a transition. The answer is written in the Record step like any approved change. A record returned to `open` is grouped in the next review, not the current one. |
+| `open` | `closed` | The owner no longer holds the decision (for example the step was removed, shown by reading the skill on the default branch), or the outside destination the record was routed to (a project's instructions, the user's memory) now holds the fix, shown by reading it, or Step 3 finds the exact fix already on the default branch, shown by reading it. A fix still pending in another change keeps the record `open`, with that change or PR named in `Pending`. |
 
 A merged PR alone never makes a record `shipped`, and a missing PR never blocks it; the text check on the default branch decides.
+
+"Default branch" in every check here (`shipped`, `closed`, reconcile) is the default branch of the catalog that owns the record's skill, resolved by Step 1 of the skill. Checking may fetch remotes and read PRs; only writing a record or the catalog changes state.
 
 ## Duplicates
 
