@@ -1,6 +1,6 @@
 ---
 name: learn
-description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Turns demonstrated corrections from the current conversation into small, verified improvements to the authoritative skill catalog. Finds the right source and policy owner, avoids duplicate or project-specific rules, and leaves an isolated diff for review."
+description: "Explicit-use only — invoke when the user explicitly names this skill, or when an active explicitly invoked workflow calls it. Turns demonstrated corrections from the current conversation into small, verified improvements to the authoritative skill catalog. Finds the right source and policy owner, avoids duplicate or project-specific rules, and leaves an isolated diff for review. Also has a note mode that records one lesson in a private inbox without editing the catalog, and a review mode that groups recorded lessons by skill and decision, applies the approved set in one worktree and tracks each to release."
 license: MIT (learning-loop concept adapted from fx/skills by Marian Rudzynski; see LICENSE.txt)
 metadata:
   upstream: "https://github.com/fx/skills/tree/3de675e365e6eecbfbf7c89018e15a96d91859de/skills/learn"
@@ -11,6 +11,16 @@ metadata:
 Turn a demonstrated correction from the current conversation into a targeted skill improvement. Follow the steps in order. A plausible lesson without evidence stays a proposal.
 
 **Explicit use only.** This invocation authorizes targeted catalog edits and local validation. It ends at the diff and report. Commit, push, PR, install and writes outside the owning catalog require authority from the user’s request; this skill supplies none on its own. Later requests do not inherit this workflow.
+
+## Choose the mode
+
+| Request | Mode |
+|---|---|
+| "learn note" (record a lesson, no edit) | Note: see Note mode |
+| "learn review" (review recorded lessons) | Review: see Review mode |
+| A correction, or anything else, including "learn from these corrections" | Default: Steps 1-7 below, no inbox read or write |
+
+An ambiguous request is the default flow, never review. Note and review load `references/inbox.md` first. Neither starts on its own: a reminder may suggest the user run review, nothing more.
 
 ## Step 1: Locate the source catalog
 
@@ -97,6 +107,32 @@ New prerequisites must reflect verified capabilities, not a remembered tool name
 
 **Result:** a reviewable diff or evidenced no-op, with the source and release state unambiguous. End this invocation here.
 
+## Note mode
+
+Record one lesson for later batch review. This mode edits no catalog and creates no worktree, commit or PR.
+
+1. Read `references/inbox.md`. Resolve the inbox it describes. If none is named or it lies inside a catalog or public repository, report that and write nothing.
+2. Fill the record from the conversation using Step 2's fields and rule. Name the owning skill and decision from what the conversation shows; do not run Step 1. If there is no demonstrated observation or outcome ("the skill seemed odd"), ask for it; if the user has none, write nothing. If only the cause is missing, write the record with Cause `unestablished`.
+3. Check the inbox for an open record on the same skill and decision. Write the new record anyway and cite the earlier one in `Related`.
+4. Write exactly one new file, then report its name.
+
+**Result:** one `open` record, or a stated reason nothing was written.
+
+## Review mode
+
+Examine recorded lessons as a batch and apply the approved set in one worktree. Steps 1-7 keep their rules; this mode sequences them.
+
+1. **Load.** Read `references/inbox.md` and every `open` and `applied` record. Skip `shipped` and `closed`. If none, report nothing to review and stop.
+2. **Reconcile applied records** with the status table: check each against the PR and the default branch, and move it to `shipped` or back to `open`, quoting the evidence. Leave a still-live one `applied`.
+3. **Group** open records by owning skill and decision, not by date or file name. A record without a demonstrated cause joins its group as unestablished or stands alone.
+4. **Investigate each group** with Steps 2 and 3: establish cause from the records' Evidence, route by the Step 3 table, and search for duplicates and in-flight fixes. Order by recurrence and severity: recurrence ranks, it never proves. A group with no demonstrated cause gets no proposed edit; the summary says what to watch for next time. A record routed outside the catalog (project convention, personal preference) gets a proposal for its destination, edited only if the request authorizes it. Close a record only on the table's evidence; non-recurrence is not evidence.
+5. **Summarize and ask.** Before any worktree or edit, show the patterns, the skills with the most open lessons, and a numbered, ranked list of proposed edits, each with its evidence and records. Stop for approval. No answer means no edit. Only approved items proceed; the rest stay `open`.
+6. **Apply.** Create one worktree from the default branch for the whole approved set (Step 4) and make the edits (Step 5). Run Step 6 for each edit: its originating records and a nearby valid case.
+7. **Record.** Move each covered record to `applied`, writing worktree or PR, file and edited text. Never set `shipped` here.
+8. **Hand off** as Step 7 does: one diff and report, plus the inbox changes. Commit, push and PR need separate authority; opening a PR does not make a record `shipped`.
+
+**Result:** a ranked summary, one reviewable diff, and records whose statuses match checked evidence. End this invocation here.
+
 ## Example: An underspecified learning procedure
 
 Request: “Use learn: the skill lists principles but leaves the agent guessing what to do next.”
@@ -114,4 +150,6 @@ Request: “Use learn: the skill lists principles but leaves the agent guessing 
 - A workaround is not automatically a permanent rule. Verify its cause and preserve the legitimate alternative case.
 - A pending fix is not released. Identify its state rather than claiming future sessions are already fixed.
 - If the agent had the right instruction and ignored it, clarify only a demonstrated ambiguity or report that no catalog change is justified.
+- A lesson recorded more than once is a priority, not a proof. Without a demonstrated cause it stays open.
+- Note mode and review mode never write inbox contents or paths into the catalog.
 - Editing the correct source and activating it are different outcomes. Report both precisely.
