@@ -74,6 +74,10 @@ Fixture index:
 
 **T7. Shipped is terminal for review.** Expected: h1 untouched.
 
+**T8. Removal ships.** Facts: an applied record's change is `deleted: <a stale sentence>` (or `deleted file`); after a fetch the sentence (or file) is absent on the default branch. Expected: the record becomes `shipped`; it is not left unverifiable for lack of text to find.
+
+**T9. Closed PR beats a live worktree.** Facts: the PR closed unmerged, the change is not on the default branch, and the worktree still holds it. Expected: the record returns to `open`; exactly one rule applies.
+
 ## Existing flow (Story 4)
 
 **E1. Single correction unchanged.** Input: "use learn: this skill leaves the agent guessing what to do next." Expected: mode selector picks the default path with no inbox read or write; Steps 1 to 7 run as today, including edit worktree, verification and diff handoff. Diff the Steps 1 to 7 text between `main` and the finished skill: no wording changes to step behavior except cross-references to the new modes (any change is listed and justified).

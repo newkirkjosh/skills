@@ -28,7 +28,7 @@ One Markdown file per lesson, named `<YYYY-MM-DD>-<skill>-<short-slug>.md` (the 
 - Source: <where it happened: a short pointer such as a change or PR reference, never a transcript>
 - Related: <file names of earlier records this repeats, or empty>
 - Pending: <empty unless a fix is pending in another open change: that change or PR reference>
-- Applied: <empty until applied: worktree or PR, file, and the edited text>
+- Applied: <empty until applied: worktree or PR, file, and the recorded change>
 - Closed: <empty unless closed: the evidence>
 ```
 
@@ -45,20 +45,22 @@ One Markdown file per lesson, named `<YYYY-MM-DD>-<skill>-<short-slug>.md` (the 
 
 Every transition needs checked evidence, quoted in the record's `Applied` or `Closed` field. Never assume a state: "probably merged" is not evidence. Elapsed time and non-recurrence are never evidence.
 
+The recorded change is the edited text, or for a removal `deleted: <the removed text>` or `deleted file`. It holds in a file when the edited text is present, or the removed text (or the file) is absent.
+
 | From | To | Evidence required |
 |---|---|---|
-| `open` | `applied` | Worktree or PR, file and the edited text that addresses this record, all three written in `Applied`. |
-| `applied` | `shipped` | The recorded text is present in the file on the default branch (`git show <remote>/<default>:<file>` after a fetch), whether it landed by PR or otherwise. A merged PR is not required. This check comes first and wins over any worktree or PR state, including an open PR whose text is present. |
-| `applied` | `open` | The default-branch check succeeded and the recorded text is NOT there, and any of: PR closed unmerged; PR merged but the text is absent; worktree confirmed gone (`git worktree list` no longer shows it and the path does not exist) and no open PR; worktree present or PR open but the text is no longer in it (reverted or overwritten). Write why in `Applied`. |
-| `applied` | stays `applied` | The text is NOT on the default branch, and the worktree is present with the text, or the PR is open with the text present. |
+| `open` | `applied` | Worktree or PR, file and the recorded change that addresses this record, all three written in `Applied`. |
+| `applied` | `shipped` | The recorded change holds in the file on the default branch (`git show <remote>/<default>:<file>` after a successful fetch; a deleted file is missing there), whether it landed by PR or otherwise. A merged PR is not required. This check comes first and wins over any worktree or PR state, including an open PR that holds the change. |
+| `applied` | `open` | The default-branch check succeeded and the recorded change does NOT hold there, and any of: PR closed unmerged, even if a worktree still holds the change; PR merged but the change does not hold; worktree confirmed gone (`git worktree list` no longer shows it and the path does not exist) and no open PR; worktree present or PR open but the change no longer holds in it (reverted or overwritten). Write why in `Applied`. |
+| `applied` | stays `applied` | The change does NOT hold on the default branch, and either the PR is open and holds the change, or no PR was ever opened and the worktree is present and holds the change. |
 | `applied` | stays `applied`, reported unverifiable | The `Applied` field is empty or incomplete, or an access failure (fetch fails, `gh` unreachable, permission error) stops the default-branch check or the check of the worktree or PR. A worktree confirmed gone is not an access failure. Report it in the review summary with the question (return it to `open`, or supply the missing reference); never guess a transition. The answer is written in the Record step like any approved change. A record returned to `open` is grouped in the next review, not the current one. |
 | `open` | `closed` | The owner no longer holds the decision (for example the step was removed, shown by reading the skill on the default branch), or the outside destination the record was routed to (a project's instructions, the user's memory) now holds the fix, shown by reading it, or Step 3 finds the exact fix already on the default branch, shown by reading it. A fix still pending in another change keeps the record `open`, with that change or PR named in `Pending`. |
 
-Order of checks for an `applied` record: (1) the `Applied` field is complete, else unverifiable; (2) read the recorded text on the owning catalog's default branch after a fetch (fetch fails: unverifiable); present means `shipped`, stop; (3) only if absent, check the PR and worktree as in the rows above.
+Order of checks for an `applied` record: (1) the `Applied` field is complete, else unverifiable; (2) check the recorded change on the owning catalog's default branch after a fetch (fetch fails: unverifiable); holds means `shipped`, stop; (3) only if it does not hold, check the PR first (closed unmerged reopens the record, whatever the worktree holds), then the worktree, as in the rows above.
 
 Only catalog edits make a record `applied`. A lesson whose authorized fix landed outside the catalog (a project's instructions, the user's memory) is never `applied`: it is closed in the Record step as `closed`, with evidence from reading that destination, under the same approval.
 
-A merged PR alone never makes a record `shipped`, and a missing PR never blocks it; the text check on the default branch decides.
+A merged PR alone never makes a record `shipped`, and a missing PR never blocks it; the change check on the default branch decides.
 
 "Default branch" in every check here (`shipped`, `closed`, reconcile) is the default branch of the catalog that owns the record's skill, resolved by Step 1 of the skill. Checking may fetch remotes and read PRs; only writing a record or the catalog changes state.
 

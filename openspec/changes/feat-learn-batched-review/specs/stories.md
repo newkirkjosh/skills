@@ -21,7 +21,7 @@ When several lessons have piled up, I want to review them together, so I can see
 When a fix from a review is pending, I want each record to follow it to release, so I can't lose a lesson whose fix stalled.
 
 ### Acceptance criteria
-- [ ] An applied record names its worktree or PR and the file and edited text that address it.
+- [ ] An applied record names its worktree or PR, the file and the recorded change (edited text, or a removal) that address it.
 - [ ] A review marks applied records shipped when the fix is on the catalog's default branch, and returns them to open when the PR closed unmerged, the worktree is gone, or the recorded edit is no longer present.
 
 ## Story 4
