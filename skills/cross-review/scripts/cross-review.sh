@@ -64,37 +64,45 @@ brief=$(cat "$prompt_file") || die "cannot read prompt file: $prompt_file"
 # Refuse to run if either list can't be read or isn't the expected shape
 # (plugins: object with an `.installed` array of objects with a string
 # `pluginId` and boolean `enabled`; servers: array of objects with a string
-# `name`): empty or malformed output must never read as "nothing enabled".
-# Codex splits a `-c` key on every
-# dot and keeps quote characters literally (`mcp_servers."x".enabled` names a
-# key `"x"`), so only a bare segment reaches a server or plugin, and a name or
-# ID containing `.` or `=` can't be addressed at all: refuse it. Finally list
-# the servers again with every override applied and refuse to run unless each
-# reports disabled. Overrides apply to this run only; the config is never written.
+# `name`): empty, malformed or multi-value output (more than one JSON value)
+# must never read as "nothing enabled". Codex splits a `-c` key on every dot
+# and keeps quote characters literally (`mcp_servers."x".enabled` names a key
+# `"x"`), so only a bare segment reaches a server or plugin. Allowlist rather
+# than blocklist: every enabled plugin ID and every server name must match
+# `[A-Za-z0-9@_-]+` (checked in jq, whole string, so an embedded newline can't
+# split one value into two), or the script refuses to run. Disabled plugins
+# are ignored whatever their ID. Finally list the servers again with every
+# override applied and refuse to run unless each reports disabled. Overrides
+# apply to this run only; the config is never written.
 codex_opts() {
   command -v jq >/dev/null || die "jq is not on PATH"
+  local re='\A[A-Za-z0-9@_-]+\z' list_shape='type == "array" and all(.[]; type == "object" and (.name | type == "string"))' bad
   opts=(-c 'sandbox_mode="read-only"' -c 'approval_policy="never"')
   plugin_json=$(codex plugin list --json) || die "codex plugin list failed; refusing to run with unknown plugins"
-  jq -e '(type == "object") and (.installed | type == "array") and all(.installed[]; type == "object" and (.pluginId | type == "string") and (.enabled | type == "boolean"))' <<<"$plugin_json" >/dev/null 2>&1 || die "codex plugin list output is empty or not the expected shape; refusing to run with unknown plugins"
+  jq -s -e 'length == 1 and (.[0] | (type == "object") and (.installed | type == "array") and all(.installed[]; type == "object" and (.pluginId | type == "string") and (.enabled | type == "boolean")))' <<<"$plugin_json" >/dev/null 2>&1 || die "codex plugin list output is empty or not the expected shape; refusing to run with unknown plugins"
+  bad=$(jq -r --arg re "$re" '[.installed[] | select(.enabled == true) | .pluginId | select(test($re) | not)] | first // empty | @json' <<<"$plugin_json") || die "could not parse codex plugin list output"
+  [ -z "$bad" ] || die "plugin ID $bad can't be disabled with -c (allowed: letters, digits, @, _, -); refusing to run with it enabled"
   plugins=$(jq -r '.installed[] | select(.enabled == true) | .pluginId' <<<"$plugin_json") || die "could not parse codex plugin list output"
   while IFS= read -r id; do
     [ -n "$id" ] || continue
-    case $id in *[.=]*) die "plugin ID '$id' can't be disabled with -c; refusing to run with it enabled" ;; esac
     opts+=(-c "plugins.$id.enabled=false")
   done <<<"$plugins"
   plugins_disabled=$(grep -c . <<<"$plugins")
   [ -n "${CROSS_REVIEW_MODEL:-}" ] && opts+=(-c "model=\"$CROSS_REVIEW_MODEL\"")
   [ -n "${CROSS_REVIEW_EFFORT:-}" ] && opts+=(-c "model_reasoning_effort=\"$CROSS_REVIEW_EFFORT\"")
   servers=$(codex mcp list --json "${opts[@]}") || die "codex mcp list failed; refusing to run with unknown MCP servers"
-  jq -e 'type == "array" and all(.[]; type == "object" and (.name | type == "string"))' <<<"$servers" >/dev/null 2>&1 || die "codex mcp list output is empty or not the expected shape; refusing to run with unknown MCP servers"
+  jq -s -e "length == 1 and (.[0] | $list_shape)" <<<"$servers" >/dev/null 2>&1 || die "codex mcp list output is empty or not the expected shape; refusing to run with unknown MCP servers"
+  bad=$(jq -r --arg re "$re" '[.[].name | select(test($re) | not)] | first // empty | @json' <<<"$servers") || die "could not parse codex mcp list output"
+  [ -z "$bad" ] || die "MCP server name $bad can't be disabled with -c (allowed: letters, digits, @, _, -); refusing to run with it enabled"
   names=$(jq -r '.[].name' <<<"$servers") || die "could not parse codex mcp list output"
   while IFS= read -r name; do
     [ -n "$name" ] || continue
-    case $name in *[.=]*) die "MCP server name '$name' can't be disabled with -c; refusing to run with it enabled" ;; esac
     opts+=(-c "mcp_servers.$name.enabled=false")
   done <<<"$names"
   after=$(codex mcp list --json "${opts[@]}") || die "codex rejected the MCP overrides; refusing to run"
-  jq -e 'type == "array" and all(.[]; type == "object" and (.name | type == "string"))' <<<"$after" >/dev/null 2>&1 || die "codex mcp list output is empty or not the expected shape; refusing to run with unknown MCP servers"
+  jq -s -e "length == 1 and (.[0] | $list_shape)" <<<"$after" >/dev/null 2>&1 || die "codex mcp list output is empty or not the expected shape; refusing to run with unknown MCP servers"
+  bad=$(jq -r --arg re "$re" '[.[].name | select(test($re) | not)] | first // empty | @json' <<<"$after") || die "could not parse codex mcp list output"
+  [ -z "$bad" ] || die "MCP server name $bad can't be disabled with -c (allowed: letters, digits, @, _, -); refusing to run with it enabled"
   enabled=$(jq -r '.[] | select(.enabled != false) | .name' <<<"$after") || die "could not parse codex mcp list output"
   [ -z "$enabled" ] || die "MCP servers still enabled after the overrides: $(tr '\n' ' ' <<<"$enabled")"
   mcp_disabled=$(grep -c . <<<"$names")
