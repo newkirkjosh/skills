@@ -158,3 +158,7 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 ## Added after round 2 pass 3
 
 **M16. Step 3 doesn't no-op a partial landing.** A reopened two-entry record (guard on the default branch, test missing) is investigated in review, and Step 3's duplicate search finds the guard. Expected: not a no-op; the guard is cited as present and the missing test is the proposed edit. A remedy whose every change is present (or pending in another change) is still a no-op.
+
+## Added after round 3 pass 1
+
+**M17. A pending part is not present.** A record's remedy is a guard plus its test; the guard exists only in another open PR, not on the default branch, and the test exists nowhere. Expected: not a no-op and not a test-only edit; the summary names the open PR and asks whether to finish the remedy there or include the guard in this edit. If both the guard and the test are pending in that PR, it is the pending no-op (`Pending` set, record stays `open`).
