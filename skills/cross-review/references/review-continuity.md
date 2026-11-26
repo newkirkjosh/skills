@@ -12,7 +12,7 @@ For each finding record:
 
 - Stable ID and source (review URL or local report), reviewed SHA, affected location and claim. Link duplicates to the original without losing their sources.
 - Disposition: open, fixed, rejected with evidence, or deferred. Distinguish a false premise from an immaterial concern in the rationale.
-- Evidence: applicable requirement or convention, fix commit and verification result, or the reason for rejection. A planned fix stays open until verified. After an amend or rebase, retain the original reviewed SHA as historical evidence and map the fix to the new commit; verify the corresponding diff before treating the disposition as current.
+- Evidence and its level (`cited`, `traced`, `ran`, or argument only, for hosted-triage findings too): the file:line, traced failure or command output behind the claim, the result of any check run before accepting an argument-only finding, applicable requirement or convention, fix commit and verification result, or the reason for rejection. A planned fix stays open until verified. After an amend or rebase, retain the original reviewed SHA as historical evidence and map the fix to the new commit; verify the corresponding diff before treating the disposition as current.
 - For deferrals, the scope exclusion or explicit user decision and a follow-up identifier when one exists. Deferring an in-scope blocker does not satisfy a merge gate; surface it at handoff.
 - Related-instance search scope and result, and any convention-file change.
 - For each fix commit: its SHA, and `behavioral: yes|no` with a one-line reason (see Commit classification).
