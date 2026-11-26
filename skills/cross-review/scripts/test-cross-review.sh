@@ -10,6 +10,9 @@ trap 'rm -rf "$work"' EXIT
 pass=0 fail=0
 check() { if eval "$2"; then pass=$((pass + 1)); echo "ok   $1"; else fail=$((fail + 1)); echo "FAIL $1"; fi; }
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+# Ignore the user's global and system git config, so no fixture commit signs,
+# runs a global hook or needs a configured identity: unattended runs never wait on a signing agent.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 # Repository: base commit, then a change commit.
 repo="$work/repo"
