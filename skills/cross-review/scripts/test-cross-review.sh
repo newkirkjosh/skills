@@ -278,6 +278,13 @@ check "claude: reviews a diff written beforehand" 'grep -q "change.diff" "$work/
 
 STUB_COMMIT="$repo" cr codex "$repo" "$base" "$work/brief.md"
 check "a HEAD that moves during review is ERROR" '[ "$(last)" = STATUS=ERROR ] && grep -q "HEAD moved" "$work/err"'
+# Fixture commits, the stub's included, never sign and never read the user's
+# global or system git config (signing, hooks, identity), so an unattended run
+# can't reach a signing agent.
+unsigned() { local c n=0; for c in $(git -C "$1" rev-list --all); do n=$((n + 1)); git -C "$1" cat-file commit "$c" | grep -q '^gpgsig' && return 1; done; [ "$n" -gt 0 ]; }
+no_user_config() { ! git -C "$1" config --show-scope --list | grep -Eq '^(global|system)[[:space:]]'; }
+check "fixture: the stub's commit landed and no fixture commit is signed" '[ "$(git -C "$repo" log -1 --format=%s)" = moved ] && unsigned "$repo"'
+check "fixture: git reads no global or system config" 'no_user_config "$repo"'
 STUB_TOUCH="$repo/a.txt" cr claude "$repo" "$base" "$work/brief.md"
 check "a worktree edited during review is ERROR" '[ "$(last)" = STATUS=ERROR ] && grep -q "worktree changed during review" "$work/err"'
 git -C "$repo" checkout -q -- a.txt

@@ -19,6 +19,13 @@ echo two > "$repo/b.txt"; git -C "$repo" add b.txt; git -C "$repo" commit -q -m 
 head=$(git -C "$repo" rev-parse HEAD)
 echo dirty >> "$repo/a.txt"
 
+# Fixture commits never sign and never read the user's global or system git
+# config (signing, hooks, identity), so an unattended run can't reach a signing agent.
+unsigned() { local c n=0; for c in $(git -C "$1" rev-list --all); do n=$((n + 1)); git -C "$1" cat-file commit "$c" | grep -q '^gpgsig' && return 1; done; [ "$n" -gt 0 ]; }
+no_user_config() { ! git -C "$1" config --show-scope --list | grep -Eq '^(global|system)[[:space:]]'; }
+check "fixture: both commits landed and neither is signed" '[ "$(git -C "$repo" rev-list --count HEAD)" = 2 ] && unsigned "$repo"'
+check "fixture: git reads no global or system config" 'no_user_config "$repo"'
+
 ex() { bash "$here/eval-export.sh" "$@" > "$work/out" 2> "$work/err"; echo $? > "$work/rc"; }
 rc() { cat "$work/rc"; }
 
