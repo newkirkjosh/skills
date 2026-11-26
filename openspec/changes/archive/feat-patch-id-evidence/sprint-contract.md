@@ -5,7 +5,7 @@
 
 ## :catalog
 Evaluated at: 2ad941d279332adc5df2a37af9fe3b5fe9d1a390
-Cross-review: codex, 4 pass(es) in 2 rounds, converged at 163e778
+Cross-review: codex, 7 pass(es) in 3 rounds, converged at 2b8cea2
 
 - [x] The review-continuity reference tells the coordinator to compare `git patch-id --stable` of the original and new commits and record both SHAs and the patch-id. A match also needs `git patch-id --verbatim` to match, since `--stable` ignores whitespace (CodeRabbit CR-1, Codex X-2), and each rewritten hunk must target the same file and code as its counterpart in the original commit, since both ignore line numbers (Codex X-3, X-4). Observed: `skills/cross-review/references/review-continuity.md` per-finding Evidence bullet (amend/rebase rule) and Commit classification (every rewritten classified commit).
 - [x] A match is evidence that the diff is unchanged; classification still follows the commit's actual effect. Observed: the Evidence bullet ("a match is evidence only") and Commit classification ("backs carrying its classification over, but never decides it").
