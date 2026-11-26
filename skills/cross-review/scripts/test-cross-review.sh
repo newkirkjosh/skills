@@ -25,18 +25,37 @@ head=$(git -C "$repo" rev-parse HEAD)
 # every dot with quotes kept literally, a key into an unknown server is a
 # config error, and a server is disabled only by `mcp_servers.<name>.enabled=false`.
 # MCP_NAMES lists the configured servers, `|`-separated; MCP_IGNORE=1 makes it
-# ignore the overrides; REAL_CODEX hands `mcp list` to an installed codex.
+# ignore the overrides; REAL_CODEX hands `mcp list` and `plugin list` to an
+# installed codex. Plugins model codex 0.172: PLUGINS lists enabled plugin IDs
+# and PLUGINS_OFF disabled ones (`|`-separated). Each enabled plugin adds a
+# server named like the ID before the `@`, which `mcp list` shows unless
+# `plugins.<id>.enabled=false` is given; an `mcp_servers.<name>` override for
+# such a server is a config error, as in codex. PLUGIN_LIST_FAIL=1 makes
+# `plugin list` exit non-zero, PLUGIN_LIST_GARBAGE=1 makes it print non-JSON.
 stubs="$work/bin"
 mkdir -p "$stubs"
 export STUB_WORK="$work"
 for tool in codex claude; do
   sed "s/@TOOL@/$tool/g" > "$stubs/$tool" <<'EOF'
 #!/usr/bin/env bash
+if [ "$1 $2" = "plugin list" ]; then
+  [ -n "${PLUGIN_LIST_FAIL:-}" ] && exit 1
+  [ -n "${REAL_CODEX:-}" ] && exec "$REAL_CODEX" "$@"
+  [ -n "${PLUGIN_LIST_GARBAGE:-}" ] && { echo "not json"; exit 0; }
+  {
+    IFS='|' read -r -a on <<<"${PLUGINS:-}"
+    for id in "${on[@]}"; do [ -n "$id" ] && jq -cn --arg id "$id" '{pluginId: $id, name: ($id | split("@")[0]), enabled: true}'; done
+    IFS='|' read -r -a no <<<"${PLUGINS_OFF:-}"
+    for id in "${no[@]}"; do [ -n "$id" ] && jq -cn --arg id "$id" '{pluginId: $id, name: ($id | split("@")[0]), enabled: false}'; done
+  } | jq -s '{installed: .}'
+  exit 0
+fi
 if [ "$1 $2" = "mcp list" ]; then
   [ -n "${MCP_FAIL:-}" ] && exit 1
   [ -n "${REAL_CODEX:-}" ] && exec "$REAL_CODEX" "$@"
   IFS='|' read -r -a names <<<"${MCP_NAMES:-alpha|has space}"
-  off=()
+  IFS='|' read -r -a plugins <<<"${PLUGINS:-}"
+  off=() offp=()
   shift 2
   while [ $# -gt 0 ]; do
     if [ "$1" = -c ] && [ -z "${MCP_IGNORE:-}" ]; then
@@ -47,6 +66,7 @@ if [ "$1 $2" = "mcp list" ]; then
         [ -n "$known" ] || { echo "invalid transport in mcp_servers.${part[1]}" >&2; exit 1; }
         [ "${#part[@]}" -eq 3 ] && [ "${part[2]}" = enabled ] && [ "$val" = false ] && off+=("${part[1]}")
       fi
+      [ "${part[0]}" = plugins ] && [ "${#part[@]}" -eq 3 ] && [ "${part[2]}" = enabled ] && [ "$val" = false ] && offp+=("${part[1]}")
       shift 2
     else
       shift
@@ -55,7 +75,13 @@ if [ "$1 $2" = "mcp list" ]; then
   for n in "${names[@]}"; do
     e=true; for o in "${off[@]}"; do [ "$o" = "$n" ] && e=false; done
     jq -cn --arg n "$n" --argjson e "$e" '{name: $n, enabled: $e}'
-  done | jq -s .
+  done > "$STUB_WORK/servers.jsonl"
+  for id in "${plugins[@]}"; do
+    [ -n "$id" ] || continue
+    gone=""; for o in "${offp[@]}"; do [ "$o" = "$id" ] && gone=1; done
+    [ -n "$gone" ] || jq -cn --arg n "${id%%@*}" '{name: $n, enabled: true}' >> "$STUB_WORK/servers.jsonl"
+  done
+  jq -s . "$STUB_WORK/servers.jsonl"
   exit 0
 fi
 printf '%s\n' "$@" > "$STUB_WORK/@TOOL@.args"
@@ -88,6 +114,7 @@ if [ -n "$real" ]; then
   # The installed codex, in a throwaway CODEX_HOME: the user's config is never read.
   home="$work/codex-home"; mkdir -p "$home"
   printf '%s\n' '[mcp_servers.alpha]' 'command = "true"' '[mcp_servers."has space"]' 'command = "true"' > "$home/config.toml"
+  # No plugins in the throwaway home, so only the configured servers are disabled.
   rm -f "$work/codex.args"
   (cd "$work" && CODEX_HOME="$home" REAL_CODEX="$real" cr codex "$repo" "$base" "$work/brief.md")
   check "codex: the installed codex reports every server disabled under the overrides" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ] && grep -q "mcp_disabled=2" "$work/out"'
@@ -109,6 +136,43 @@ STUB_RC=2 cr codex "$repo" "$base" "$work/brief.md"
 check "a failed reviewer is ERROR, never COMPLETED" '[ "$(rc)" = 2 ] && grep -qx REVIEWER_EXIT=2 "$work/out" && [ "$(last)" = STATUS=ERROR ]'
 (cd "$work" && PATH="$stubs:$PATH" bash "$here/cross-review.sh" codex "$repo" "$base" brief.md > "$work/out" 2> "$work/err"; echo $? > "$work/rc")
 check "relative prompt path resolves from the caller" '[ "$(rc)" = 0 ] && grep -q "only the empty state" "$work/codex.stdin"'
+
+# Plugin-provided MCP servers: an enabled Codex plugin adds a server that
+# `-c mcp_servers.<name>.enabled=false` can't reach; only the plugin's own
+# `plugins.<pluginId>.enabled=false` removes it.
+plug='linear@claude-plugins-official|gmail@openai-curated-remote'
+rm -f "$work/codex.args"
+PLUGINS="$plug" cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: a plugin-provided server no longer blocks the review" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ] && ! grep -q "codex rejected" "$work/err"'
+check "plugin: each enabled plugin is disabled by its bare ID" 'grep -qx "plugins.linear@claude-plugins-official.enabled=false" "$work/codex.args" && grep -qx "plugins.gmail@openai-curated-remote.enabled=false" "$work/codex.args"'
+check "plugin: a plugin-provided server is not addressed by server name" '! grep -q "mcp_servers.linear" "$work/codex.args" && ! grep -q "mcp_servers.gmail" "$work/codex.args"'
+check "plugin: configured servers are still disabled by name" 'grep -qx "mcp_servers.alpha.enabled=false" "$work/codex.args" && grep -qx "mcp_servers.has space.enabled=false" "$work/codex.args"'
+check "plugin: the header reports the plugins disabled" 'grep -q "plugins_disabled=2" "$work/out" && grep -q "mcp_disabled=2" "$work/out"'
+cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: no plugins installed reports plugins_disabled=0" '[ "$(rc)" = 0 ] && grep -q "plugins_disabled=0" "$work/out" && ! grep -q "^plugins\." "$work/codex.args"'
+rm -f "$work/codex.args"
+PLUGINS='linear@claude-plugins-official' PLUGINS_OFF='old@market' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: an already-disabled plugin gets no override" '[ "$(rc)" = 0 ] && ! grep -q "plugins.old@market" "$work/codex.args" && grep -q "plugins_disabled=1" "$work/out"'
+rm -f "$work/codex.args"
+PLUGINS="$plug" MCP_IGNORE=1 cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: refuses when a server stays enabled after the overrides" '[ "$(rc)" = 3 ] && grep -q "still enabled" "$work/err" && [ ! -e "$work/codex.args" ]'
+PLUGIN_LIST_FAIL=1 cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: refuses when the plugin list can't be read" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ] && [ ! -e "$work/codex.args" ]'
+PLUGIN_LIST_GARBAGE=1 cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: refuses when the plugin list can't be parsed" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ] && [ ! -e "$work/codex.args" ]'
+PLUGINS='foo.bar@market' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: refuses a plugin ID containing a dot" '[ "$(rc)" = 3 ] && grep -q "foo.bar@market" "$work/err" && [ "$(last)" = STATUS=ERROR ] && [ ! -e "$work/codex.args" ]'
+PLUGINS='a=b@market' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: refuses a plugin ID containing =" '[ "$(rc)" = 3 ] && grep -q "a=b@market" "$work/err" && [ ! -e "$work/codex.args" ]'
+PLUGINS_OFF='foo.bar@market' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: a disabled plugin with an unaddressable ID doesn't block" '[ "$(rc)" = 0 ] && grep -q "plugins_disabled=0" "$work/out"'
+mkdir -p "$work/home/.codex"
+echo 'model = "x"' > "$work/home/.codex/config.toml"
+cfg=$(sha256sum "$work/home/.codex/config.toml")
+HOME="$work/home" CODEX_HOME="$work/home/.codex" PLUGINS="$plug" cr codex "$repo" "$base" "$work/brief.md"
+check "plugin: the user's Codex config is never written" '[ "$(rc)" = 0 ] && [ "$(sha256sum "$work/home/.codex/config.toml")" = "$cfg" ] && [ "$(find "$work/home" -type f | wc -l)" = 1 ]'
+PLUGINS="$plug" cr claude "$repo" "$base" "$work/brief.md"
+check "plugin: the claude reviewer path is unchanged" '[ "$(rc)" = 0 ] && ! grep -q "plugins\." "$work/claude.args" && ! grep -q plugins_disabled "$work/out"'
 
 cr claude "$repo" "$base" "$work/brief.md"
 check "claude: completes" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ]'
@@ -157,6 +221,10 @@ check "document codex: runs in the snapshot directory, not the draft folder" 'gr
 check "document codex: prompt names the digest and carries the brief" 'grep -q "sha256:$digest" "$work/codex.stdin" && grep -q "only the empty state" "$work/codex.stdin"'
 check "document: snapshot is removed afterwards" 'snap=$(cat "$work/codex.pwd"); [ ! -e "$snap" ]'
 
+PLUGINS="$plug" cr codex --document "$doc" "$work/brief.md"
+check "document codex: plugin-provided servers are disabled by plugin ID" '[ "$(rc)" = 0 ] && grep -qx "plugins.linear@claude-plugins-official.enabled=false" "$work/codex.args" && grep -q "plugins_disabled=2" "$work/out"'
+PLUGIN_LIST_FAIL=1 cr codex --document "$doc" "$work/brief.md"
+check "document codex: refuses when the plugin list can't be read" '[ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ]'
 cr claude --document "$doc" "$work/brief.md"
 check "document claude: completes with read-only tools and no MCP" '[ "$(rc)" = 0 ] && grep -qx -- "--tools" "$work/claude.args" && ! grep -q Bash "$work/claude.args" && grep -qx -- "--strict-mcp-config" "$work/claude.args"'
 check "document claude: header names the content digest" 'grep -q "mode=document digest=sha256:$digest" "$work/out"'
