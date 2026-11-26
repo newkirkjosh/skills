@@ -32,6 +32,9 @@ head=$(git -C "$repo" rev-parse HEAD)
 # `plugins.<id>.enabled=false` is given; an `mcp_servers.<name>` override for
 # such a server is a config error, as in codex. PLUGIN_LIST_FAIL=1 makes
 # `plugin list` exit non-zero, PLUGIN_LIST_GARBAGE=1 makes it print non-JSON.
+# PLUGIN_LIST_RAW, when set (even empty), is printed verbatim by `plugin list`
+# with exit 0. MCP_RAW does the same for `mcp list` before any server override
+# is given (the first list) and MCP_RAW_FINAL for the re-list under overrides.
 stubs="$work/bin"
 mkdir -p "$stubs"
 export STUB_WORK="$work"
@@ -42,6 +45,7 @@ if [ "$1 $2" = "plugin list" ]; then
   [ -n "${PLUGIN_LIST_FAIL:-}" ] && exit 1
   [ -n "${REAL_CODEX:-}" ] && exec "$REAL_CODEX" "$@"
   [ -n "${PLUGIN_LIST_GARBAGE:-}" ] && { echo "not json"; exit 0; }
+  [ "${PLUGIN_LIST_RAW+x}" ] && { printf '%s' "$PLUGIN_LIST_RAW"; exit 0; }
   {
     IFS='|' read -r -a on <<<"${PLUGINS:-}"
     for id in "${on[@]}"; do [ -n "$id" ] && jq -cn --arg id "$id" '{pluginId: $id, name: ($id | split("@")[0]), enabled: true}'; done
@@ -53,6 +57,9 @@ fi
 if [ "$1 $2" = "mcp list" ]; then
   [ -n "${MCP_FAIL:-}" ] && exit 1
   [ -n "${REAL_CODEX:-}" ] && exec "$REAL_CODEX" "$@"
+  has_ov=""; for a in "$@"; do case $a in mcp_servers.*) has_ov=1 ;; esac; done
+  [ -z "$has_ov" ] && [ "${MCP_RAW+x}" ] && { printf '%s' "$MCP_RAW"; exit 0; }
+  [ -n "$has_ov" ] && [ "${MCP_RAW_FINAL+x}" ] && { printf '%s' "$MCP_RAW_FINAL"; exit 0; }
   IFS='|' read -r -a names <<<"${MCP_NAMES:-alpha|has space}"
   IFS='|' read -r -a plugins <<<"${PLUGINS:-}"
   off=() offp=()
@@ -166,6 +173,44 @@ PLUGINS='a=b@market' cr codex "$repo" "$base" "$work/brief.md"
 check "plugin: refuses a plugin ID containing =" '[ "$(rc)" = 3 ] && grep -q "a=b@market" "$work/err" && [ ! -e "$work/codex.args" ]'
 PLUGINS_OFF='foo.bar@market' cr codex "$repo" "$base" "$work/brief.md"
 check "plugin: a disabled plugin with an unaddressable ID doesn't block" '[ "$(rc)" = 0 ] && grep -q "plugins_disabled=0" "$work/out"'
+# An exit-0 list that is empty or the wrong shape can't prove every plugin and
+# server is off, so it refuses too, on the plugin list and on both MCP lists.
+refuses() { [ "$(rc)" = 3 ] && [ "$(last)" = STATUS=ERROR ] && [ ! -e "$work/codex.args" ]; }
+rm -f "$work/codex.args"
+rm -f "$work/codex.args"
+PLUGIN_LIST_RAW='' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin list: empty output with exit 0 refuses" 'refuses'
+while IFS='~' read -r label raw; do
+  rm -f "$work/codex.args"
+  PLUGIN_LIST_RAW="$raw" cr codex "$repo" "$base" "$work/brief.md"
+  check "plugin list: $label refuses" 'refuses'
+done <<'CASES'
+installed is an object~{"installed":{}}
+no installed key~{}
+top level is an array~[]
+entry without pluginId~{"installed":[{"enabled":true}]}
+non-string pluginId~{"installed":[{"pluginId":5,"enabled":true}]}
+non-boolean enabled~{"installed":[{"pluginId":"x@m","enabled":"true"}]}
+CASES
+rm -f "$work/codex.args"
+MCP_RAW='' cr codex "$repo" "$base" "$work/brief.md"
+check "mcp list: empty output with exit 0 refuses" 'refuses'
+rm -f "$work/codex.args"
+MCP_RAW_FINAL='' cr codex "$repo" "$base" "$work/brief.md"
+check "mcp re-list: empty output with exit 0 refuses" 'refuses'
+while IFS='~' read -r label raw; do
+  rm -f "$work/codex.args"
+  MCP_RAW="$raw" cr codex "$repo" "$base" "$work/brief.md"
+  check "mcp list: $label refuses" 'refuses'
+  rm -f "$work/codex.args"
+  MCP_RAW_FINAL="$raw" cr codex "$repo" "$base" "$work/brief.md"
+  check "mcp re-list: $label refuses" 'refuses'
+done <<'CASES'
+a non-array~{}
+an entry without name~[{"enabled":false}]
+a non-string name~[{"name":5,"enabled":false}]
+a non-object entry~["alpha"]
+CASES
 mkdir -p "$work/home/.codex"
 echo 'model = "x"' > "$work/home/.codex/config.toml"
 cfg=$(sha256sum "$work/home/.codex/config.toml")
