@@ -87,7 +87,7 @@ New prerequisites must reflect verified capabilities, not a remembered tool name
 ## Step 6: Verify the changed decision
 
 1. Run the catalog’s required validators and reference/privacy checks. Run meaningful helper tests when executable behavior changes.
-2. Run a new check on an input that reproduces the demonstrated mistake and show it fail, then on a nearby valid input and show it pass. Record both outcomes; a check never seen failing proves nothing.
+2. If Step 5 added a check, run it on an input that reproduces the demonstrated mistake and show it fail, then on a nearby valid input and show it pass. Record both outcomes; a check never seen failing proves nothing.
 3. Apply the changed instructions to the originating case: identify the action they now produce and the evidence that it resolves the failure.
 4. Apply them to a nearby valid case that must still work. Use isolated fixtures where live side effects are unnecessary. Label instruction replay or simulation accurately; mark unrun checks NOT RUN. A wording match is not behavioral evidence.
 5. Inspect the diff for contradictory callers, duplicate rules, private details and unintended files. Fix demonstrated failures, then rerun the affected checks.
