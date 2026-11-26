@@ -1,22 +1,22 @@
-# Sprint Contract: Keep test fixture commits off the user's signing setup
+# Sprint Contract: Isolate test fixture commits
 **Change:** fix-test-fixture-signing
-**Date:** 2026-11-26
 **Derived from:** specs/stories.md
 
 ## :catalog
-Evaluated at: 52f23e999ebf19ca145ee36a416ce998110fd8ce
-Evaluator: fresh agent a404c5e69ce3432ee, history-free export, VERDICT: PASS. Every run used a scratch GIT_CONFIG_GLOBAL; the real signing program was never invoked.
+Evaluated at: fdd5638176deee3f59e40041c7cbe393ab0854b4
+Evaluator: fresh isolated Codex agent evaluate_fixture, history-free exports, VERDICT: PASS.
+Cross-review: unavailable for the final delta; Claude reviewer rate limit interrupted this run before the provider handoff. Earlier Codex review found X-1, now fixed and independently evaluated. Final cross-model coverage remains unmet.
 
-- [x] `test-cross-review.sh` passes with global `commit.gpgsign=true` and a failing signing program: head 111 passed, 0 failed, rc=0 (base 72 passed, 37 failed, "gpg failed to sign the data").
-- [x] `test-eval-export.sh` passes under the same config: head 12 passed, 0 failed, rc=0 (base 6 passed, 4 failed).
-- [x] Neither suite invokes the signing program: a logging failing signer logged 0 calls on head for both suites (2 per suite on base).
-- [x] Neither suite runs the user's global git hooks: a logging failing `core.hooksPath` pre-commit hook logged 0 calls on head (2 per suite on base, both suites failed).
-- [x] Fixture commits need no configured identity: with no global config visible, commits land via the exported GIT_AUTHOR_*/GIT_COMMITTER_* variables (2 commits in eval-export, the stub's `moved` commit in cross-review).
-- [x] `test-cross-review.sh` regression check catches a regression: with a scratch SSH key that really signs, removing the isolation export fails both fixture checks (109 passed, 2 failed, rc=1); making only the stub's commit read the signing config fails the unsigned check (110 passed, 1 failed, rc=1).
-- [x] `test-eval-export.sh` regression check catches a regression: removing the export fails both fixture checks (10 passed, 2 failed, rc=1).
-- [x] The stub's `STUB_COMMIT` commit runs isolated: "fixture: the stub's commit landed and no fixture commit is signed" passes on head; the stub-only mutation above is caught.
-- [x] Header comments: both suites explain the isolation above the export; `test-eval-export.sh`'s usage line names itself.
+- [x] Cross-review suite passes with hostile global/system signing configuration: 111 passed, 0 failed.
+- [x] Eval-export suite passes under the same configuration: 12 passed, 0 failed.
+- [x] Instrumented failing signer and global pre-commit hook record zero invocations.
+- [x] Fixtures need no configured identity; hostile config supplies none and inherited identity variables were removed.
+- [x] Removing global isolation independently fails both suites: cross-review 72 passed/39 failed, eval-export 6 passed/6 failed, both exit 1.
+- [x] Removing system isolation independently fails both suites with the same counts and exit 1.
+- [x] Both suites assert fixture commits are unsigned.
+- [x] The stub commit lands as `moved` and remains unsigned.
+- [x] Both suite headers explain the isolated environment.
 
-Gaps recorded by the evaluator (not contract items):
-- `scripts/test-install.sh` (out of scope, unchanged) still fails when a global `core.hooksPath` hook fails on throwaway repos; it passes with signing alone. Base fails the same way.
-- The regression checks only bite on a machine that has global or system git config; a bare CI runner passes either way.
+Additional evaluator checks: all 11 skill validations, shell syntax, descriptions, references, installer, PR evidence and verify-change checks pass (verify-change: 102 passed, 0 failed). Coordinator independently ran all catalog script suites and privacy checks successfully.
+
+Unmet merge gate: final cross-model re-review. No merge-ready claim is made.
