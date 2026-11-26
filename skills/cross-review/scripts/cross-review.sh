@@ -13,7 +13,7 @@
 # committed; the header line names the snapshot's sha256 content digest.
 #
 #   codex   from a Claude Code session: a read-only sandbox, no approvals,
-#           every MCP server disabled (`codex review` for a change,
+#           every plugin and MCP server disabled (`codex review` for a change,
 #           `codex exec` on the snapshot directory for a document)
 #   claude  from a Codex session: `claude -p` with only Read, Grep and Glob,
 #           no MCP servers, reviewing a diff or snapshot written beforehand
@@ -55,25 +55,38 @@ brief=$(cat "$prompt_file") || die "cannot read prompt file: $prompt_file"
 # Codex options shared by both modes. A sandbox from the user's config could
 # let injected text in the reviewed work run commands; force read-only, with
 # nobody to approve an escape. A review that inherits MCP servers can hang
-# forever on its first tool call. `-c mcp_servers={}` merges rather than
-# replaces, so disable each by name, from the resolved list; refuse to run if
-# the list can't be read. Codex splits a `-c` key on every dot and keeps quote
-# characters literally (`mcp_servers."x".enabled` names a key `"x"`), so only a
-# bare segment reaches a server, and a name containing `.` or `=` can't be
-# addressed at all: refuse it. Then list the servers again with the overrides
-# applied and refuse to run unless every one reports disabled.
+# forever on its first tool call. Servers come from two places. An enabled
+# plugin provides some, and only `plugins.<pluginId>.enabled=false` removes
+# them (an `mcp_servers.<name>` override for one is a config error), so read
+# the enabled plugins from `codex plugin list --json` and disable each by ID
+# first. Then list the servers under those overrides and disable each
+# remaining one by name: `-c mcp_servers={}` merges rather than replaces.
+# Refuse to run if either list can't be read. Codex splits a `-c` key on every
+# dot and keeps quote characters literally (`mcp_servers."x".enabled` names a
+# key `"x"`), so only a bare segment reaches a server or plugin, and a name or
+# ID containing `.` or `=` can't be addressed at all: refuse it. Finally list
+# the servers again with every override applied and refuse to run unless each
+# reports disabled. Overrides apply to this run only; the config is never written.
 codex_opts() {
   command -v jq >/dev/null || die "jq is not on PATH"
   opts=(-c 'sandbox_mode="read-only"' -c 'approval_policy="never"')
-  servers=$(codex mcp list --json) || die "codex mcp list failed; refusing to run with unknown MCP servers"
+  plugin_json=$(codex plugin list --json) || die "codex plugin list failed; refusing to run with unknown plugins"
+  plugins=$(jq -r '.installed[] | select(.enabled == true) | .pluginId' <<<"$plugin_json") || die "could not parse codex plugin list output"
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    case $id in *[.=]*) die "plugin ID '$id' can't be disabled with -c; refusing to run with it enabled" ;; esac
+    opts+=(-c "plugins.$id.enabled=false")
+  done <<<"$plugins"
+  plugins_disabled=$(grep -c . <<<"$plugins")
+  [ -n "${CROSS_REVIEW_MODEL:-}" ] && opts+=(-c "model=\"$CROSS_REVIEW_MODEL\"")
+  [ -n "${CROSS_REVIEW_EFFORT:-}" ] && opts+=(-c "model_reasoning_effort=\"$CROSS_REVIEW_EFFORT\"")
+  servers=$(codex mcp list --json "${opts[@]}") || die "codex mcp list failed; refusing to run with unknown MCP servers"
   names=$(jq -r '.[].name' <<<"$servers") || die "could not parse codex mcp list output"
   while IFS= read -r name; do
     [ -n "$name" ] || continue
     case $name in *[.=]*) die "MCP server name '$name' can't be disabled with -c; refusing to run with it enabled" ;; esac
     opts+=(-c "mcp_servers.$name.enabled=false")
   done <<<"$names"
-  [ -n "${CROSS_REVIEW_MODEL:-}" ] && opts+=(-c "model=\"$CROSS_REVIEW_MODEL\"")
-  [ -n "${CROSS_REVIEW_EFFORT:-}" ] && opts+=(-c "model_reasoning_effort=\"$CROSS_REVIEW_EFFORT\"")
   after=$(codex mcp list --json "${opts[@]}") || die "codex rejected the MCP overrides; refusing to run"
   enabled=$(jq -r '.[] | select(.enabled != false) | .name' <<<"$after") || die "could not parse codex mcp list output"
   [ -z "$enabled" ] || die "MCP servers still enabled after the overrides: $(tr '\n' ' ' <<<"$enabled")"
@@ -101,7 +114,7 @@ $brief"
   cd "$tmp" || die "cannot cd to $tmp"
   if [ "$reviewer" = codex ]; then
     codex_opts
-    echo "reviewer=codex mode=document digest=sha256:$digest mcp_disabled=$mcp_disabled"
+    echo "reviewer=codex mode=document digest=sha256:$digest plugins_disabled=$plugins_disabled mcp_disabled=$mcp_disabled"
     codex exec "${opts[@]}" --skip-git-repo-check --ephemeral -C "$tmp" - <<<"$prompt"
   else
     claude_opts
@@ -130,7 +143,7 @@ $dirty"
     prompt="Review only the committed changes on this branch: \`git diff $merge_base...HEAD\` (base $base, head $head). Read the surrounding code as needed. This is a read-only review: change no files.
 
 $brief"
-    echo "reviewer=codex mode=change base=$base merge_base=$merge_base head=$head mcp_disabled=$mcp_disabled"
+    echo "reviewer=codex mode=change base=$base merge_base=$merge_base head=$head plugins_disabled=$plugins_disabled mcp_disabled=$mcp_disabled"
     codex review "${opts[@]}" - <<<"$prompt"
   else
     tmp=$(mktemp -d) || die "mktemp failed"
