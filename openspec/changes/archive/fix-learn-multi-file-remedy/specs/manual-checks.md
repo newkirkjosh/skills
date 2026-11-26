@@ -154,3 +154,7 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 **M14. A reopened record isn't closed on partial evidence.** A reopened two-entry record (guard on the default branch, test missing) is grouped in the same review, and Step 3 finds the guard on the default branch. Expected: not `closed` as already fixed, because the test entry doesn't hold; it stays `open`.
 
 **M15. The reopen reason is not an entry.** A record reopened with two missing changes has one `Reopened:` line naming both in prose after the entries. Expected: the reader counts only the original indented entries; reapplication keeps those, never the `Reopened:` text.
+
+## Added after round 2 pass 3
+
+**M16. Step 3 doesn't no-op a partial landing.** A reopened two-entry record (guard on the default branch, test missing) is investigated in review, and Step 3's duplicate search finds the guard. Expected: not a no-op; the guard is cited as present and the missing test is the proposed edit. A remedy whose every change is present (or pending in another change) is still a no-op.
