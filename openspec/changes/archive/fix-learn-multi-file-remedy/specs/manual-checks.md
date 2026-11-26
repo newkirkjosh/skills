@@ -142,3 +142,9 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 **M10. Legacy single-line `Applied` is read from its prose.** A record written before this rule has `Applied: owner/repo fix/x, PR #3, skills/alpha/SKILL.md: added "never run on an empty repo"` with no code spans. Expected: one entry, file `skills/alpha/SKILL.md`, change the quoted sentence, read from the prose; it reconciles like R1 and is not reported unverifiable for lacking code spans.
 
 **M11. Re-applying a partial landing keeps the still-required entries.** A record's remedy is a guard plus its test; the guard landed, the test did not, and the record reopened. A later review approves adding only the test. Expected: the Record step writes `Applied` with both entries (the guard kept, the test as the new edit), unless the approved remedy explicitly drops or replaces the guard; if the guard is later reverted on the default branch, the record is not `shipped`.
+
+## Added after the hosted-review delta review
+
+**M12. Legacy single-line `Applied` with code spans.** `Applied: owner/repo fix/x, PR #3, `skills/alpha/SKILL.md`: added `never run on an empty repo`` (one line, no indented entries, with backticks). Expected: read as one legacy entry by its layout, not as incomplete.
+
+**M13. Reopening keeps the remedy entries.** A two-entry record reopens because the test is missing. Expected: the reason is written after the existing entries, both entries remain, and a later test-only reapplication (M11) still checks the guard.
