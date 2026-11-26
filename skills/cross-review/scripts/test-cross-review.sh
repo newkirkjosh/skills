@@ -10,6 +10,22 @@ trap 'rm -rf "$work"' EXIT
 pass=0 fail=0
 check() { if eval "$2"; then pass=$((pass + 1)); echo "ok   $1"; else fail=$((fail + 1)); echo "FAIL $1"; fi; }
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+# Seed a hostile scratch global config so the isolation checks also catch a
+# removed export on clean CI runners. Never read or change the real user's config.
+export HOME="$work/config-home" XDG_CONFIG_HOME="$work/config-home/xdg"
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$work/hooks"
+unset GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
+printf '#!/usr/bin/env bash\nexit 1\n' > "$work/hooks/pre-commit"
+chmod +x "$work/hooks/pre-commit"
+git config --file "$HOME/.gitconfig" commit.gpgsign true
+git config --file "$HOME/.gitconfig" gpg.format openpgp
+git config --file "$HOME/.gitconfig" gpg.program /bin/false
+git config --file "$HOME/.gitconfig" user.signingkey fixture
+git config --file "$HOME/.gitconfig" core.hooksPath "$work/hooks"
+
+# Ignore the user's global and system git config, so no fixture commit signs,
+# runs a global hook or needs a configured identity: unattended runs never wait on a signing agent.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 # Repository: base commit, then a change commit.
 repo="$work/repo"
@@ -278,6 +294,13 @@ check "claude: reviews a diff written beforehand" 'grep -q "change.diff" "$work/
 
 STUB_COMMIT="$repo" cr codex "$repo" "$base" "$work/brief.md"
 check "a HEAD that moves during review is ERROR" '[ "$(last)" = STATUS=ERROR ] && grep -q "HEAD moved" "$work/err"'
+# Fixture commits, the stub's included, never sign and never read the user's
+# global or system git config (signing, hooks, identity), so an unattended run
+# can't reach a signing agent.
+unsigned() { local c n=0; for c in $(git -C "$1" rev-list --all); do n=$((n + 1)); git -C "$1" cat-file commit "$c" | grep -q '^gpgsig' && return 1; done; [ "$n" -gt 0 ]; }
+no_user_config() { ! git -C "$1" config --show-scope --list | grep -Eq '^(global|system)[[:space:]]'; }
+check "fixture: the stub's commit landed and no fixture commit is signed" '[ "$(git -C "$repo" log -1 --format=%s)" = moved ] && unsigned "$repo"'
+check "fixture: git reads no global or system config" 'no_user_config "$repo"'
 STUB_TOUCH="$repo/a.txt" cr claude "$repo" "$base" "$work/brief.md"
 check "a worktree edited during review is ERROR" '[ "$(last)" = STATUS=ERROR ] && grep -q "worktree changed during review" "$work/err"'
 git -C "$repo" checkout -q -- a.txt
