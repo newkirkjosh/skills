@@ -1,0 +1,10 @@
+### Scope Brief
+
+- **Verbatim request:** "run /dev on #37 and #39. Merge those PRs when you're finished." Before that, on why the review disables the Linear server: "Okay I'm confused, why do we need to disable an mcp on codex? I installed only the "app" which is basically a connection for codex." This change is #39; #37 merged first (#45).
+- **Interpreted scope:** Stop a Codex reviewer from inheriting Codex connected apps (`mcp__codex_apps__*` tools such as GitHub, Gmail, Google Drive, Linear), which `codex mcp list` doesn't show and the read-only sandbox doesn't stop. In `codex_opts()` of `cross-review.sh`, always pass `-c features.apps=false`, then verify it took effect: run `codex features list` with the reviewer's options and refuse to run (exit 3, `STATUS=ERROR`) unless the `apps` feature reads `false`, including when the command fails or prints no `apps` row. Both change and document modes get it. The header line reports it (for example `apps=off`).
+- **Also update:** `skills/cross-review/scripts/test-cross-review.sh` (stubbed `codex` covering: the override is always passed in both modes; `features list` showing `apps` still true refuses; a failing or apps-less `features list` refuses); `skills/cross-review/references/codex.md` (how apps are disabled and why the sandbox doesn't cover them); the script's header comment and the comment above `codex_opts`.
+- **Deliverable type:** code (shell script and its tests) plus docs
+- **Explicitly out of scope:** the plugin and MCP server handling merged in #45 (unchanged); the Claude reviewer path (`claude -p` with Read/Grep/Glob and `--strict-mcp-config` has no connected apps); the user's Codex config (never written); other `features.*` flags.
+- **Size signal:** narrow
+- **Path:** bounded, one more forced override and its check in an existing script's setup step.
+- **Known-and-accepted:** the reviewer loses every connected app, which a read-only review doesn't need. This PR touches a security guard the Merge policy reserves; the user explicitly asked for these PRs to be merged.
