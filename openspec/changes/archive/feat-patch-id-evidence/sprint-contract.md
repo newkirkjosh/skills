@@ -4,10 +4,10 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
-Evaluated at: 484ed902c33286aa5ec8ecb286df4b7b13f2c4e0
-Cross-review: codex, 2 pass(es), converged at b7eaf28
+Evaluated at: 1e813034a8dd9e85da45ac5c3b1728da2927e063
+Cross-review: codex, 2 pass(es), converged at b7eaf28 (round 1)
 
-- [x] The review-continuity reference tells the coordinator to compare `git patch-id` of the original and new commits and record both SHAs and the patch-id. The rule names `--verbatim`, which implies `--stable` and keeps whitespace (CodeRabbit CR-1: plain `--stable` ignores it). Observed: `skills/cross-review/references/review-continuity.md` per-finding Evidence bullet (amend/rebase rule) and Commit classification (every rewritten classified commit).
+- [x] The review-continuity reference tells the coordinator to compare `git patch-id --stable` of the original and new commits and record both SHAs and the patch-id. A match also needs `git patch-id --verbatim` to match, since `--stable` ignores whitespace (CodeRabbit CR-1, Codex X-2). Observed: `skills/cross-review/references/review-continuity.md` per-finding Evidence bullet (amend/rebase rule) and Commit classification (every rewritten classified commit).
 - [x] A match is evidence that the diff is unchanged; classification still follows the commit's actual effect. Observed: the Evidence bullet ("a match is evidence only") and Commit classification ("backs carrying its classification over, but never decides it").
 - [x] A mismatch means the diff is verified again, as today. Observed: the Evidence bullet ("verifying the diff again") and Commit classification ("classifying the new commit again from its diff").
 - [x] A merge commit has no patch-id and keeps the existing sync rule. Observed: Commit classification; scratch repo: a `--no-ff` merge commit gave no patch-id.
@@ -16,4 +16,4 @@ Cross-review: codex, 2 pass(es), converged at b7eaf28
 - [x] The patch-id claims hold in practice. Evaluator scratch repo (no signing, hooks or global config): a commit rebased onto a moved base kept its patch-id under `--stable` and `--verbatim`; lines `a b` and `ab` share a `--stable` ID but differ under `--verbatim`; a merge commit gives no patch-id.
 - [x] Repository checks pass. Evaluator run: `agentskills validate skills/cross-review`, `check-descriptions.sh`, `check-refs.sh`, each rc=0; `check-private.sh` rc=0 on a git-indexed copy of the head export.
 
-Evidence: evaluator run a07b1bc1d32579288 returned INCOMPLETE (only `check-private.sh` unrun: the export has no git index); fresh evaluator run a6bcaa3ad6d578674 on the head export, with a coordinator-supplied git-indexed copy, returned PASS at 3a361bd. After the cross-review fix X-1 (66973c4), fresh evaluator run a761bbf661c5ef186 re-evaluated at 66973c4: PASS. After the CodeRabbit fix CR-1 (484ed90), fresh evaluator run a512212340a106218 re-evaluated the head export at the SHA above, with a git-indexed copy for check-private: PASS. Test author a78366e6bfc91e826 supplied grep and scratch-repo checks only (docs change; the brief excludes scripts).
+Evidence: evaluator run a07b1bc1d32579288 returned INCOMPLETE (only `check-private.sh` unrun: the export has no git index); fresh evaluator run a6bcaa3ad6d578674 on the head export, with a coordinator-supplied git-indexed copy, returned PASS at 3a361bd. After the cross-review fix X-1 (66973c4), fresh evaluator run a761bbf661c5ef186 re-evaluated at 66973c4: PASS. After the CodeRabbit fix CR-1 (484ed90), fresh evaluator run a512212340a106218 re-evaluated at 484ed90: PASS. After the Codex fix X-2 (1e81303), fresh evaluator run aad6e2d93ab41ff11 re-evaluated the head export at the SHA above, with a git-indexed copy for check-private: PASS. Test author a78366e6bfc91e826 supplied grep and scratch-repo checks only (docs change; the brief excludes scripts).
