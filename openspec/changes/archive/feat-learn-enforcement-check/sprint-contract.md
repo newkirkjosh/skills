@@ -5,7 +5,7 @@
 
 ## :catalog
 Evaluated at: 7e48c136f034f98d7606ee4405d42f6e29252b68
-Cross-review: pending (round 3 in progress)
+Cross-review: codex, 2 pass(es), converged at 7f7bbd4 (round 3, after syncing main at 905bc4e; round 2 converged at 617ed5d on base c358d0f; round 1 at d5087c5 was unavailable)
 
 Behavioral items are instruction replay of `specs/manual-checks.md` against the finished `skills/learn/SKILL.md` (fresh evaluator after the round-3 review fix, history-free export of the head above, base 905bc4e), not live runs.
 
