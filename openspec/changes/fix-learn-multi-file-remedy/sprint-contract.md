@@ -4,26 +4,29 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
-Evaluated at: 50e07e0a6a1ed207ea0f58dc86b037907b5c6dcc
-Evaluators: a0f0aafd9fea18922 (history-free export; 24 of 25 PASS, S10 NOT RUN after its own stray /tmp write, since deleted), then fresh a2690744b45ab936f for S10 only (PASS). Replays ran against scratch repos with a gh stub under an isolated git config; the real inbox was never read or written.
+Evaluated at: 094baf4c20a349b7929e0c6890fb829b991e7c72
+Evaluator: fresh ad98dca8140ed7095 after the X-1/X-2 review fix, history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASS at 50e07e0: a0f0aafd9fea18922 plus a2690744b45ab936f for S10.)
 
-- [x] M1: the template, the open→applied row and Record write every file with its own change (inbox.md:31, :52; SKILL.md:133).
-- [x] M2: both changes on main → shipped (inbox.md:53; replay: shipped, all on the default branch).
-- [x] M3: PR merged with only the guard → open, naming the missing test (inbox.md:48, :54; replay).
-- [x] M4: test reverted on main after merge → open (replay).
-- [x] M5: open PR holding both → stays applied (inbox.md:55; replay).
-- [x] M5b: guard on main, PR open with both → stays applied, names the test (inbox.md:48; replay).
-- [x] M5c: PR dropped the test → open, naming it (inbox.md:54; replay).
-- [x] M6: a listed file without its change → unverifiable, checked before main (inbox.md:56, :59; replay).
-- [x] M7: edit plus removal judged per change (inbox.md:48; replay both ways).
-- [x] R1: legacy one-file record → one-item list, ships (inbox.md:48; replay).
-- [x] R2: legacy record, PR closed unmerged → open (replay).
-- [x] R3: default branch still wins over an open PR (inbox.md:53; SKILL.md:128; replay).
-- [x] Story 2 c3: Reconcile in SKILL.md states the same rule as inbox.md (SKILL.md:128).
-- [x] Also update: no singular Applied wording left in skills/learn/ (grep).
-- [x] S1–S5: validators, descriptions, refs, check-private (scratch git copy, rc 0), bash -n and all 6 script tests pass.
+- [x] M0: an Applied whose guard change contains "; " and ":" reads as exactly two entries, the guard whole (inbox.md:49).
+- [x] M1: the template, the open→applied row and Record write every file with its own change (inbox.md:31-32, :55; SKILL.md:133).
+- [x] M2: both changes on the default branch → shipped (inbox.md:51, :56; replay guard HOLDS, test HOLDS).
+- [x] M3: PR merged without the test → open, naming the test (inbox.md:51, :57; SKILL.md:128).
+- [x] M4: test reverted after merge → open; the check reads the current default tip (replay).
+- [x] M5: open PR holding both, default holding neither → stays applied (inbox.md:58).
+- [x] M5b: guard on default, open PR holding both → stays applied, test named (inbox.md:51, :58).
+- [x] M5c: open PR lost the test → open, naming it (inbox.md:57).
+- [x] M5d: guard on default, PR adds the test but deletes the guard → open, naming the guard (inbox.md:51; SKILL.md:128).
+- [x] M6: a listed file without its change → unverifiable, checked first (inbox.md:59, :62).
+- [x] M7: an edit plus a removal, each judged by its kind (inbox.md:49, :51; replay both ways).
+- [x] R1: legacy one-file record → one-item list, shipped (inbox.md:49).
+- [x] R2: legacy record, PR closed, change missing → open (inbox.md:57).
+- [x] R3: both on default with an open PR → shipped (inbox.md:56; SKILL.md:128).
+- [x] Also update: every remaining "recorded change" in skills/learn/ is per file (grep).
+- [x] S1–S5: validators, descriptions (learn description unchanged), refs, check-private on a scratch git copy, bash -n and all six script tests pass.
 - [x] S6: only skills/learn/SKILL.md, skills/learn/references/inbox.md and the change folder differ from base.
 - [x] S7: singular-wording grep returns nothing.
-- [x] S8: Step 5.1 and Summarize and ask unchanged against base.
-- [x] S9: SKILL.md 157 lines; only Reconcile and Record lines differ.
-- [x] S10: nothing in the diff writes or points outside the repository; inbox untouched (diff read; inbox dir mtime predates the export) — evaluator a2690744b45ab936f.
+- [x] S8: Step 5.1 and Summarize and ask unchanged.
+- [x] S9: SKILL.md 157 lines; only review-mode steps 2 and 7 changed.
+- [x] S10: all writes in the evaluator's scratch directory; inbox untouched.
+
+Evaluator notes (no item fails): the legacy one-line Applied form has no code spans, so it is read by the one-item-list sentence rather than the parse rule; "naming each missing change" in inbox.md:57 means the change missing where the PR or worktree is checked.
