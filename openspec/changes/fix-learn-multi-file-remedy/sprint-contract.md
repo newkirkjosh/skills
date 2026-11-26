@@ -4,6 +4,7 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
+Cross-review: codex, 3 pass(es), not converged: pass 3 (6d1aa4d) raised X-5 only, a story wording fixed in ff8ee60 and not re-reviewed (pass limit); runtime skill text unchanged since 6d1aa4d
 Evaluated at: 81efe508216e3a9f4b4469e0f18bd361e8a4d681
 Evaluator: fresh a4a8b00e24ff05e53 after the X-3/X-4 review fix, history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASSes: 094baf4 by ad98dca8140ed7095; 50e07e0 by a0f0aafd9fea18922 plus a2690744b45ab936f.)
 
