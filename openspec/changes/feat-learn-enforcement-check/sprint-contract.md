@@ -5,6 +5,7 @@
 
 ## :catalog
 Evaluated at: 37bb54bea018b5a7f258fe50d7f7cd948c680eef
+Cross-review: unavailable: cross-review.sh codex exited STATUS=ERROR (codex rejected the MCP overrides: invalid transport in mcp_servers.linear)
 
 Behavioral items are instruction replay of `specs/manual-checks.md` against the finished `skills/learn/SKILL.md` (fresh evaluator, history-free export of the head above), not live runs.
 
