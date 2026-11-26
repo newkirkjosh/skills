@@ -3,7 +3,7 @@
 ## Decision
 How `dev`'s instructions split so one explicit entry point routes to task-type playbooks, while the lifecycle `team` depends on stays one unchanged procedure.
 
-Fixed by the owner (#51): `/dev` stays the only explicit entry; playbooks are frontmatter-free files in `skills/dev/references/`; `Playbook:` is recorded in `scope-brief.md` with the branch-prefix fallback; the six-step routing order; a `setup` playbook.
+Fixed by the owner (#51): `/dev` stays the only explicit entry; playbooks are frontmatter-free files in `skills/dev/references/`; `Playbook:` is recorded in `scope-brief.md` with the branch-prefix fallback; the five-route order (with separate bug-fix and change outcomes for new work); a `setup` playbook.
 
 ## Current responsibilities
 `SKILL.md` (219 lines) holds four things: the invocation boundary and roles (shared), worktrees (shared), entry detection plus Phases 0–6 (the lifecycle), and constraints/gotchas (mostly lifecycle). The only non-lifecycle path is the `spike` row in `references/scope-brief.md`, which "leaves the lifecycle". Observed problem: a status question enters the Worktrees status rule, which can merge and push; a bug runs the feature front end. Both come from the lifecycle being the only path.
