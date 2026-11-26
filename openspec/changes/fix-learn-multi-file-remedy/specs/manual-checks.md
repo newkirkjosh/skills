@@ -130,3 +130,9 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 **S9.** `SKILL.md` stays under 500 lines; Steps 1 to 7 and Note mode are unchanged except for `Applied` cross-references the evaluator lists and justifies.
 
 **S10.** No file outside the worktree and the evaluator's scratchpad was written; the real learning inbox is untouched.
+
+## Added after review pass 2
+
+**M8. Two changes in one file, one missing.** `Applied` has two entries for `alpha-helper.sh`: an added guard and `deleted: ` an obsolete line, plus the test entry. On the default branch the guard and test hold but the obsolete line is still present. Expected: not `shipped`; the summary names the removal entry as missing; the PR/worktree rows decide the rest. Today's text (before this fix) allowed only one change per file, so the removal could not be recorded.
+
+**M9. `Applied` with metadata only.** `Applied` names repository, branch and PR, with no file-and-change entry. Expected: unverifiable, reported with the question, before any default-branch check. A valid legacy single-line `Applied` still counts as one entry (R1 unchanged).
