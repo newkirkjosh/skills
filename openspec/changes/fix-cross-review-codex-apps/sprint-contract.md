@@ -5,6 +5,7 @@
 
 ## :catalog
 Evaluated at: 96387d986e20d4af3b579e77ed1af1661bc0ac63
+Cross-review: codex, 1 pass, converged at 2ca8763
 - [x] Change mode passes `-c features.apps=false` — "apps: change mode always passes features.apps=false"; live wrapper run shows it in the review args
 - [x] Document mode passes `-c features.apps=false` — "apps: document mode always passes features.apps=false"
 - [x] `codex features list` is checked under the reviewer's options before the review; it runs only when `apps` reads false — stubbed tests; live: real codex 0.172.0 `apps stable true` without the override, `false` with it
