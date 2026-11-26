@@ -5,7 +5,7 @@ When a review applies a lesson whose approved remedy changes several files (a ch
 
 ### Acceptance criteria
 - [ ] The `Applied` field format and the Record step write every file of the remedy, each with its recorded change, plus the repository, branch and worktree or PR.
-- [ ] A one-file remedy is written and read as a one-item list; an older record naming one file still reconciles.
+- [ ] A single-change remedy is written and read as a one-item list; a file with several changes gets one entry per change; an older single-line record naming one file and its change still reconciles as one entry.
 
 ## Story 2
 When a later review reconciles an `applied` record whose remedy landed only partly on the default branch (one file merged, the other reverted or never merged), I want it not to become `shipped`, so the lesson isn't skipped while part of its fix is missing.
