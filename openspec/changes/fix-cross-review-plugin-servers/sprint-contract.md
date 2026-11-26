@@ -5,6 +5,7 @@
 
 ## :catalog
 Evaluated at: 31b15e5e67c3c6130ecd7f092321f47a3e0bfc3b
+Cross-review: codex, 3 passes, converged at ce3ee7d (run through this branch\'s cross-review.sh; main\'s copy cannot start Codex, the bug under fix)
 - [x] An enabled plugin whose server is in `codex mcp list` is disabled with `-c plugins.<pluginId>.enabled=false`, the re-list shows nothing enabled, and the review runs — plugin tests; live (read-only wrapper): 13 plugin overrides, re-list `[]`, header `plugins_disabled=13 mcp_disabled=0`, stopped at `codex review` by the wrapper
 - [x] A plugin-provided server is never addressed by `mcp_servers.<name>` — "a plugin-provided server is not addressed by server name"
 - [x] Regression reproduced with a stubbed `codex` and failing on base — head tests against base script: plugin tests fail; live base: `invalid transport in mcp_servers.linear`
