@@ -5,7 +5,7 @@ Read when running `scripts/cross-review.sh codex` (from a Claude Code session) o
 ## How the script runs it
 
 - Change mode runs `codex review` on the worktree; document mode runs `codex exec` on a snapshot directory. Both use a read-only sandbox with approvals off, and every enabled plugin and configured MCP server disabled.
-- The script reads the enabled plugins from `codex plugin list --json` and disables each with `-c plugins.<pluginId>.enabled=false`, lists the MCP servers under those overrides, disables each remaining one with `-c mcp_servers.<name>.enabled=false`, then lists them again and refuses to run if any is still enabled. It refuses too when either list can't be read or parsed. The header line counts them (`plugins_disabled=`, `mcp_disabled=`). The overrides last for the run; `~/.codex/config.toml` is never written.
+- The script reads the enabled plugins from `codex plugin list --json` and disables each with `-c plugins.<pluginId>.enabled=false`, lists the MCP servers under those overrides, disables each remaining one with `-c mcp_servers.<name>.enabled=false`, then lists them again and refuses to run if any is still enabled. It refuses too when either list can't be read, is empty, or isn't the expected shape (plugins: an `.installed` array of objects with a string `pluginId` and boolean `enabled`; servers: an array of objects with a string `name`). The header line counts them (`plugins_disabled=`, `mcp_disabled=`). The overrides last for the run; `~/.codex/config.toml` is never written.
 - `CROSS_REVIEW_MODEL` and `CROSS_REVIEW_EFFORT` override the model and reasoning effort for one run, never the user's config. Leave them unset to use Codex's defaults; never lower them to save time.
 
 ## Gotchas
