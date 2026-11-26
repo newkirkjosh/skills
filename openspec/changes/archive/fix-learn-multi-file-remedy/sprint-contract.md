@@ -4,8 +4,8 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
-Evaluated at: 4f5758b28ff183dd234f0c6c7ed8221293b5da58
-Evaluator: fresh a31790a17cbc631a0 after the Codex delta-review fixes (Y-1, Y-2), history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASSes: 47062a6 a960b20c79eada475; 81efe50 a4a8b00e24ff05e53; 094baf4 ad98dca8140ed7095; 50e07e0 a0f0aafd9fea18922 plus a2690744b45ab936f.)
+Evaluated at: f4d40283e039c24cedeb1f4c986d876e708d02cc
+Evaluator: fresh a34b2543532446b18 after the Codex round 2 fixes (Y-1, Y-2, Z-1, Z-2), history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASSes: 4f5758b a31790a17cbc631a0; 47062a6 a960b20c79eada475; 81efe50 a4a8b00e24ff05e53; 094baf4 ad98dca8140ed7095; 50e07e0 a0f0aafd9fea18922 plus a2690744b45ab936f.)
 
 - [x] M0: an Applied whose guard change contains "; " and ":" reads as exactly two entries, the guard whole (inbox.md:49).
 - [x] M1: the template, the open→applied row and Record write every file with its own change (inbox.md:31-32, :55; SKILL.md:133).
@@ -24,6 +24,8 @@ Evaluator: fresh a31790a17cbc631a0 after the Codex delta-review fixes (Y-1, Y-2)
 - [x] M11: reapplying a reopened partial landing keeps the still-required original entries unless superseded (SKILL.md:133).
 - [x] M12: a legacy single line with code spans is read by its layout as one entry (inbox.md:49).
 - [x] M13: reopening writes the reason after the existing entries and keeps them (inbox.md:57; SKILL.md:133).
+- [x] M14: a reopened partial landing is not closed as already fixed unless every still-required entry holds (inbox.md:60).
+- [x] M15: the Reopened: line is prose, never read as an entry (inbox.md:57; SKILL.md:133).
 - [x] R1: legacy one-file record → one-item list, shipped (inbox.md:49).
 - [x] R2: legacy record, PR closed, change missing → open (inbox.md:57).
 - [x] R3: both on default with an open PR → shipped (inbox.md:56; SKILL.md:128).
