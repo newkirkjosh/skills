@@ -29,7 +29,7 @@ Hosted triage assesses findings another reviewer already made; it runs no model 
 Read `references/review-continuity.md` first: its ledger, related-instance search and convention rules apply in every mode. Then read the reference for the reviewer in play, which holds how the script runs it and its gotchas: `references/codex.md` or `references/claude.md` for change and document modes, `references/coderabbit.md` for CodeRabbit findings in hosted triage mode and what a throttled CodeRabbit review means for a gate.
 
 1. **Load the ledger** for this repository and branch, the same key before and after the PR exists (for a document, its path). Missing means a first pass.
-2. **Write the prompt file** (change/document modes only) in scratch space: the caller's scope verbatim as OUT OF SCOPE / IN SCOPE (a Scope Brief when one exists), then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` (or a stated requirement, when there is no change folder) the work doesn't meet. Rank them, give file and line, and say why each blocks. Report nothing else." Add the ledger text, including open findings and the evidence and fix SHAs behind earlier dispositions: a scratch-file path alone is not readable by every reviewer. For a document, add what decision it supports and what would change it.
+2. **Write the prompt file** (change/document modes only) in scratch space: the caller's scope verbatim as OUT OF SCOPE / IN SCOPE (a Scope Brief when one exists), then "Report only blocking findings: correctness, security, data loss, or a story in `specs/stories.md` (or a stated requirement, when there is no change folder) the work doesn't meet. Rank them, give file and line, and say why each blocks. Give each its evidence: the file:line it rests on, the failure traced step by step, or a command you ran with its output. Report nothing else." Add the ledger text, including open findings and the evidence and fix SHAs behind earlier dispositions: a scratch-file path alone is not readable by every reviewer. For a document, add what decision it supports and what would change it.
 
 ## Step 3: Run the reviewer or enter hosted triage
 
@@ -43,7 +43,7 @@ For hosted triage, use the supplied findings and pinned head directly; skip prom
 
 ## Step 4: Triage and update dispositions
 
-**Triage** each finding against the scope and reviewed version: the pinned head for change/hosted triage, or the reviewed snapshot for a document. An uncommitted fix or a later document edit is not evidence for that version. Blocking and in scope: open, for the caller to fix. Out of scope: recorded with the exclusion that covers it. Wrong premise or immaterial: rejected with evidence. Then run the related-instance search for each accepted defect. Record everything in the ledger.
+**Triage** each finding against the scope and reviewed version: the pinned head for change/hosted triage, or the reviewed snapshot for a document. An uncommitted fix or a later document edit is not evidence for that version. Blocking and in scope: open, for the caller to fix. Out of scope: recorded with the exclusion that covers it. Wrong premise or immaterial: rejected with evidence. Record each finding's evidence level, exactly one of `cited` (the file:line the finding rests on), `traced` (the failure followed step by step) or `ran` (a command and its output). Every finding records at least `cited`: the reviewer gives file and line, and triage locates a hosted finding's line. A finding whose line shows only where the alleged defect is, not what the finding asserts, or whose evidence otherwise doesn't show a premise it asserts (a cited line that doesn't show the bad input reaching it), rests on argument alone: the argument-only mark, not the level, records that the location isn't support. Before accepting such a finding for a fix pass, run the check that would settle it when the caller is already permitted to run it (a test, a grep, a validator), and record its result as the finding's evidence at level `ran`. A finding no permitted check can settle is triaged on its argument, keeps the level of the evidence it has, and is marked argument-only. Never reject a finding for lacking a run: document-mode findings and defects provable by reading stand at `cited` or `traced`. The Claude reviewer has no shell, so its strongest level is `traced`. Then run the related-instance search for each accepted defect. Record everything in the ledger.
 
 ## Step 5: Return the result and convergence state
 
@@ -59,7 +59,7 @@ Return exactly these five fields, plus the findings:
 
 - **Reviewed:** the SHA (change, hosted triage) or `sha256:<digest>` (document), plus for a change the merge base from the script's `merge_base=` (`dev`'s completion reuses a review only on the same base).
 - **Coverage:** reviewer, mode, passes run, and what was reviewed; or `unavailable: <reason>`.
-- **Dispositions:** each finding's ID and disposition, with evidence.
+- **Dispositions:** each finding's ID, disposition and evidence level (`cited`, `traced` or `ran`, with an argument-only mark where it applies), with evidence.
 - **Unresolved blockers:** open in-scope blockers, or none.
 - **Evidence:** the ledger location and the final pass’s log; for hosted triage, the supplied review/comment locations and an explicit statement that no new model pass ran.
 
