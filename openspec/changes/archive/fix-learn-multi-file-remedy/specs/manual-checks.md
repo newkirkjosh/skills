@@ -119,7 +119,7 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 
 **S4.** `scripts/check-private.sh` exits 0, and the diff's examples use placeholders only.
 
-**S5.** `bash -n scripts/*.sh skills/*/scripts/*.sh` and `for t in scripts/test-*.sh skills/*/scripts/test-*.sh; do bash "$t"; done` exit 0. No script is added.
+**S5.** `for f in scripts/*.sh skills/*/scripts/*.sh; do bash -n "$f" || exit 1; done` (one `bash -n` per script: `bash -n a b` parses only `a`) and `for t in scripts/test-*.sh skills/*/scripts/test-*.sh; do bash "$t"; done` exit 0. No script is added.
 
 **S6.** `git diff --name-only <base>` lists only `skills/learn/references/inbox.md`, `skills/learn/SKILL.md` and this change folder. No other skill, no script.
 
@@ -136,3 +136,9 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 **M8. Two changes in one file, one missing.** `Applied` has two entries for `alpha-helper.sh`: an added guard and `deleted: ` an obsolete line, plus the test entry. On the default branch the guard and test hold but the obsolete line is still present. Expected: not `shipped`; the summary names the removal entry as missing; the PR/worktree rows decide the rest. Today's text (before this fix) allowed only one change per file, so the removal could not be recorded.
 
 **M9. `Applied` with metadata only.** `Applied` names repository, branch and PR, with no file-and-change entry. Expected: unverifiable, reported with the question, before any default-branch check. A valid legacy single-line `Applied` still counts as one entry (R1 unchanged).
+
+## Added after hosted review
+
+**M10. Legacy single-line `Applied` is read from its prose.** A record written before this rule has `Applied: owner/repo fix/x, PR #3, skills/alpha/SKILL.md: added "never run on an empty repo"` with no code spans. Expected: one entry, file `skills/alpha/SKILL.md`, change the quoted sentence, read from the prose; it reconciles like R1 and is not reported unverifiable for lacking code spans.
+
+**M11. Re-applying a partial landing keeps the still-required entries.** A record's remedy is a guard plus its test; the guard landed, the test did not, and the record reopened. A later review approves adding only the test. Expected: the Record step writes `Applied` with both entries (the guard kept, the test as the new edit), unless the approved remedy explicitly drops or replaces the guard; if the guard is later reverted on the default branch, the record is not `shipped`.
