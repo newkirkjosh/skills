@@ -37,4 +37,3 @@ Evaluator: fresh a34b2543532446b18 after the Codex round 2 fixes (Y-1, Y-2, Z-1,
 - [x] S9: SKILL.md 157 lines; only review-mode steps 2 and 7 changed.
 - [x] S10: all writes in the evaluator's scratch directory; inbox untouched.
 
-Evaluator notes (no item fails): the legacy one-line Applied form has no code spans, so it is read by the one-item-list sentence rather than the parse rule; "naming each missing change" in inbox.md:57 means the change missing where the PR or worktree is checked.
