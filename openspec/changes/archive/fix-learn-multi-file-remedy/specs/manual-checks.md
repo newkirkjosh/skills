@@ -148,3 +148,9 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 **M12. Legacy single-line `Applied` with code spans.** `Applied: owner/repo fix/x, PR #3, `skills/alpha/SKILL.md`: added `never run on an empty repo`` (one line, no indented entries, with backticks). Expected: read as one legacy entry by its layout, not as incomplete.
 
 **M13. Reopening keeps the remedy entries.** A two-entry record reopens because the test is missing. Expected: the reason is written after the existing entries, both entries remain, and a later test-only reapplication (M11) still checks the guard.
+
+## Added after round 2 pass 2
+
+**M14. A reopened record isn't closed on partial evidence.** A reopened two-entry record (guard on the default branch, test missing) is grouped in the same review, and Step 3 finds the guard on the default branch. Expected: not `closed` as already fixed, because the test entry doesn't hold; it stays `open`.
+
+**M15. The reopen reason is not an entry.** A record reopened with two missing changes has one `Reopened:` line naming both in prose after the entries. Expected: the reader counts only the original indented entries; reapplication keeps those, never the `Reopened:` text.
