@@ -74,23 +74,25 @@ Edit source checkouts, never copied installs, plugin caches or generated bundles
 
 ## Step 5: Make the smallest complete correction
 
-1. Rewrite or remove the failing instruction before adding another warning. Put policy in its owner and mechanics in the applicable reference/helper.
-2. State the condition, required action and reason. For a procedure that left the agent guessing, write ordered actions and an explicit completion or stop condition; broad principles alone are insufficient.
-3. Search for equivalent instances in scope and update callers whose contracts changed. Avoid duplicating the same policy across skills.
-4. Remove private details from the patch and examples. Use placeholders; never copy credentials, personal details, machine paths, private project names or session/run notes into public guidance, fixtures or commit messages. Preserve required licenses and provenance.
+1. Before writing any instruction text, ask whether a check can make the demonstrated mistake fail: a catalog check script, a skill's bundled test, or a guard in the helper script that owns the step. If one can, the correction is that check plus a test that fails on the demonstrated mistake; write instruction text only for the judgment the check can't decide, or none. Put the check in the skill or script that owns the decision, never in a central list of rules and their enforcers. If only judgment can catch the mistake (which file owns a lesson, when to ask the user), say why no check applies and make the instruction edit below. Ask only for a demonstrated mistake: the catalog rule "Don't add a script for something an agent gets right inline" (`AGENTS.md`, Layout) still holds.
+2. Rewrite or remove the failing instruction before adding another warning. Put policy in its owner and mechanics in the applicable reference/helper.
+3. State the condition, required action and reason. For a procedure that left the agent guessing, write ordered actions and an explicit completion or stop condition; broad principles alone are insufficient.
+4. Search for equivalent instances in scope and update callers whose contracts changed. Avoid duplicating the same policy across skills.
+5. Remove private details from the patch and examples. Use placeholders; never copy credentials, personal details, machine paths, private project names or session/run notes into public guidance, fixtures or commit messages. Preserve required licenses and provenance.
 
 New prerequisites must reflect verified capabilities, not a remembered tool name or CLI version. Do not import another catalog wholesale to solve a narrow learning.
 
-**Result:** one coherent diff addressing the demonstrated cause and its related in-scope instances.
+**Result:** one coherent diff addressing the demonstrated cause and its related in-scope instances: a check with its failing test where one can decide the mistake, instruction text for the rest, and the reason when no check applies.
 
 ## Step 6: Verify the changed decision
 
 1. Run the catalog’s required validators and reference/privacy checks. Run meaningful helper tests when executable behavior changes.
-2. Apply the changed instructions to the originating case: identify the action they now produce and the evidence that it resolves the failure.
-3. Apply them to a nearby valid case that must still work. Use isolated fixtures where live side effects are unnecessary. Label instruction replay or simulation accurately; mark unrun checks NOT RUN. A wording match is not behavioral evidence.
-4. Inspect the diff for contradictory callers, duplicate rules, private details and unintended files. Fix demonstrated failures, then rerun the affected checks.
+2. Run a new check on an input that reproduces the demonstrated mistake and show it fail, then on a nearby valid input and show it pass. Record both outcomes; a check never seen failing proves nothing.
+3. Apply the changed instructions to the originating case: identify the action they now produce and the evidence that it resolves the failure.
+4. Apply them to a nearby valid case that must still work. Use isolated fixtures where live side effects are unnecessary. Label instruction replay or simulation accurately; mark unrun checks NOT RUN. A wording match is not behavioral evidence.
+5. Inspect the diff for contradictory callers, duplicate rules, private details and unintended files. Fix demonstrated failures, then rerun the affected checks.
 
-**Result:** named checks and outcomes for the original failure and counterexample, with any limitation explicit.
+**Result:** named checks and outcomes for the original failure and counterexample, including each new check's fail and pass runs, with any limitation explicit.
 
 ## Step 7: Show the diff and hand off
 
