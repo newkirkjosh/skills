@@ -4,6 +4,7 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
+Cross-review: unavailable: not converged. Codex round 1 (3 passes) and round 2 after hosted review (3 passes) both hit the pass limit; round 2 pass 3 (4f9d40e) left Z-3 open (Step 3 no-op on a reopened partial landing), awaiting the owner.
 Evaluated at: f4d40283e039c24cedeb1f4c986d876e708d02cc
 Evaluator: fresh a34b2543532446b18 after the Codex round 2 fixes (Y-1, Y-2, Z-1, Z-2), history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASSes: 4f5758b a31790a17cbc631a0; 47062a6 a960b20c79eada475; 81efe50 a4a8b00e24ff05e53; 094baf4 ad98dca8140ed7095; 50e07e0 a0f0aafd9fea18922 plus a2690744b45ab936f.)
 
