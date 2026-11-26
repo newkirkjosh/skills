@@ -46,7 +46,7 @@ Only a `TEAM:` line in the final report of the invocation being waited on counts
 
 ### 2. Scope
 
-1. Resolve the set of changes. Each needs a change folder (`openspec/changes/<feat-name>/` with `scope-brief.md`, `proposal.md` and `tasks.md`, which step 3 orders by; look where `dev`'s entry detection looks, since it may be on a layer branch or already archived there), and an `architectural` one also needs the user's approval of its design (`dev` Phase 0). A change without either isn't ready: list it as "needs `dev` Phase 0 first" and leave it out. A held change is listed as `blocked: held (<reason>)` and left out. A change with a record from an earlier run that never reached a final state is inspected, reported and held. A final `blocked` record with no hold is replaced when the change launches again.
+1. Resolve the set of changes. Accept only change folders from dev's change or bug-fix front ends; setup and write-free playbooks are not team jobs. Each needs a change folder (`openspec/changes/<feat-name>/` with `scope-brief.md`, `proposal.md` and `tasks.md`, which step 3 orders by; look where `dev`'s `../dev/references/lifecycle.md` Entry detection looks, since it may be on a layer branch or already archived there), and an `architectural` one also needs the user's approval of its design (`dev`'s `../dev/references/playbook-change.md`, Phase 0). A change without either isn't ready: list it as "needs `dev` change or bug-fix front end first" and leave it out. A held change is listed as `blocked: held (<reason>)` and left out. A change with a record from an earlier run that never reached a final state is inspected, reported and held. A final `blocked` record with no hold is replaced when the change launches again.
 2. Write the run's brief: the user's request **verbatim**, the changes in scope, and anything they said is out of scope. It goes into every worker's prompt beside that change's own `scope-brief.md`.
 3. **Do not ask to confirm a clearly scoped request.** "All approved changes", a list of feat-names or a parent issue is the scope; start. Ask only when the scope is genuinely ambiguous or contradictory.
 
@@ -65,7 +65,7 @@ For each unblocked change, within the concurrency cap:
 1. Write the change record's `launching` state and invocation number 1 (`references/run-state.md`), **then** **Start** the worker with:
 
    ```
-   Use the dev skill for <feat-name>, invocation 1, and run it to the end without pausing for confirmation. The repository's main checkout is <absolute path>; find or create this change's worktree through dev's entry detection.
+   Use the dev skill for <feat-name>, invocation 1, and run it to the end without pausing for confirmation. The repository's main checkout is <absolute path>; find or create this change's worktree through dev's pickup route and references/lifecycle.md entry detection.
 
    <the run's brief, verbatim>
 

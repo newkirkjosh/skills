@@ -2,7 +2,7 @@
 
 Adapted from fx/skills `dev/references/head-discipline.md` (MIT, see `../LICENSE.txt`).
 
-When to push, what a review or CI result is evidence of, and what order to wait in. `dev` applies these rules (Phase 4 and `completion.md`); change them here, not at the point of use.
+When to push, what a review or CI result is evidence of, and what order to wait in. `dev` applies these rules (Phase 4 in `lifecycle.md` and `completion.md`); change them here, not at the point of use.
 
 One failure motivates all of it: **every push invalidates the evidence gathered for the commit before it.** A workflow that pushes between collecting evidence and using it pays for the same wait twice. Upstream measured a long unattended run spending about 70% of its wall clock waiting on CI, most of it on runs a later push had already made stale.
 

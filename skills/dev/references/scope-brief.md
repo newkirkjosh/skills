@@ -14,6 +14,7 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 ```markdown
 ### Scope Brief
 
+- **Playbook:** <bug-fix | change>
 - **Verbatim request:** "<the user's own words, quoted exactly>"
 - **Interpreted scope:** <what that concretely means: layers, modules, files, deliverable>
 - **Also update:** <neighbouring artifacts that must change with it: indexes, docs, DI wiring, tables, README rows>
@@ -25,6 +26,8 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 ```
 
 ## Field rules
+
+**Playbook** is the lifecycle front end, independently of Path. Record `change` or `bug-fix` when creating the brief; pickup preserves it. For a verified legacy dev folder without it, a `fix/` branch selects `bug-fix`, otherwise `change`. Missing-folder recovery first reconstructs dev state, then records the same prefix rule; a branch alone does not prove a dev folder. Write-free and setup reports do not create a change folder just to record a playbook.
 
 **Verbatim request**: quote, never paraphrase. "just do X real quick" and "implement X" are different instructions and must not collapse into the same summary. If the request spans several messages, quote each. If the user narrowed it mid-run, the narrowed version wins and the earlier one is noted.
 
@@ -46,7 +49,7 @@ The brief makes the user's words travel. Build it **once**, at the start of the 
 
 | Path | When | Depth |
 |------|------|-------|
-| `spike` | A feasibility question; the output is an answer, not code you keep | Leave the lifecycle: no change folder, no issues. Answer it, label anything built as throwaway |
+| `spike` | A feasibility question; the output is an answer, not code you keep | Route to `playbook-investigation.md`: read only, no change folder or issues; answer and stop |
 | `bounded` | A well-scoped change to a flow that already exists in the repo: a flag, a small endpoint, a one-file fix | Short design note, one issue, the cross-model review, cheaper models where the role allows |
 | `architectural` | A new project or subsystem, or a change to how components fit together or to interfaces others depend on | `arch-review` for the design, the user approves it before Phase 1, issues per layer, the cross-model review on every layer |
 

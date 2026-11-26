@@ -18,7 +18,7 @@ Installs are symlinks into the checkout, so `git pull` updates every skill at on
 
 | Skill | Purpose |
 |---|---|
-| `dev` | Coordinates one change from approved stories to an evaluated, cross-reviewed, archived candidate, completes it to a merge-ready PR (it never merges), then closes out and cleans up after the merge. |
+| `dev` | Routes explicit requests to status, investigation, prototype, pickup, bug-fix, change or setup playbooks. Bug-fix and change share the evaluated, cross-reviewed lifecycle through a merge-ready PR and post-merge cleanup; dev never merges. |
 | `team` | Runs `dev` for several approved changes at once, one background subagent each, in dependency order, and merges each PR after re-checking every gate. |
 | `discovery` | Viability, one-pager, job stories and user flows for a new idea. |
 | `spec-writer` | Per-feature legacy custom change folders: proposal, stories, design, tasks. |
