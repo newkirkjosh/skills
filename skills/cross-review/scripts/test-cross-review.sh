@@ -60,7 +60,7 @@ if [ "$1 $2" = "mcp list" ]; then
   has_ov=""; for a in "$@"; do case $a in mcp_servers.*) has_ov=1 ;; esac; done
   [ -z "$has_ov" ] && [ "${MCP_RAW+x}" ] && { printf '%s' "$MCP_RAW"; exit 0; }
   [ -n "$has_ov" ] && [ "${MCP_RAW_FINAL+x}" ] && { printf '%s' "$MCP_RAW_FINAL"; exit 0; }
-  IFS='|' read -r -a names <<<"${MCP_NAMES:-alpha|has space}"
+  IFS='|' read -r -a names <<<"${MCP_NAMES:-alpha|beta-2}"
   IFS='|' read -r -a plugins <<<"${PLUGINS:-}"
   off=() offp=()
   shift 2
@@ -110,7 +110,7 @@ last() { tail -n 1 "$work/out"; }
 cr codex "$repo" "$base" "$work/brief.md"
 check "codex: completes" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ]'
 check "codex: header names the reviewed head" 'grep -q "mode=change .*head=$head" "$work/out"'
-check "codex: disables every MCP server with a bare key codex resolves" 'grep -qx "mcp_servers.alpha.enabled=false" "$work/codex.args" && grep -qx "mcp_servers.has space.enabled=false" "$work/codex.args" && grep -q "mcp_disabled=2" "$work/out"'
+check "codex: disables every MCP server with a bare key codex resolves" 'grep -qx "mcp_servers.alpha.enabled=false" "$work/codex.args" && grep -qx "mcp_servers.beta-2.enabled=false" "$work/codex.args" && grep -q "mcp_disabled=2" "$work/out"'
 MCP_NAMES='alpha|beta.svc' cr codex "$repo" "$base" "$work/brief.md"
 check "codex: refuses a server name -c can't address" '[ "$(rc)" = 3 ] && grep -q "beta.svc" "$work/err" && [ "$(last)" = STATUS=ERROR ]'
 rm -f "$work/codex.args"
@@ -120,7 +120,7 @@ real=$(PATH=$(sed "s#$stubs:##" <<<"$PATH") command -v codex || true)
 if [ -n "$real" ]; then
   # The installed codex, in a throwaway CODEX_HOME: the user's config is never read.
   home="$work/codex-home"; mkdir -p "$home"
-  printf '%s\n' '[mcp_servers.alpha]' 'command = "true"' '[mcp_servers."has space"]' 'command = "true"' > "$home/config.toml"
+  printf '%s\n' '[mcp_servers.alpha]' 'command = "true"' '[mcp_servers."beta-2"]' 'command = "true"' > "$home/config.toml"
   # No plugins in the throwaway home, so only the configured servers are disabled.
   rm -f "$work/codex.args"
   (cd "$work" && CODEX_HOME="$home" REAL_CODEX="$real" cr codex "$repo" "$base" "$work/brief.md")
@@ -153,7 +153,7 @@ PLUGINS="$plug" cr codex "$repo" "$base" "$work/brief.md"
 check "plugin: a plugin-provided server no longer blocks the review" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ] && ! grep -q "codex rejected" "$work/err"'
 check "plugin: each enabled plugin is disabled by its bare ID" 'grep -qx "plugins.linear@claude-plugins-official.enabled=false" "$work/codex.args" && grep -qx "plugins.gmail@openai-curated-remote.enabled=false" "$work/codex.args"'
 check "plugin: a plugin-provided server is not addressed by server name" '! grep -q "mcp_servers.linear" "$work/codex.args" && ! grep -q "mcp_servers.gmail" "$work/codex.args"'
-check "plugin: configured servers are still disabled by name" 'grep -qx "mcp_servers.alpha.enabled=false" "$work/codex.args" && grep -qx "mcp_servers.has space.enabled=false" "$work/codex.args"'
+check "plugin: configured servers are still disabled by name" 'grep -qx "mcp_servers.alpha.enabled=false" "$work/codex.args" && grep -qx "mcp_servers.beta-2.enabled=false" "$work/codex.args"'
 check "plugin: the header reports the plugins disabled" 'grep -q "plugins_disabled=2" "$work/out" && grep -q "mcp_disabled=2" "$work/out"'
 cr codex "$repo" "$base" "$work/brief.md"
 check "plugin: no plugins installed reports plugins_disabled=0" '[ "$(rc)" = 0 ] && grep -q "plugins_disabled=0" "$work/out" && ! grep -q "^plugins\." "$work/codex.args"'
@@ -211,6 +211,43 @@ an entry without name~[{"enabled":false}]
 a non-string name~[{"name":5,"enabled":false}]
 a non-object entry~["alpha"]
 CASES
+# A list that holds more than one JSON value can't be trusted (jq -e judges only
+# the last), so it refuses on the plugin list and on both MCP lists.
+nl=$'\n'
+rm -f "$work/codex.args"
+PLUGIN_LIST_RAW='{"installed":{}}'"$nl"'{"installed":[]}' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin list: two JSON values refuse" 'refuses'
+rm -f "$work/codex.args"
+PLUGIN_LIST_RAW='{"installed":[]}'"$nl"'{"installed":[]}' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin list: two valid JSON values refuse" 'refuses'
+rm -f "$work/codex.args"
+MCP_RAW='{}'"$nl"'[]' cr codex "$repo" "$base" "$work/brief.md"
+check "mcp list: two JSON values refuse" 'refuses'
+rm -f "$work/codex.args"
+MCP_RAW_FINAL='{}'"$nl"'[]' cr codex "$repo" "$base" "$work/brief.md"
+check "mcp re-list: two JSON values refuse" 'refuses'
+# An enabled plugin or server with an empty ID or name is never skipped.
+rm -f "$work/codex.args"
+PLUGIN_LIST_RAW='{"installed":[{"pluginId":"","enabled":true}]}' cr codex "$repo" "$base" "$work/brief.md"
+check "plugin list: an enabled plugin with an empty pluginId refuses" 'refuses'
+rm -f "$work/codex.args"
+MCP_RAW='[{"name":"","enabled":true}]' MCP_RAW_FINAL='[]' cr codex "$repo" "$base" "$work/brief.md"
+check "mcp list: a server with an empty name refuses" 'refuses'
+rm -f "$work/codex.args"
+MCP_RAW_FINAL='[{"name":"","enabled":false}]' cr codex "$repo" "$base" "$work/brief.md"
+check "mcp re-list: a server with an empty name refuses" 'refuses'
+# Every enabled plugin ID and every server name must match [A-Za-z0-9@_-]+.
+for bad in 'has space' $'line\nbreak' 'a/b' 'a"b' "a'b"; do
+  rm -f "$work/codex.args"
+  PLUGIN_LIST_RAW=$(jq -cn --arg id "$bad@market" '{installed: [{pluginId: $id, enabled: true}]}') cr codex "$repo" "$base" "$work/brief.md"
+  check "plugin list: an enabled ID with ${bad//$'\n'/<newline>} refuses" 'refuses'
+  rm -f "$work/codex.args"
+  MCP_RAW=$(jq -cn --arg n "$bad" '[{name: $n, enabled: true}]') MCP_RAW_FINAL='[]' cr codex "$repo" "$base" "$work/brief.md"
+  check "mcp list: a server name with ${bad//$'\n'/<newline>} refuses" 'refuses'
+  rm -f "$work/codex.args"
+  MCP_RAW_FINAL=$(jq -cn --arg n "$bad" '[{name: $n, enabled: false}]') cr codex "$repo" "$base" "$work/brief.md"
+  check "mcp re-list: a server name with ${bad//$'\n'/<newline>} refuses" 'refuses'
+done
 mkdir -p "$work/home/.codex"
 echo 'model = "x"' > "$work/home/.codex/config.toml"
 cfg=$(sha256sum "$work/home/.codex/config.toml")
