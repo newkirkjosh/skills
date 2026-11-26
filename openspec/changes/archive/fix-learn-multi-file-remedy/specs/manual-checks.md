@@ -165,4 +165,4 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 
 ## Added after round 3 pass 2
 
-**M18. A selected worktree is the edit base.** The user selects an existing worktree for the learning. The default branch has the guard; that worktree predates it, and the test exists nowhere. Expected: Step 3 checks the selected worktree's files, finds neither change, and proposes both; without a selected worktree the same lesson proposes only the test (M16).
+**M18. A selected worktree is the edit base.** The user selects an existing worktree for the learning. The default branch has the guard; that worktree predates it, and the test exists nowhere. Expected (default flow): Step 3 checks the selected worktree's files, finds neither change, and proposes both; without a selected worktree the same lesson proposes only the test (M16). Review mode, with a worktree selected that has the guard while the default branch lacks it: Step 3 checks the default branch, which Apply's fresh worktree starts from, and proposes both.
