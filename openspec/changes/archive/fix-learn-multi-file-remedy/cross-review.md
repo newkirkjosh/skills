@@ -1,22 +1,7 @@
-## Cross-model review
+# Cross-model review coverage
 
-**Reviewed:** 4f9d40e (merge base b03fc62)
-**Coverage:** Codex, change mode, 6 passes in 2 rounds: 655d05f, cdd3f86, 6d1aa4d, then after CodeRabbit's review 3e2b459, 167356a, 4f9d40e.
-**Result:** not converged. One in-scope finding is open (Z-3). Both rounds hit the 3-pass limit.
+Historical Codex rounds found and drove fixes for multi-change parsing, empty records, PR/worktree contents, legacy layouts, preserved remedy entries, partial-remedy no-ops, pending changes, and edit-base selection. The latest W-3 fix at f33a2dd makes review mode inspect the default branch it will edit from; default mode still respects an explicitly selected worktree.
 
-| Finding | Disposition |
-|---|---|
-| X-1 a default-branch change counted as held in a PR or worktree that removes it | Fixed in 094baf4 |
-| X-2 `; `-separated entries split a change containing `; ` | Fixed in 094baf4 |
-| X-3 one change per file | Fixed in 81efe50 |
-| X-4 an `Applied` without entries passes completeness | Fixed in 81efe50 |
-| X-5 story said "one-file remedy" | Fixed in ff8ee60 (story wording) |
-| CR-1..CR-3 (CodeRabbit) | Fixed in 47062a6 |
-| Y-1 reopening could replace the entries | Fixed in 4f5758b |
-| Y-2 legacy records keyed on "no code spans" | Fixed in 4f5758b |
-| Y-3 stale coverage line in the contract | Fixed (this record) |
-| Z-1 a reopened partial landing closed as "already fixed" | Fixed in f4d4028 |
-| Z-2 reopen reason readable as an entry | Fixed in f4d4028 |
-| **Z-3** Step 3's "already present, no-op" fires on a reopened partial landing, so review never proposes the missing test | **Open**: needs the owner's call |
+Fresh isolated Codex evaluation at f33a2dd passes M0–M18/R1–R3, including Z-3 and W-1–W-3 scenarios. A separate fresh evaluator completes the privacy check in an indexed history-free snapshot. This is independent same-model evaluation, not cross-model convergence.
 
-Each behavioral fix was re-evaluated by a fresh blind evaluator (last PASS at f4d4028).
+Final cross-model re-review is unavailable after the provider rate limit. The owner authorized continued Codex progress without it. Earlier round limits and findings remain recorded in the local review ledger; no unavailable review is counted as a pass.

@@ -4,9 +4,9 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
-Cross-review: unavailable: not converged. Codex round 1 (3 passes) and round 2 after hosted review (3 passes) both hit the pass limit; round 2 pass 3 (4f9d40e) left Z-3 open (Step 3 no-op on a reopened partial landing), awaiting the owner.
-Evaluated at: f4d40283e039c24cedeb1f4c986d876e708d02cc
-Evaluator: fresh a34b2543532446b18 after the Codex round 2 fixes (Y-1, Y-2, Z-1, Z-2), history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASSes: 4f5758b a31790a17cbc631a0; 47062a6 a960b20c79eada475; 81efe50 a4a8b00e24ff05e53; 094baf4 ad98dca8140ed7095; 50e07e0 a0f0aafd9fea18922 plus a2690744b45ab936f.)
+Cross-review: unavailable for final delta after the provider rate limit; owner authorized continued Codex progress without it. Historical Codex findings through W-3 are fixed; no final converged cross-model review is claimed.
+Evaluated at: f33a2dd5e3b642d225ad433e5ab559ad87fad200
+Evaluator: fresh isolated Codex learn_final_eval replayed M0–M18 and R1–R3, all behavioral checks PASS. It used actual local Git fixtures and PR-state stubs, not executable product tests. Validators and script suites passed (cross-review 111/0, eval-export 12/0, verify-change 102/0). Its export lacked Git metadata for S4; fresh learn_privacy_eval independently completed S4 in a history-free scratch index: privacy check exit 0, all 144 snapshot files indexed, no missing/extra paths. Combined contract has no unchecked item. Coordinator also ran the real-worktree privacy check successfully.
 
 - [x] M0: an Applied whose guard change contains "; " and ":" reads as exactly two entries, the guard whole (inbox.md:49).
 - [x] M1: the template, the open→applied row and Record write every file with its own change (inbox.md:31-32, :55; SKILL.md:133).
@@ -27,6 +27,9 @@ Evaluator: fresh a34b2543532446b18 after the Codex round 2 fixes (Y-1, Y-2, Z-1,
 - [x] M13: reopening writes the reason after the existing entries and keeps them (inbox.md:57; SKILL.md:133).
 - [x] M14: a reopened partial landing is not closed as already fixed unless every still-required entry holds (inbox.md:60).
 - [x] M15: the Reopened: line is prose, never read as an entry (inbox.md:57; SKILL.md:133).
+- [x] M16: partial remedy proposes missing changes instead of a no-op.
+- [x] M17: pending changes elsewhere are identified; a partial pending remedy asks where to finish it rather than omitting required changes.
+- [x] M18: default flow uses the selected worktree when provided; review mode always uses the default branch it will edit from.
 - [x] R1: legacy one-file record → one-item list, shipped (inbox.md:49).
 - [x] R2: legacy record, PR closed, change missing → open (inbox.md:57).
 - [x] R3: both on default with an open PR → shipped (inbox.md:56; SKILL.md:128).
@@ -35,6 +38,6 @@ Evaluator: fresh a34b2543532446b18 after the Codex round 2 fixes (Y-1, Y-2, Z-1,
 - [x] S6: only skills/learn/SKILL.md, skills/learn/references/inbox.md and the change folder differ from base.
 - [x] S7: singular-wording grep returns nothing.
 - [x] S8: Step 5.1 and Summarize and ask unchanged.
-- [x] S9: SKILL.md 157 lines; only review-mode steps 2 and 7 changed.
+- [x] S9: SKILL.md 157 lines; review-mode reconciliation/recording and Step 3.2 full-remedy presence/base selection changed; note mode and enforcement question unchanged.
 - [x] S10: all writes in the evaluator's scratch directory; inbox untouched.
 
