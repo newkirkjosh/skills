@@ -35,6 +35,11 @@ head=$(git -C "$repo" rev-parse HEAD)
 # PLUGIN_LIST_RAW, when set (even empty), is printed verbatim by `plugin list`
 # with exit 0. MCP_RAW does the same for `mcp list` before any server override
 # is given (the first list) and MCP_RAW_FINAL for the re-list under overrides.
+# `codex features list` models codex 0.172 rows (`<name> <stage words> <bool>`):
+# `apps` reads true unless `-c features.apps=false` is given, with look-alike
+# rows (`apps_early_resource_discovery`, `enable_mcp_apps`) always false.
+# FEATURES_IGNORE=1 ignores the override, FEATURES_FAIL=1 exits non-zero,
+# FEATURES_RAW (even empty) is printed verbatim with exit 0.
 stubs="$work/bin"
 mkdir -p "$stubs"
 export STUB_WORK="$work"
@@ -52,6 +57,16 @@ if [ "$1 $2" = "plugin list" ]; then
     IFS='|' read -r -a no <<<"${PLUGINS_OFF:-}"
     for id in "${no[@]}"; do [ -n "$id" ] && jq -cn --arg id "$id" '{pluginId: $id, name: ($id | split("@")[0]), enabled: false}'; done
   } | jq -s '{installed: .}'
+  exit 0
+fi
+if [ "$1 $2" = "features list" ]; then
+  [ -n "${FEATURES_FAIL:-}" ] && exit 1
+  [ -n "${REAL_CODEX:-}" ] && exec "$REAL_CODEX" "$@"
+  [ "${FEATURES_RAW+x}" ] && { printf '%s' "$FEATURES_RAW"; exit 0; }
+  apps=true
+  for a in "$@"; do [ "$a" = "features.apps=false" ] && [ -z "${FEATURES_IGNORE:-}" ] && apps=false; done
+  printf '%-40s %-18s %s\n' apps_early_resource_discovery "under development" false \
+    apps stable "$apps" enable_mcp_apps "under development" false
   exit 0
 fi
 if [ "$1 $2" = "mcp list" ]; then
@@ -321,6 +336,36 @@ cr codex --document "$work/empty.md" "$work/brief.md"
 check "document: empty file exits 3" '[ "$(rc)" = 3 ]'
 cr codex --document "$doc"
 check "document: missing prompt argument exits 3" '[ "$(rc)" = 3 ]'
+
+# Codex connected apps: invisible to `mcp list` and not stopped by the sandbox,
+# so `-c features.apps=false` is forced and checked with `features list`.
+rm -f "$work/codex.args"
+cr codex "$repo" "$base" "$work/brief.md"
+check "apps: change mode always passes features.apps=false" '[ "$(rc)" = 0 ] && grep -qx "features.apps=false" "$work/codex.args"'
+check "apps: the header reports apps off" 'grep -q "apps=off" "$work/out"'
+rm -f "$work/codex.args"
+cr codex --document "$doc" "$work/brief.md"
+check "apps: document mode always passes features.apps=false" '[ "$(rc)" = 0 ] && grep -qx "features.apps=false" "$work/codex.args" && grep -q "apps=off" "$work/out"'
+rm -f "$work/codex.args"
+FEATURES_IGNORE=1 cr codex "$repo" "$base" "$work/brief.md"
+check "apps: change mode refuses when apps stays on after the override" 'refuses && grep -q "apps" "$work/err"'
+FEATURES_IGNORE=1 cr codex --document "$doc" "$work/brief.md"
+check "apps: document mode refuses when apps stays on after the override" 'refuses'
+FEATURES_FAIL=1 cr codex "$repo" "$base" "$work/brief.md"
+check "apps: refuses when features list fails" 'refuses'
+FEATURES_RAW='' cr codex "$repo" "$base" "$work/brief.md"
+check "apps: refuses when features list prints nothing" 'refuses'
+FEATURES_RAW=$'enable_mcp_apps   under development   false\napps_early_resource_discovery   under development   false\n' cr codex "$repo" "$base" "$work/brief.md"
+check "apps: refuses when there is no exact apps row (prefix rows don't count)" 'refuses'
+FEATURES_RAW=$'apps   stable   true\nenable_mcp_apps   under development   false\n' cr codex "$repo" "$base" "$work/brief.md"
+check "apps: refuses an apps row that reads true even beside false look-alikes" 'refuses'
+FEATURES_RAW=$'apps   stable   maybe\n' cr codex "$repo" "$base" "$work/brief.md"
+check "apps: refuses an apps row whose value isn't false" 'refuses'
+rm -f "$work/codex.args"
+FEATURES_RAW=$'apps_early_resource_discovery   under development   true\napps   stable   false\n' cr codex "$repo" "$base" "$work/brief.md"
+check "apps: a true look-alike row doesn't block when apps itself is false" '[ "$(rc)" = 0 ] && [ "$(last)" = STATUS=COMPLETED ]'
+FEATURES_FAIL=1 cr claude "$repo" "$base" "$work/brief.md"
+check "apps: the claude reviewer path is unchanged" '[ "$(rc)" = 0 ] && ! grep -q "features" "$work/claude.args" && ! grep -q "apps=" "$work/out"'
 
 echo
 echo "$pass passed, $fail failed"

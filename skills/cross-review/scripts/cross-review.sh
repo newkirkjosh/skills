@@ -13,7 +13,7 @@
 # committed; the header line names the snapshot's sha256 content digest.
 #
 #   codex   from a Claude Code session: a read-only sandbox, no approvals,
-#           every plugin and MCP server disabled (`codex review` for a change,
+#           every plugin, MCP server and connected app disabled (`codex review` for a change,
 #           `codex exec` on the snapshot directory for a document)
 #   claude  from a Codex session: `claude -p` with only Read, Grep and Glob,
 #           no MCP servers, reviewing a diff or snapshot written beforehand
@@ -74,10 +74,15 @@ brief=$(cat "$prompt_file") || die "cannot read prompt file: $prompt_file"
 # are ignored whatever their ID. Finally list the servers again with every
 # override applied and refuse to run unless each reports disabled. Overrides
 # apply to this run only; the config is never written.
+# Connected apps (GitHub, Gmail, Drive, Linear...) reach the reviewer as
+# `mcp__codex_apps__*` tools, which `mcp list` doesn't show and the read-only
+# sandbox (local commands only) doesn't stop. So `-c features.apps=false` is
+# always passed, then `codex features list` must show exactly one `apps` row
+# reading false (look-alike rows don't count), or the script refuses to run.
 codex_opts() {
   command -v jq >/dev/null || die "jq is not on PATH"
   local re='\A[A-Za-z0-9@_-]+\z' list_shape='type == "array" and all(.[]; type == "object" and (.name | type == "string"))' bad
-  opts=(-c 'sandbox_mode="read-only"' -c 'approval_policy="never"')
+  opts=(-c 'sandbox_mode="read-only"' -c 'approval_policy="never"' -c 'features.apps=false')
   plugin_json=$(codex plugin list --json) || die "codex plugin list failed; refusing to run with unknown plugins"
   jq -s -e 'length == 1 and (.[0] | (type == "object") and (.installed | type == "array") and all(.installed[]; type == "object" and (.pluginId | type == "string") and (.enabled | type == "boolean")))' <<<"$plugin_json" >/dev/null 2>&1 || die "codex plugin list output is empty or not the expected shape; refusing to run with unknown plugins"
   bad=$(jq -r --arg re "$re" '[.installed[] | select(.enabled == true) | .pluginId | select(test($re) | not)] | first // empty | @json' <<<"$plugin_json") || die "could not parse codex plugin list output"
@@ -106,6 +111,10 @@ codex_opts() {
   enabled=$(jq -r '.[] | select(.enabled != false) | .name' <<<"$after") || die "could not parse codex mcp list output"
   [ -z "$enabled" ] || die "MCP servers still enabled after the overrides: $(tr '\n' ' ' <<<"$enabled")"
   mcp_disabled=$(grep -c . <<<"$names")
+  # Connected apps are not MCP servers and not in `mcp list`: verify the override took.
+  features=$(codex features list "${opts[@]}") || die "codex features list failed; refusing to run with unknown connected apps"
+  apps_rows=$(awk '$1 == "apps" { print $NF }' <<<"$features")
+  [ "$(grep -c . <<<"$apps_rows")" = 1 ] && [ "$apps_rows" = false ] || die "codex connected apps are not confirmed off (features list needs exactly one apps row reading false); refusing to run"
 }
 claude_opts() {
   # No shell for the reviewer: even `git diff` can write files (--output), so
@@ -129,7 +138,7 @@ $brief"
   cd "$tmp" || die "cannot cd to $tmp"
   if [ "$reviewer" = codex ]; then
     codex_opts
-    echo "reviewer=codex mode=document digest=sha256:$digest plugins_disabled=$plugins_disabled mcp_disabled=$mcp_disabled"
+    echo "reviewer=codex mode=document digest=sha256:$digest plugins_disabled=$plugins_disabled mcp_disabled=$mcp_disabled apps=off"
     codex exec "${opts[@]}" --skip-git-repo-check --ephemeral -C "$tmp" - <<<"$prompt"
   else
     claude_opts
@@ -158,7 +167,7 @@ $dirty"
     prompt="Review only the committed changes on this branch: \`git diff $merge_base...HEAD\` (base $base, head $head). Read the surrounding code as needed. This is a read-only review: change no files.
 
 $brief"
-    echo "reviewer=codex mode=change base=$base merge_base=$merge_base head=$head plugins_disabled=$plugins_disabled mcp_disabled=$mcp_disabled"
+    echo "reviewer=codex mode=change base=$base merge_base=$merge_base head=$head plugins_disabled=$plugins_disabled mcp_disabled=$mcp_disabled apps=off"
     codex review "${opts[@]}" - <<<"$prompt"
   else
     tmp=$(mktemp -d) || die "mktemp failed"
