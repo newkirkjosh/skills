@@ -4,8 +4,8 @@
 **Derived from:** specs/stories.md
 
 ## :catalog
-Evaluated at: 094baf4c20a349b7929e0c6890fb829b991e7c72
-Evaluator: fresh ad98dca8140ed7095 after the X-1/X-2 review fix, history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASS at 50e07e0: a0f0aafd9fea18922 plus a2690744b45ab936f for S10.)
+Evaluated at: 81efe508216e3a9f4b4469e0f18bd361e8a4d681
+Evaluator: fresh a4a8b00e24ff05e53 after the X-3/X-4 review fix, history-free export, VERDICT: PASS. Replays ran real `git show` against scratch bare remotes with a gh stub under an isolated git config; all writes stayed in its scratch directory; the real inbox was never read or written. (Earlier PASSes: 094baf4 by ad98dca8140ed7095; 50e07e0 by a0f0aafd9fea18922 plus a2690744b45ab936f.)
 
 - [x] M0: an Applied whose guard change contains "; " and ":" reads as exactly two entries, the guard whole (inbox.md:49).
 - [x] M1: the template, the open→applied row and Record write every file with its own change (inbox.md:31-32, :55; SKILL.md:133).
@@ -18,6 +18,8 @@ Evaluator: fresh ad98dca8140ed7095 after the X-1/X-2 review fix, history-free ex
 - [x] M5d: guard on default, PR adds the test but deletes the guard → open, naming the guard (inbox.md:51; SKILL.md:128).
 - [x] M6: a listed file without its change → unverifiable, checked first (inbox.md:59, :62).
 - [x] M7: an edit plus a removal, each judged by its kind (inbox.md:49, :51; replay both ways).
+- [x] M8: two entries in one file, the removal not landed → not shipped, removal named (inbox.md:32, :49; SKILL.md:133).
+- [x] M9: Applied with metadata only → unverifiable before any default-branch check (inbox.md:59, :62).
 - [x] R1: legacy one-file record → one-item list, shipped (inbox.md:49).
 - [x] R2: legacy record, PR closed, change missing → open (inbox.md:57).
 - [x] R3: both on default with an open PR → shipped (inbox.md:56; SKILL.md:128).
