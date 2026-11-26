@@ -5,6 +5,7 @@
 
 ## :catalog
 Evaluated at: 3015b3ebc11a55f7efb845961b6d0750c6f85add
+Cross-review: unavailable: codex rejected cross-review.sh MCP overrides (`invalid transport in mcp_servers.linear`, a plugin-provided server the `-c ...enabled=false` override cannot address); fixing it needs the merge-policy-reserved script or the user's Codex config
 
 - [x] The prompt asks each blocking finding for its evidence (file:line, traced failure, or a command with its output). Observed: `skills/cross-review/SKILL.md` Step 2 prompt text.
 - [x] The ledger records evidence and a level for every finding, hosted-triage findings included. Observed: `SKILL.md` Step 4 and `references/review-continuity.md` per-finding Evidence bullet.
