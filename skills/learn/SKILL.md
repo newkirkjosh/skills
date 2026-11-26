@@ -87,12 +87,12 @@ New prerequisites must reflect verified capabilities, not a remembered tool name
 ## Step 6: Verify the changed decision
 
 1. Run the catalog’s required validators and reference/privacy checks. Run meaningful helper tests when executable behavior changes.
-2. If Step 5 added a check, run its test against the unfixed behavior (the demonstrated mistake reproduced, or the check removed) and show it fail, then with the correction in place and show it pass, including on a nearby valid input. Record both outcomes; a test never seen failing proves nothing, and running the check alone doesn't show its test would catch the mistake.
+2. If Step 5 added a check, run its test on an input that reproduces the demonstrated mistake against the unfixed behavior, and show it fail on the test's assertion about that mistake, not on setup (a missing helper, file or command). Then run it with the correction in place and show it pass, and show a nearby valid input pass too. Record both outcomes; a test never seen failing proves nothing, a setup failure doesn't show the test catches the mistake, and running the check alone doesn't either.
 3. Apply the changed instructions to the originating case: identify the action they now produce and the evidence that it resolves the failure.
 4. Apply them to a nearby valid case that must still work. Use isolated fixtures where live side effects are unnecessary. Label instruction replay or simulation accurately; mark unrun checks NOT RUN. A wording match is not behavioral evidence.
 5. Inspect the diff for contradictory callers, duplicate rules, private details and unintended files. Fix demonstrated failures, then rerun the affected checks.
 
-**Result:** named checks and outcomes for the original failure and counterexample, including each new check's test failing on the unfixed behavior and passing with the correction, with any limitation explicit.
+**Result:** named checks and outcomes for the original failure and counterexample, including each new check's test failing on its assertion about the reproduced mistake against the unfixed behavior, then passing with the correction and on a nearby valid input, with any limitation explicit.
 
 ## Step 7: Show the diff and hand off
 
