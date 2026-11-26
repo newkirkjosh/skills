@@ -162,3 +162,7 @@ Run from the worktree root. Each passes at baseline and must still pass, except 
 ## Added after round 3 pass 1
 
 **M17. A pending part is not present.** A record's remedy is a guard plus its test; the guard exists only in another open PR, not on the default branch, and the test exists nowhere. Expected: not a no-op and not a test-only edit; the summary names the open PR and asks whether to finish the remedy there or include the guard in this edit. If both the guard and the test are pending in that PR, it is the pending no-op (`Pending` set, record stays `open`).
+
+## Added after round 3 pass 2
+
+**M18. A selected worktree is the edit base.** The user selects an existing worktree for the learning. The default branch has the guard; that worktree predates it, and the test exists nowhere. Expected: Step 3 checks the selected worktree's files, finds neither change, and proposes both; without a selected worktree the same lesson proposes only the test (M16).
