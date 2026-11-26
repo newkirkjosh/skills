@@ -28,14 +28,20 @@ git add -A && git commit -qm base && git push -q origin HEAD:main
 
 Each case then sets `main` (and, where named, the branch and a worktree) to the stated contents and pushes. PR state cannot be created locally: stub `gh` on `PATH` so `gh pr list --head fix/alpha-empty-repo --state all --json number,state` and `gh pr view 7 --json state,headRefName` print the state each case gives, and the PR head's file contents are the branch's.
 
-The record under review (scratch copy), with `Applied` naming both parts. The exact layout of the multi-file `Applied` value is the implementer's; the evaluator rewrites this fixture to the template the change defines, keeping each file paired with its change:
+The record under review (scratch copy), with `Applied` naming both parts in the layout `inbox.md` defines: one indented `` - `<file>`: `<change>` `` line per file. The guard's change text contains `; ` and `:`, so this fixture also checks that an entry is read per line and by code span, not split on punctuation:
 
 ```markdown
 - Status: applied
 - Skill: alpha-skill
 - Decision: reject an empty --repo
-- Applied: owner/repo, branch fix/alpha-empty-repo, worktree <scratchpad>/learn-48/wt-alpha, PR owner/repo#7; skills/alpha-skill/scripts/alpha-helper.sh: `[ -n "$repo" ] || { echo "alpha-helper: --repo is empty" >&2; exit 2; }`; skills/alpha-skill/scripts/test-alpha-helper.sh: `expect_fail "empty --repo" alpha-helper.sh --repo ""`
+- Applied: owner/repo, branch fix/alpha-empty-repo, worktree <scratchpad>/learn-48/wt-alpha, PR owner/repo#7
+  - `skills/alpha-skill/scripts/alpha-helper.sh`: `[ -n "$repo" ] || { echo "alpha-helper: --repo is empty" >&2; exit 2; }`
+  - `skills/alpha-skill/scripts/test-alpha-helper.sh`: `expect_fail "empty --repo" alpha-helper.sh --repo ""`
 ```
+
+**M0. The entries parse as two, each change whole.**
+Expected: the reader finds exactly two entries; the guard's change is the whole code span, including `; exit 2; }`, not split at `; `. Reading three or more entries, or a truncated guard, fails.
+PASS when: an instruction says each entry is on its own line with the change in a code span or block, and how to read it.
 
 ## Story 1: `Applied` lists every file of the remedy
 
@@ -70,7 +76,8 @@ State: PR #7 open (`OPEN`); branch `fix/alpha-empty-repo` holds both changes; `m
 Expected: default-branch check fails for both, the PR exists and is open, and it holds every listed change, so the record stays `applied`.
 Sub-case M5b: `main` already holds the guard (landed by another route); PR #7 open and holding both. Expected: still `applied`, not `shipped`; the summary names the test as the change missing on `main`.
 Sub-case M5c: PR #7 open, but a force-push dropped the test from the branch; `main` holds neither. Expected: the PR no longer holds every listed change, so `applied` → `open`, naming the test.
-PASS when: an instruction makes "holds the change" in the PR and worktree rows mean every listed change, the same as on the default branch.
+Sub-case M5d: `main` holds the guard; PR #7 open, its branch adds the test but deletes the guard line from `alpha-helper.sh`. Expected: the default-branch check fails (test missing on `main`); the PR exists and is open, but at its head the guard does not hold, so `applied` → `open`, naming the guard as the change the PR removed. Keeping it `applied` because the guard is on `main` fails.
+PASS when: an instruction makes "holds the change" in the PR and worktree rows mean every listed change, the same as on the default branch, and (M5d) says each change is read at the PR head or in the worktree itself, never counted as held there because it is on the default branch.
 Fails today because: the PR rows test one change, "a PR for the branch is open and holds the change" (inbox.md line 55) and "it is open but no longer holds the change" (line 54). In M5b, checking the guard on `main` ships the record ("holds means `shipped`, stop", line 59); in M5c, checking the guard in the PR leaves it `applied` though its test is gone. M5 itself reaches the right status, but no instruction checks the test in the PR.
 
 **M6. `Applied` missing one file's change: unverifiable.**
@@ -80,7 +87,7 @@ PASS when: an instruction says `Applied` is incomplete when any listed file lack
 Fails today because: completeness is defined against one file, "The `Applied` field is empty or incomplete (an older record without a branch counts as incomplete unless it names a PR)" (inbox.md line 56), and today's template asks for one "file, and the recorded change" (line 31), which the guard entry already satisfies. The text is silent on a second file without a change, so step (1) of the order passes and step (2) ships on the guard.
 
 **M7. Mixed edit and removal in one remedy.**
-Record: the guard entry as the fixture, plus a second entry `skills/alpha-skill/SKILL.md`: `deleted: Always pass a non-empty --repo.` `main` holds the guard and no longer contains that sentence.
+Record: the guard entry as the fixture, plus a second entry ``- `skills/alpha-skill/SKILL.md`: deleted: `Always pass a non-empty --repo.` `` `main` holds the guard and no longer contains that sentence.
 Expected: each change is judged by its own kind (edited text present; removed text absent), both hold, so `shipped`. If `main` still contained the sentence, not `shipped`, naming the `SKILL.md` removal.
 PASS when: the per-change "holds" definition (inbox.md, the paragraph on the recorded change) is applied to each listed change.
 Fails today because: "It holds in a file when the edited text is present, or the removed text (or the file) is absent" (inbox.md line 48) is stated for one change in one file; nothing combines several, so the guard check alone ships the record even while the sentence is still on `main`.
