@@ -200,6 +200,12 @@ def run_tests(script):
                 journal = common / "team/changes" / CHANGE / "sync-progress"
                 journal.parent.mkdir(parents=True)
                 journal.write_text(state.pop("journal_text", "expected " + HEAD + "\n"))
+            cli_args = list(args or [CHANGE])
+            if "ledger" in state:
+                ledger = common / "reviews" / state["branch"] / "review-ledger.md"
+                ledger.parent.mkdir(parents=True)
+                ledger.write_text(state.pop("ledger"))
+                cli_args += ["--ledger", str(ledger)]
             state.update(root=str(root), common=str(common))
             state["worktrees"] = [{"branch": state["branch"],
                                    "worktree": {"path": str(root), "changes": state.get("dirty", False)},
@@ -218,7 +224,7 @@ def run_tests(script):
                        DEV_STATE_FIXTURE=str(fixture), DEV_STATE_CALLS=str(calls),
                        DEV_STATE_VIOLATIONS=str(violations))
             before = (snapshot(root), snapshot(common))
-            result = subprocess.run(["bash", str(script)] + (args or [CHANGE]), cwd=root,
+            result = subprocess.run(["bash", str(script)] + cli_args, cwd=root,
                                     env=env, text=True, capture_output=True, timeout=20)
             problems = []
             if violations.exists():
@@ -309,16 +315,16 @@ def run_tests(script):
          mutate=update(prs=[pr(draft=True)]))
     case("row 14: archived but unclassified later commit", "Phase 4 steps 4–5, then Phase 5",
          mutate=combine(update(prs=[pr()], later=[LATER]), archive))
-    ledger = "# Review ledger\n\n## " + LATER + "\nbehavioral: yes\n"
+    ledger = "# Review ledger\n\n" + LATER + " behavioral: yes — Changed behavior\n"
     case("row 14: behavioral yes later commit", "Phase 4 steps 4–5, then Phase 5",
-         mutate=combine(update(prs=[pr()], later=[LATER]), change_file("review-ledger.md", ledger), archive))
+         mutate=combine(update(prs=[pr()], later=[LATER], ledger=ledger), archive))
     case("row 15: archived reviewed ready PR", "Phase 5: Completion",
          mutate=combine(update(prs=[pr()]), archive))
     case("row 15: archived reviewed draft PR", "Phase 5: Completion",
          mutate=combine(update(prs=[pr(draft=True)]), archive))
     case("row 15: every later commit behavioral no", "Phase 5: Completion",
-         mutate=combine(update(prs=[pr()], later=[LATER]),
-                        change_file("review-ledger.md", ledger.replace("yes", "no")), archive))
+         mutate=combine(update(prs=[pr()], later=[LATER],
+                               ledger=ledger.replace("yes", "no").replace("Changed behavior", "Review record only")), archive))
 
     def two_layers(s):
         s["files"][folder + "/tasks.md"] = "# Tasks\n\n## :catalog\n- [x] First\n\n## :docs\n- [ ] Second\n"
