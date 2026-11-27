@@ -361,11 +361,30 @@ def run_tests(script):
          error="playbook")
     case("conflicting recorded playbooks stop", error="playbook",
          mutate=change_file("scope-brief.md", "Playbook: change\nPlaybook: bug-fix\n"))
+    # A present malformed field must never disappear into legacy fallback, even
+    # when another supported field would otherwise determine the playbook.
+    for label, field in (("plain", "Playbook: {value}"),
+                         ("bullet", "- Playbook: {value}"),
+                         ("bold", "**Playbook:** {value}"),
+                         ("bold bullet", "- **Playbook:** {value}")):
+        if label in ("plain", "bullet"):
+            case(label + " blank recorded playbook stops", error="playbook",
+                 mutate=change_file("scope-brief.md", field.format(value="") + "\n"))
+        case(label + " multiword recorded playbook stops", error="playbook",
+             mutate=change_file("scope-brief.md", field.format(value="bug-fix extra") + "\n"))
+        case(label + " malformed conflicting playbook stops", error="playbook",
+             mutate=change_file("scope-brief.md", "Playbook: change\n"
+                                + field.format(value="bug-fix extra") + "\n"))
     case("missing worktree never recreated", "Phase 4 steps 4–5, then Phase 5", mutate=update(worktree=False))
     case("default-branch archive is discoverable", "Phase 5: Completion",
          mutate=combine(update(prs=[pr()], worktree=False),
                         lambda s: s.update(remote_files={p.replace("openspec/changes/", "openspec/changes/archive/", 1): v
                                                          for p, v in s["files"].items()}, files={})))
+    case("archived bare numeric issue mapping selects completion", "Phase 5: Completion",
+         mutate=combine(update(prs=[pr()]), change_file("issues.md", "catalog: 11\n"), archive))
+    case("archived bare numeric closed issue mapping selects cleanup", "Phase 6: Cleanup",
+         mutate=combine(update(issues={"11": "CLOSED"}),
+                        change_file("issues.md", "catalog: 11\n"), archive))
 
     # Routing preempts the table, and requested re-evaluation preempts requested sync.
     case("unfinished sync journal preempts every row", mutate=update(journal=True), error="sync interrupted")
