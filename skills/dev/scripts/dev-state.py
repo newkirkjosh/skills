@@ -200,11 +200,17 @@ def inspect(args):
         for name in names:
             canonical_name = name.replace("-", "/", 1)
             verified, artifacts = load_folder(name, branch_sources(stem_branch))
+            on_branch = bool(verified)
+            if not verified and target.startswith(canonical_name + "-"):
+                # A declared layer branch may lack the folder (absent, or fresh
+                # from the default branch): verify the declaration on the
+                # first-layer branch, then the default ref. Never for ownership.
+                verified, artifacts = load_folder(name, branch_sources(canonical_name) + [(None, base)])
             if not verified:
                 continue
             declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", artifacts["tasks.md"] or "", re.M)
             if (target in {canonical_name + "-" + layer for layer in declared}
-                    or (name.partition("-")[2] == target.partition("/")[2]
+                    or (on_branch and name.partition("-")[2] == target.partition("/")[2]
                         and owns_legacy_folder(name, stem_branch))):
                 matching.append(name)
         if len(matching) > 1:
