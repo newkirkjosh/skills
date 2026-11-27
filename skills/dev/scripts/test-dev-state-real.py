@@ -109,10 +109,10 @@ class Fixture:
                    DEV_STATE_REAL_GIT=self.real_git, DEV_STATE_FIXTURE=str(fixture),
                    DEV_STATE_CALLS=str(self.temp / "calls"), DEV_STATE_VIOLATIONS=str(violations))
         # Include actual refs, the index and every worktree in the read-only check.
-        before = SNAPSHOT(self.root), [SNAPSHOT(Path(t["worktree"]["path"])) for t in self.trees]
+        before = SNAPSHOT(self.root), [SNAPSHOT(Path(t["worktree"]["path"])) for t in self.trees if "worktree" in t]
         result = subprocess.run(["bash", str(script), *args], cwd=cwd or self.root,
                                 env=env, text=True, capture_output=True, timeout=30)
-        after = SNAPSHOT(self.root), [SNAPSHOT(Path(t["worktree"]["path"])) for t in self.trees]
+        after = SNAPSHOT(self.root), [SNAPSHOT(Path(t["worktree"]["path"])) for t in self.trees if "worktree" in t]
         assert before == after, "repository, refs, index or worktree changed"
         assert not violations.exists(), "unsupported/mutating command: " + violations.read_text()
         output = result.stdout + result.stderr
@@ -473,6 +473,129 @@ def main(script):
         (f.root / "openspec/changes/feat-example/issues.md").unlink()
         f.commit("remove next layer issue map")
         f.inspect(script, ["feat-example"], "Phase 1: Issue creation")
+
+    def retained_first_without_next_branch(f, handoff):
+        # The next layer has no branch yet and the default ref has no folder,
+        # so only the retained first-layer worktree carries the change folder.
+        first_tree = f.temp / "first-worktree"
+        f.git("worktree", "add", "-q", "-b", "feat/example", str(first_tree), "main")
+        f.folder(layers=("core", "ui"), issues="core: 11\nui: 12\n",
+                 contracts=f.contract("core"), root=first_tree)
+        f.write("example.py", "fixture = True\n", root=first_tree)
+        if handoff == "committed":
+            f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n",
+                    root=first_tree)
+        f.commit("first layer implementation", first_tree)
+        if handoff == "uncommitted":
+            f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n",
+                    root=first_tree)
+        f.tree("feat/example", first_tree)
+        f.state["issues"] = {"11": "CLOSED", "12": "OPEN"}
+        return first_tree
+
+    for handoff in ("committed", "uncommitted"):
+        for invoked in ("retained first-layer worktree", "main checkout"):
+            @test("B3: selected next layer without snapshot ignores " + handoff
+                  + " first-layer handoff from " + invoked)
+            def no_default_snapshot(f, handoff=handoff, invoked=invoked):
+                first_tree = retained_first_without_next_branch(f, handoff)
+                cwd = first_tree if invoked.startswith("retained") else None
+                output = f.inspect(script, ["feat-example"], "Phase 2: Implementation", cwd=cwd)
+                assert "Stale core check" not in output, "stale first-layer handoff surfaced"
+
+    @test("B3: selected next layer without snapshot keeps discovered folder from main checkout")
+    def no_default_snapshot_main(f):
+        retained_first_without_next_branch(f, None)
+        f.inspect(script, ["feat-example"], "Phase 2: Implementation")
+
+    def remote_only_head(f, remote):
+        # The PR head exists only as refs/remotes/origin/<head>: no local
+        # branch, no worktree, and no folder on the default ref.
+        f.git("update-ref", "-d", "refs/heads/feat/example")
+        if remote == "missing":
+            f.git("update-ref", "-d", "refs/remotes/origin/feat/example")
+
+    def remote_head_fixture(f, remote="match"):
+        f.implementation()
+        f.trees = []
+        f.git("checkout", "-q", "main")
+        f.state["branch"] = "main"
+        tracked = f.head
+        if remote == "stale":
+            f.git("checkout", "-q", "feat/example")
+            f.write("example.py", "fixture = 2\n")
+            f.commit("newer PR head not yet fetched")
+            f.git("checkout", "-q", "main")
+        f.pr()
+        f.git("update-ref", "refs/remotes/origin/feat/example", tracked)
+
+    for target in ("23", "feat/example", "feat-example"):
+        @test("N1: remote-tracking PR head routes like the local branch for " + target + " input")
+        def remote_tracking_head(f, target=target):
+            remote_head_fixture(f)
+            local = f.inspect(script, [target], CLASSIFY)
+            remote_only_head(f, "match")
+            remote = f.inspect(script, [target], CLASSIFY)
+            assert remote == local, "remote-tracking PR head changed the route"
+
+        for remote in ("missing", "stale"):
+            @test("N1: " + remote + " remote-tracking PR head is unavailable for " + target + " input")
+            def remote_tracking_unavailable(f, target=target, remote=remote):
+                remote_head_fixture(f, remote)
+                remote_only_head(f, remote)
+                f.inspect(script, [target], error="unavailable")
+
+    def ledger_fixture(f, record):
+        f.implementation(prefix="openspec/changes/archive/")
+        for n in (1, 2):
+            f.write("later" + str(n) + ".py", "fixture = True\n")
+            f.commit("later commit " + str(n))
+        later = f.git("rev-list", f.base + "..feat/example").split()
+        assert len(later) == 3, "fixture expected three later commits"
+        for sha in later:
+            matches = [o for o in f.git("rev-list", "--all", "--objects").split()
+                       if o.startswith(sha[:6])]
+            assert len(matches) == 1, "fixture prefix is not unique"
+        f.pr()
+        ledger = f.temp / "review-ledger.md"
+        ledger.write_text("# Review ledger\n\n" + "".join(
+            record(sha, i == len(later) - 1) for i, sha in enumerate(later)))
+        return ["feat-example", "--ledger", str(ledger)]
+
+    def inline(ref, value="no"):
+        return ref + " behavioral: " + value + " — Review record only\n"
+
+    def block(ref, value="no"):
+        return "## " + ref + "\nbehavioral: " + value + "\n\n"
+
+    for form, render in (("inline", inline), ("section", block)):
+        for length in (7, 12):
+            @test("N2: " + str(length) + "-char " + form + " ledger prefixes classify later commits")
+            def abbreviated_ledger(f, render=render, length=length):
+                args = ledger_fixture(f, lambda sha, last: render(sha[:length]))
+                f.inspect(script, args, "Phase 5: Completion")
+
+        @test("N2: 6-char " + form + " ledger prefix does not classify a later commit")
+        def short_ledger(f, render=render):
+            args = ledger_fixture(f, lambda sha, last: render(sha[:6] if last else sha))
+            f.inspect(script, args, CLASSIFY)
+
+        @test("N2: abbreviated " + form + " yes record outweighs full-SHA no record")
+        def abbreviated_yes(f, render=render):
+            args = ledger_fixture(f, lambda sha, last: render(sha)
+                                  + (render(sha[:7], "yes") if last else ""))
+            f.inspect(script, args, CLASSIFY)
+
+    for owner in ("other", "same"):
+        @test("N3: branch-only wt item for " + owner + " branch is not a worktree")
+        def branch_only_item(f, owner=owner):
+            f.implementation()
+            if owner == "same":
+                f.trees = []
+            branch = "feat/other" if owner == "other" else "feat/example"
+            f.trees.append({"branch": branch, "display": branch + " (branch only)",
+                            "head": {"sha": f.head}})
+            f.inspect(script, ["feat-example"], CLASSIFY)
 
     failed = 0
     for name, function in tests:

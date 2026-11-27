@@ -223,6 +223,7 @@ def run_tests(script):
                                    "head": {"sha": HEAD, "committed_at": "2026-01-01T00:00:00Z"}}]
             if not state.pop("worktree"):
                 state["worktrees"] = []
+            state["worktrees"] += state.pop("extra_worktrees", [])
             fixture, calls, violations = temp / "fixture.json", temp / "calls", temp / "violations"
             fixture.write_text(json.dumps(state))
             for tool in ("git", "gh", "wt"):
@@ -388,6 +389,13 @@ def run_tests(script):
              mutate=change_file("scope-brief.md", "Playbook: change\n"
                                 + field.format(value="bug-fix extra") + "\n"))
     case("missing worktree never recreated", "Phase 4 steps 4–5, then Phase 5", mutate=update(worktree=False))
+    # wt lists branches without a worktree too; they carry no worktree key.
+    case("branch-only wt item for another branch is not a worktree", "Phase 4 steps 4–5, then Phase 5",
+         mutate=update(extra_worktrees=[{"branch": "feat/other", "display": "feat/other",
+                                         "head": {"sha": HEAD}}]))
+    case("branch-only wt item for the change branch is not a worktree", "Phase 4 steps 4–5, then Phase 5",
+         mutate=update(worktree=False, extra_worktrees=[{"branch": BRANCH, "display": BRANCH,
+                                                         "head": {"sha": HEAD}}]))
     case("default-branch archive is discoverable", "Phase 5: Completion",
          mutate=combine(update(prs=[pr()], worktree=False),
                         lambda s: s.update(remote_files={p.replace("openspec/changes/", "openspec/changes/archive/", 1): v
