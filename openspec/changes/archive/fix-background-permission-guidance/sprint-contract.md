@@ -15,4 +15,4 @@ Fresh evaluation: observed pending prompts verify waiting for that request, incl
 
 VERDICT: PASS. Independent evaluator used history-free exports and scenario walkthroughs; no new live failure injection. Coordinator separately passed tracked-file privacy checks. Existing issue #38 supplies host observation evidence.
 
-Cross-review: unavailable: Claude usage limit; STATUS=ERROR. No convergence claimed; required review remains unmet.
+Cross-review: Claude, 2 completed passes, converged at f029ce97daf77c9a937b0d636d9ca2cf5b62c932. Earlier usage-limited attempt returned no review. X-1 fixed by clarifying that an observed pending prompt verifies waiting for that request.
