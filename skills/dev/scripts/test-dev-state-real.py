@@ -234,6 +234,72 @@ def main(script):
         folder_result = f.inspect(script, ["feat-example"], CLASSIFY, "bug-fix")
         assert branch_result == folder_result, "input spelling changed verified branch identity"
 
+    def inherited_archive(f, branches):
+        f.folder("feat-onboarding", prefix="openspec/changes/archive/", playbook=None)
+        archived = f.commit("archive completed change on default branch")
+        f.git("update-ref", "refs/remotes/origin/main", archived)
+        f.state["issues"] = {"11": "CLOSED"}
+        for branch in branches:
+            f.git("checkout", "-q", "main")
+            f.branch(branch)
+            f.write(branch.partition("/")[0] + ".py", "fixture = True\n")
+            f.commit("unrelated implementation inheriting archived artifacts")
+        f.tree(branches[-1])
+
+    @test("B1: branch cannot own an archived legacy folder inherited from main")
+    def inherited_branch(f):
+        inherited_archive(f, ["fix/onboarding"])
+        f.inspect(script, ["fix/onboarding"], "Reconstruct change folder", "unresolved")
+
+    @test("B1: archived legacy folder does not adopt unrelated inherited fix branch")
+    def inherited_folder(f):
+        inherited_archive(f, ["fix/onboarding"])
+        f.inspect(script, ["feat-onboarding"], "Phase 6: Cleanup", "change")
+
+    @test("B1: unrelated branches inheriting the same archive do not make folder ambiguous")
+    def inherited_ambiguity(f):
+        inherited_archive(f, ["fix/onboarding", "chore/onboarding"])
+        f.inspect(script, ["feat-onboarding"], "Phase 6: Cleanup", "change")
+
+    @test("B2: same-name fork PR is ignored during discovery but rejected as explicit target")
+    def fork_discovery(f):
+        f.implementation()
+        f.pr()
+        f.pr(state="CLOSED", number=24, isCrossRepository=True,
+             headRepository={"name": "repo", "nameWithOwner": "other/repo"},
+             headRepositoryOwner={"login": "other"})
+        f.inspect(script, ["24"], error="repository")
+        f.inspect(script, ["https://github.com/owner/repo/pull/24"], error="repository")
+        f.inspect(script, ["feat/example", "--sync-pr", "24", "--expected-head", f.head,
+                           "--default-sha", f.base], error="repository")
+        f.inspect(script, ["feat/example"], CLASSIFY)
+
+    def later_layer(f):
+        f.implementation(layers=("core", "ui"), issues="core: 11\nui: 12\n",
+                         contracts=f.contract("core"))
+        f.state["issues"] = {"11": "CLOSED", "12": "OPEN"}
+        f.trees = []  # Keep the first-layer ref but remove its worktree evidence.
+        f.branch("feat/example-ui")
+        f.folder(layers=("core", "ui"), issues="core: 11\nui: 12\n",
+                 contracts=f.contract("core") + f.contract("ui"))
+        f.write("ui.py", "fixture = True\n")
+        head = f.commit("evaluate and review next layer")
+        f.tree("feat/example-ui")
+        return head
+
+    @test("B3: folder selects first-open-layer contract ahead of retained first-layer snapshot")
+    def first_open_artifacts(f):
+        head = later_layer(f)
+        branch_result = f.inspect(script, ["feat/example-ui"], CLASSIFY)
+        # Requested re-evaluation must keep validating the selected UI head.
+        branch_reeval = f.inspect(script, ["feat/example-ui", "--reevaluate-head", head],
+                                  "Phase 3: Evaluation (fresh evaluator)")
+        folder_reeval = f.inspect(script, ["feat-example", "--reevaluate-head", head],
+                                  "Phase 3: Evaluation (fresh evaluator)")
+        assert folder_reeval == branch_reeval, "re-evaluation input changed selected layer"
+        folder_result = f.inspect(script, ["feat-example"], CLASSIFY)
+        assert folder_result == branch_result, "folder input selected stale first-layer artifacts"
+
     failed = 0
     for name, function in tests:
         try:
