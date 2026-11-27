@@ -113,10 +113,15 @@ def inspect(args):
         candidate, artifacts = load_folder(name, branch_sources(branch))
         if not candidate:
             return False
-        # Merely inheriting an archive from default does not associate an
-        # unrelated same-slug branch. Include uncommitted worktree artifacts.
+        # Compare with what this branch inherited, not today's default tip:
+        # default-only archive edits must not confer ownership, and a squash
+        # merge must not erase the retained branch's original ownership.
+        inherited = git("merge-base", base, branch).stdout.strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", inherited):
+            raise EvidenceError("unavailable branch ancestry")
+        # Include uncommitted artifacts from the matching worktree.
         for filename, value in artifacts.items():
-            previous = git("show", f"{base}:{candidate}/{filename}", optional=True)
+            previous = git("show", f"{inherited}:{candidate}/{filename}", optional=True)
             before = previous.stdout if previous.returncode == 0 else None
             if value != before:
                 return True
@@ -281,14 +286,30 @@ def inspect(args):
             folder, contents = selected_folder, selected_contents
             playbook = resolve_playbook()
 
+    def selected_evidence():
+        # Discovery identifies the next unit; its own snapshot then governs
+        # handoff, issue mapping and contracts. Re-select if that map changed.
+        visited = set()
+        while True:
+            mappings, layers, states = layer_evidence()
+            branch, unit = select_unit(mappings, layers, states)
+            if branch is None or branch in visited:
+                return mappings, layers, states, branch, unit
+            visited.add(branch)
+            load_selected(branch)
+            fresh = layer_evidence()
+            selected, unit = select_unit(*fresh)
+            if selected == branch:
+                return *fresh, branch, unit
+            if selected in visited:
+                raise EvidenceError("unavailable consistent layer selection")
+
     if args.reevaluate_head:
         branch = stem_branch
         if "/" not in target and contents.get("issues.md") is not None:
-            mappings, layers, states = layer_evidence()
-            selected_branch, _ = select_unit(mappings, layers, states)
+            _, _, _, selected_branch, _ = selected_evidence()
             if selected_branch is not None:
                 branch = selected_branch
-                load_selected(branch)
         head = git("rev-parse", "refs/heads/" + branch, optional=True)
         if head.returncode or head.stdout.strip() != args.reevaluate_head:
             raise EvidenceError("head mismatch")
@@ -305,6 +326,9 @@ def inspect(args):
             if tree["branch"] == branch and git("-C", tree["worktree"]["path"], "status", "--porcelain").stdout.strip():
                 raise EvidenceError("sync needs a clean worktree")
         return done("Requested sync")
+    selected = None
+    if contents.get("issues.md") is not None and contents.get("tasks.md") is not None:
+        selected = selected_evidence()
     if contents.get("handoff.md"):
         return done("Handoff: " + contents["handoff.md"].strip().replace("\n", " "))
     if not folder:
@@ -316,11 +340,9 @@ def inspect(args):
     if any(p["state"] == "MERGED" and p["headRefName"] in {t["branch"] for t in relevant_trees} for p in prs):
         return done("Phase 6: Close-out")
 
-    mappings, layers, states = layer_evidence()
+    mappings, layers, states, branch, unit = selected or selected_evidence()
     if all(states[mappings[layer]] == "CLOSED" for layer in layers):
         return done("Phase 6: Cleanup")
-    branch, unit = select_unit(mappings, layers, states)
-    load_selected(branch)
     if branch not in branches or not git("diff", "--stat", base + "..." + branch, "--", ".", ":!openspec/changes").stdout.strip():
         return done("Phase 2: Implementation")
     pr = next((p for p in prs if p["headRefName"] == branch and p["state"] == "OPEN"), None)
