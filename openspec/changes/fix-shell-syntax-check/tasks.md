@@ -1,0 +1,3 @@
+- [ ] Verify later-file syntax errors are detected with visible diagnostics and nonzero status.
+- [ ] Correct AGENTS.md.
+- [ ] Independently evaluate and publish a PR.
