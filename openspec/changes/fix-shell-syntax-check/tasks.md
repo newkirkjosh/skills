@@ -1,3 +1,5 @@
-- [ ] Verify later-file syntax errors are detected with visible diagnostics and nonzero status.
-- [ ] Correct AGENTS.md.
-- [ ] Independently evaluate and publish a PR.
+- [x] Verify later-file syntax errors are detected with visible diagnostics and nonzero status.
+- [x] Correct AGENTS.md.
+- [x] Independently evaluate behavior.
+- [ ] Required cross-model review (unavailable: usage limit).
+- [ ] Publish PR and collect head-scoped hosted review/CI evidence.
