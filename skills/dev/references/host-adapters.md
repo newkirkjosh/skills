@@ -17,6 +17,12 @@ Read this before the first spawn when the coordinator runs on a host other than 
 | Instructions the host reads | `CLAUDE.md` (which imports `AGENTS.md`) | `AGENTS.md` only; never `CLAUDE.md` or `REVIEW.md` |
 | Skills directory | `~/.claude/skills` | `~/.agents/skills` |
 
+## Background permission results
+
+Inspect the operation's actual result; a permission request does not prove that a prompt is waiting. In an observed Claude Code background worker, a forced permission ask for PR creation was rejected immediately because there was “no active turn”; the worker returned `BLOCKED unavailable`. That result ends the attempted operation: preserve its denial reason and report `BLOCKED` (under `team`, the invocation's `TEAM: BLOCKED unavailable: <operation and reason> #<i>`). Do not wait 30 minutes for an answer, retry the operation, or widen permissions to work around it. Retire outstanding roles and processes through the normal completion/stop rules before the final handoff; a rejected operation alone does not prove the worker or its roles stopped.
+
+A permission prompt actually observed pending through the current host and delegation path verifies waiting for that request; no separate host-wide proof is needed. Use the unanswered-prompt path for that observed request. Inform the user and never answer it for another agent; `team` applies its 30-minute unanswered-prompt deadline. The Claude Code rejection observation establishes no waiting host. Without such an observation or other verification, host behavior remains unknown: do not infer either a waiting prompt or automatic rejection from the host name or idle output. Record the missing evidence and report the capability unavailable if required work cannot proceed.
+
 ## Claude Code completion and stopping
 
 Record each nested role’s agent/task ID when it starts. A normal handoff includes every role ID, its terminal completion notification or task result, and any owned process cleanup. Correlate terminal evidence with the exact ID; prose saying “finished”, a quiet output file or a parent’s completion alone proves nothing about its descendants.

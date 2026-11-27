@@ -128,7 +128,7 @@ scripts/check-descriptions.sh   # explicit-use descriptions
 scripts/check-refs.sh   # bundled files and skill references resolve
 scripts/check-private.sh   # no private terms in tracked files
 grep -rn '<renamed-skill>' skills/
-bash -n scripts/*.sh skills/*/scripts/*.sh 2>/dev/null
+for f in scripts/*.sh skills/*/scripts/*.sh; do bash -n "$f" || exit 1; done
 for t in scripts/test-*.sh skills/*/scripts/test-*.sh; do bash "$t"; done   # script tests
 ```
 

@@ -1,0 +1,5 @@
+- [x] Verify later-file syntax errors are detected with visible diagnostics and nonzero status.
+- [x] Correct AGENTS.md.
+- [x] Independently evaluate behavior.
+- [x] Required cross-model review: Claude converged at e73d2a9.
+- [x] Publish PR #56 and collect head-scoped evidence at e73d2a9; refreshed record commit requires fresh CI.
