@@ -415,9 +415,9 @@ def main(script):
         f.state["issue_unavailable"] = True
         f.inspect(script, ["feat-example"], error="gh issue")
 
-    def merged_first_without_next_branch(f, handoff, keep_tree):
+    def merged_first_without_next_branch(f, handoff, keep_tree, playbook="change"):
         f.implementation(layers=("core", "ui"), issues="core: 11\nui: 12\n",
-                         contracts=f.contract("core"))
+                         contracts=f.contract("core"), playbook=playbook)
         if handoff == "committed":
             f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n")
             f.commit("record first layer handoff")
@@ -474,13 +474,13 @@ def main(script):
         f.commit("remove next layer issue map")
         f.inspect(script, ["feat-example"], "Phase 1: Issue creation")
 
-    def retained_first_without_next_branch(f, handoff):
+    def retained_first_without_next_branch(f, handoff, playbook="change"):
         # The next layer has no branch yet and the default ref has no folder,
         # so only the retained first-layer worktree carries the change folder.
         first_tree = f.temp / "first-worktree"
         f.git("worktree", "add", "-q", "-b", "feat/example", str(first_tree), "main")
         f.folder(layers=("core", "ui"), issues="core: 11\nui: 12\n",
-                 contracts=f.contract("core"), root=first_tree)
+                 contracts=f.contract("core"), playbook=playbook, root=first_tree)
         f.write("example.py", "fixture = True\n", root=first_tree)
         if handoff == "committed":
             f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n",
@@ -507,6 +507,60 @@ def main(script):
     def no_default_snapshot_main(f):
         retained_first_without_next_branch(f, None)
         f.inspect(script, ["feat-example"], "Phase 2: Implementation")
+
+    def next_layer_branch(f, branch, start, worktree):
+        # Create a later-layer branch at start with no implementation commit.
+        if worktree:
+            root = f.temp / (branch.replace("/", "-") + "-worktree")
+            f.git("worktree", "add", "-q", "-b", branch, str(root), start)
+            f.tree(branch, root)
+        else:
+            f.git("branch", branch, start)
+
+    def assert_layer_branch_routes_like_folder(f, playbook):
+        folder = f.inspect(script, ["feat-example"], "Phase 2: Implementation", playbook)
+        branch = f.inspect(script, ["feat/example-ui"], "Phase 2: Implementation", playbook)
+        assert branch == folder, "declared layer branch routed differently from folder input"
+
+    def assert_undeclared_suffix_unowned(f):
+        output = f.inspect(script, ["feat/example-extra"], "Reconstruct change folder",
+                           "unresolved")
+        assert "Playbook: change" not in output.splitlines(), "undeclared suffix borrowed folder"
+
+    for playbook in ("change", "bug-fix"):
+        @test("L1: declared next layer branch not yet created routes like folder after "
+              + playbook + " first layer merged and archived")
+        def uncreated_layer_branch(f, playbook=playbook):
+            merged_first_without_next_branch(f, None, False, playbook)
+            assert_layer_branch_routes_like_folder(f, playbook)
+
+        for worktree in (False, True):
+            @test("L1: declared next layer branch created from default without commits routes "
+                  + "like folder after " + playbook + " first layer merged"
+                  + (" (worktree)" if worktree else " (ref only)"))
+            def fresh_layer_branch(f, playbook=playbook, worktree=worktree):
+                merged_first_without_next_branch(f, None, False, playbook)
+                next_layer_branch(f, "feat/example-ui", "refs/remotes/origin/main", worktree)
+                assert_layer_branch_routes_like_folder(f, playbook)
+
+        @test("L1: declared next layer branch without folder routes like folder held only by "
+              + "unmerged " + playbook + " first-layer branch")
+        def layer_branch_without_folder(f, playbook=playbook):
+            retained_first_without_next_branch(f, None, playbook)
+            next_layer_branch(f, "feat/example-ui", "main", True)
+            assert_layer_branch_routes_like_folder(f, playbook)
+
+    @test("L1: undeclared suffix branch does not borrow merged and archived first-layer folder")
+    def undeclared_suffix_after_merge(f):
+        merged_first_without_next_branch(f, None, False)
+        next_layer_branch(f, "feat/example-extra", "refs/remotes/origin/main", True)
+        assert_undeclared_suffix_unowned(f)
+
+    @test("L1: undeclared suffix branch does not borrow folder held by unmerged first-layer branch")
+    def undeclared_suffix_unmerged(f):
+        retained_first_without_next_branch(f, None)
+        next_layer_branch(f, "feat/example-extra", "main", True)
+        assert_undeclared_suffix_unowned(f)
 
     def remote_only_head(f, remote):
         # The PR head exists only as refs/remotes/origin/<head>: no local
