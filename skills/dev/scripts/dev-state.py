@@ -143,7 +143,14 @@ def inspect(args):
     playbook = "unresolved"
     if folder:
         brief = contents["scope-brief.md"] or ""
-        values = re.findall(r"^\s*(?:-\s*)?(?:\*\*)?Playbook:(?:\*\*)?\s*([^\s]+)\s*$", brief, re.M)
+        # Capture every present field before validating its whole value. Requiring
+        # a valid-looking value here would silently turn malformed records into
+        # legacy briefs and select a different playbook from the branch prefix.
+        values = []
+        for line in brief.splitlines():
+            field = re.match(r"^[ \t]*(?:[-*+]\s+)?(?:\*\*)?Playbook(?:\*\*)?:(?:\*\*)?[ \t]*(.*)$", line)
+            if field:
+                values.append(field[1].strip())
         if values and (len(set(values)) != 1 or values[0] not in ("bug-fix", "change")):
             raise EvidenceError("unsupported or conflicting recorded playbook")
         playbook = values[0] if values else ("bug-fix" if stem_branch.startswith("fix/") else "change")
@@ -181,11 +188,17 @@ def inspect(args):
 
     mappings = {}
     for line in contents["issues.md"].splitlines():
-        match = re.match(r"^\s*:([a-z0-9-]+):\s*#(\d+)\s*$", line)
+        # GitHub's producer writes layer: number; older fixtures and artifacts
+        # also use :layer: #number. Both identify the same GitHub issue.
+        match = re.match(r"^\s*:?([a-z0-9-]+):\s*#?(\d+)\s*$", line)
         if match:
+            if match[1] in ("parent", "epic"):
+                continue
+            if match[1] in mappings and mappings[match[1]] != match[2]:
+                raise EvidenceError("conflicting layer issue mapping")
             mappings[match[1]] = match[2]
         elif re.match(r"^\s*:?[a-z0-9-]+:\s*", line) and not re.match(r"^\s*(?:parent|epic):", line):
-            raise EvidenceError("unavailable tracker evidence: only GitHub #number mappings are supported")
+            raise EvidenceError("unavailable tracker evidence: only GitHub numeric issue mappings are supported")
     layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents["tasks.md"] or "", re.M)
     if not layers or any(layer not in mappings for layer in layers):
         raise EvidenceError("unavailable layer issue mapping")
