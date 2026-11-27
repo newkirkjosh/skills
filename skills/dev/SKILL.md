@@ -63,6 +63,8 @@ Read `references/scope-brief.md` before a new change or bug-fix front end. It de
 
 ## Worktrees
 
+For a read-only inspection of the playbook and lifecycle entry for a change, branch or PR, run `bash <skill-dir>/scripts/dev-state.sh <change|branch|PR-number|PR-URL>`. See `references/dev-state.md` for evidence limits and explicit team-request options. This helper does not start a `dev` invocation.
+
 **One change, one worktree, for its whole life,** managed with worktrunk (`wt`; current commands from `wt <command> --help` and https://worktrunk.dev/llms.txt). For lifecycle work only, `wt switch --create <branch> --no-cd` creates it where the user's worktrunk config puts worktrees, before Phase 0 writes anything; find its path with `wt list --format=json | jq -r '.items[] | select(.branch=="<branch>") | .worktree.path'`. Every phase, subagent and command for that change runs from that path. The main checkout stays on the default branch and clean, so other changes can start beside it.
 
 - **Layer branches.** The first layer (in `tasks.md` order) uses the branch the change or bug-fix front end creates: `<feat-name>` with its type prefix's hyphen as a slash (`feat-onboarding` → `feat/onboarding`). Each later layer uses that branch plus `-<layer>`, with `<layer>` as `issues.md` writes it (`feat/onboarding-<layer-2>`), in its own worktree. Layers that share one issue use the first one's branch. "The layer's branch" below always means this name, never whichever branch of the change happens to exist.
