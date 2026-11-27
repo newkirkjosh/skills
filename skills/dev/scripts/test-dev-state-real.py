@@ -415,6 +415,65 @@ def main(script):
         f.state["issue_unavailable"] = True
         f.inspect(script, ["feat-example"], error="gh issue")
 
+    def merged_first_without_next_branch(f, handoff, keep_tree):
+        f.implementation(layers=("core", "ui"), issues="core: 11\nui: 12\n",
+                         contracts=f.contract("core"))
+        if handoff == "committed":
+            f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n")
+            f.commit("record first layer handoff")
+        f.trees = []
+        f.git("checkout", "-q", "--detach")
+        default_tree = f.temp / "default-worktree"
+        f.git("worktree", "add", "-q", str(default_tree), "main")
+        f.git("merge", "--squash", "feat/example", cwd=default_tree)
+        default_handoff = default_tree / "openspec/changes/feat-example/handoff.md"
+        if default_handoff.exists():
+            f.git("rm", "-q", "-f", "openspec/changes/feat-example/handoff.md", cwd=default_tree)
+        (default_tree / "openspec/changes/archive").mkdir(parents=True)
+        f.git("mv", "openspec/changes/feat-example", "openspec/changes/archive/feat-example",
+              cwd=default_tree)
+        merged = f.commit("squash first layer and archive", default_tree)
+        f.git("update-ref", "refs/remotes/origin/main", merged)
+        if keep_tree:
+            first_tree = f.temp / "first-worktree"
+            f.git("worktree", "add", "-q", str(first_tree), "feat/example")
+            f.tree("feat/example", first_tree)
+            if handoff == "uncommitted":
+                f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n",
+                        root=first_tree)
+        f.state["issues"] = {"11": "CLOSED", "12": "OPEN"}
+        f.pr("feat/example", "MERGED")
+
+    for handoff, keep_tree in ((None, False), (None, True),
+                               ("committed", False), ("committed", True),
+                               ("uncommitted", True)):
+        @test("B3: uncreated next layer with " + str(handoff) + " first-layer handoff and "
+              + ("retained" if keep_tree else "no") + " first-layer worktree")
+        def uncreated_next_layer(f, handoff=handoff, keep_tree=keep_tree):
+            merged_first_without_next_branch(f, handoff, keep_tree)
+            f.inspect(script, ["feat-example"],
+                      "Phase 6: Close-out" if keep_tree else "Phase 2: Implementation")
+
+    for variant in ("linear", "no layer headings", "incomplete map"):
+        @test("F1: unambiguous handoff precedes " + variant + " parsing")
+        def unambiguous_handoff_before_map(f, variant=variant):
+            f.implementation()
+            if variant == "linear":
+                f.write("openspec/changes/feat-example/issues.md", "catalog: ABC-12\n")
+            elif variant == "no layer headings":
+                f.write("openspec/changes/feat-example/tasks.md", "# Tasks\n- [ ] Implement\n")
+            else:
+                f.write("openspec/changes/feat-example/issues.md", "# Issue map pending\n")
+            f.write("openspec/changes/feat-example/handoff.md", "Resume requested check\n")
+            f.inspect(script, ["feat-example"], "Handoff: Resume requested check")
+
+    @test("F2: selected later snapshot missing issue map enters issue creation")
+    def selected_later_missing_issues(f):
+        later_layer(f)
+        (f.root / "openspec/changes/feat-example/issues.md").unlink()
+        f.commit("remove next layer issue map")
+        f.inspect(script, ["feat-example"], "Phase 1: Issue creation")
+
     failed = 0
     for name, function in tests:
         try:
