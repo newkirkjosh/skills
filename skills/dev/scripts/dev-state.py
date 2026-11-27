@@ -1,0 +1,514 @@
+"""Inspect existing dev state without executing any lifecycle action."""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+
+class EvidenceError(Exception):
+    pass
+
+
+def run(*args, optional=False, cwd=None):
+    env = dict(os.environ, GIT_OPTIONAL_LOCKS="0", GH_PROMPT_DISABLED="1")
+    result = subprocess.run(args, cwd=cwd, env=env, text=True, capture_output=True)
+    if result.returncode and not optional:
+        raise EvidenceError(f"unavailable evidence ({' '.join(args[:2])}): {result.stderr.strip()}")
+    return result
+
+
+def read_json(*args):
+    try:
+        return json.loads(run(*args).stdout)
+    except (ValueError, TypeError) as exc:
+        raise EvidenceError(f"unavailable JSON evidence: {args[0]}") from exc
+
+
+def section(text, layer):
+    headings = list(re.finditer(r"^##\s+:([^\s]+).*?$", text, re.M))
+    for i, match in enumerate(headings):
+        if match[1] == layer:
+            return text[match.end():headings[i + 1].start() if i + 1 < len(headings) else len(text)]
+    return None
+
+
+PR_FIELDS = "number,state,isDraft,headRefName,headRefOid,baseRefName,url,isCrossRepository,headRepository,headRepositoryOwner"
+
+
+def inspect(args):
+    root = Path(run("git", "rev-parse", "--show-toplevel").stdout.strip())
+
+    def git(*args, optional=False):
+        return run("git", *args, optional=optional, cwd=root)
+
+    common = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+    root_branch = git("symbolic-ref", "-q", "--short", "HEAD", optional=True).stdout.strip()
+    repo = read_json("gh", "repo", "view", "--json", "nameWithOwner,defaultBranchRef")
+    default = repo["defaultBranchRef"]["name"]
+    base = "origin/" + default
+    trees = read_json("wt", "list", "--format=json")
+    trees = trees["items"] if isinstance(trees, dict) else trees
+    # wt also lists branches without a worktree; those carry no worktree key.
+    trees = [t for t in trees if isinstance(t, dict) and (t.get("worktree") or {}).get("path")]
+    branches = git("for-each-ref", "--format=%(refname:short)", "refs/heads/").stdout.splitlines()
+    target = args.change
+    explicit_pr = target.isdigit() or bool(re.fullmatch(r"https://github\.com/[^/]+/[^/]+/pull/\d+", target))
+
+    def check_pr_repository(pr):
+        match = re.fullmatch(r"https://github\.com/([^/]+/[^/]+)/pull/\d+", pr["url"])
+        head_repo = pr.get("headRepository") or {}
+        owner = pr.get("headRepositoryOwner") or {}
+        identity = head_repo.get("nameWithOwner")
+        if not identity and owner.get("login") and head_repo.get("name"):
+            identity = owner["login"] + "/" + head_repo["name"]
+        if (not match or match[1].lower() != repo["nameWithOwner"].lower()
+                or pr.get("isCrossRepository")
+                or (identity and identity.lower() != repo["nameWithOwner"].lower())):
+            raise EvidenceError("PR repository does not match the inspected repository")
+
+    if target.startswith("https://") and explicit_pr:
+        if target.split("/pull/")[0].removeprefix("https://github.com/").lower() != repo["nameWithOwner"].lower():
+            raise EvidenceError("PR URL repository does not match the inspected repository")
+    target_pr = read_json("gh", "pr", "view", target, "--json", PR_FIELDS) if explicit_pr else None
+    if target_pr:
+        check_pr_repository(target_pr)
+        target = target_pr["headRefName"]
+    pr_lists = {}
+
+    def branch_prs(branch):
+        # Query per branch so pagination cannot silently hide a matching PR.
+        if branch not in pr_lists:
+            found = read_json("gh", "pr", "list", "--head", branch, "--state", "all", "--limit", "100", "--json", PR_FIELDS)
+            if len(found) >= 100:
+                raise EvidenceError("unavailable complete PR evidence: result limit reached")
+            kept = []
+            for pr in found:
+                try:
+                    check_pr_repository(pr)
+                except EvidenceError:
+                    continue  # --head also returns same-name heads in forks.
+                kept.append(pr)
+            pr_lists[branch] = kept
+        return pr_lists[branch]
+
+    remote_heads = {}
+
+    def head_ref(branch):
+        # A local branch wins; otherwise an open PR's head may be read from the
+        # existing remote-tracking ref, but only when it matches that PR head.
+        if branch in branches:
+            return "refs/heads/" + branch
+        if branch not in remote_heads:
+            open_prs = {p["number"]: p for p in branch_prs(branch) if p["state"] == "OPEN"}
+            if target_pr and target_pr["state"] == "OPEN" and target_pr["headRefName"] == branch:
+                open_prs[target_pr["number"]] = target_pr
+            ref = None
+            if len(open_prs) > 1:
+                raise EvidenceError("ambiguous open PR evidence")
+            if open_prs:
+                pr = next(iter(open_prs.values()))
+                tracked = git("rev-parse", "--verify", "-q", "refs/remotes/origin/" + branch + "^{commit}", optional=True)
+                if tracked.returncode or tracked.stdout.strip() != pr["headRefOid"]:
+                    raise EvidenceError("unavailable PR head: no local branch or matching remote-tracking ref for " + branch)
+                ref = "refs/remotes/origin/" + branch
+            remote_heads[branch] = ref
+        return remote_heads[branch]
+
+    if "/" in target:
+        if not re.fullmatch(r"[a-z0-9-]+/[a-z0-9-]+", target):
+            raise EvidenceError("unsupported branch name")
+        stem_branch = target
+        change = target.replace("/", "-", 1)
+    else:
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)+", target):
+            raise EvidenceError("invalid change name")
+        change = target
+        stem_branch = target.replace("-", "/", 1)
+
+    # A folder is associated with a branch by an exact name, a declared layer,
+    # or verified legacy artifacts on that branch itself. Prefixes alone are
+    # insufficient: feat/example-extra may be an entirely separate change.
+    files = ("scope-brief.md", "proposal.md", "tasks.md", "issues.md", "sprint-contract.md", "handoff.md")
+
+    def load_folder(name, sources):
+        for directory, ref in sources:
+            for prefix in ("openspec/changes/", "openspec/changes/archive/"):
+                candidate = prefix + name
+                loaded = {}
+                for filename in files:
+                    if directory is not None:
+                        path = directory / candidate / filename
+                        loaded[filename] = path.read_text() if path.is_file() else None
+                    else:
+                        result = git("show", f"{ref}:{candidate}/{filename}", optional=True)
+                        loaded[filename] = result.stdout if result.returncode == 0 else None
+                if loaded["scope-brief.md"] is not None or (loaded["proposal.md"] is not None and loaded["tasks.md"] is not None):
+                    return candidate, loaded
+        return None, {}
+
+    def branch_sources(branch):
+        ref = head_ref(branch)
+        return ([(Path(t["worktree"]["path"]), None) for t in trees if t.get("branch") == branch]
+                + ([(None, ref)] if ref else []))
+
+    def owns_legacy_folder(name, branch):
+        candidate, artifacts = load_folder(name, branch_sources(branch))
+        if not candidate:
+            return False
+        # Compare with what this branch inherited, not today's default tip:
+        # default-only archive edits must not confer ownership, and a squash
+        # merge must not erase the retained branch's original ownership.
+        ref = head_ref(branch)
+        if not ref:
+            raise EvidenceError("unavailable branch ancestry")
+        inherited = git("merge-base", base, ref).stdout.strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", inherited):
+            raise EvidenceError("unavailable branch ancestry")
+        # Include uncommitted artifacts from the matching worktree.
+        for filename, value in artifacts.items():
+            previous = git("show", f"{inherited}:{candidate}/{filename}", optional=True)
+            before = previous.stdout if previous.returncode == 0 else None
+            if value != before:
+                return True
+        return False
+
+    names = set()
+    directories = {root} | {Path(t["worktree"]["path"]) for t in trees}
+    for directory in directories:
+        path = directory / "openspec/changes"
+        if path.is_dir():
+            names.update(p.name for p in path.iterdir() if p.is_dir() and p.name != "archive")
+            if (path / "archive").is_dir():
+                names.update(p.name for p in (path / "archive").iterdir() if p.is_dir())
+    # Discover archived folders on the existing default ref; never fetch.
+    remote_paths = git("ls-tree", "-r", "--name-only", base, "--", "openspec/changes").stdout.splitlines()
+    for path in remote_paths:
+        match = re.match(r"openspec/changes/(?:archive/)?([^/]+)/", path)
+        if match:
+            names.add(match[1])
+    # Include branch snapshots when the worktree and default archive are absent.
+    if "/" in target and head_ref(stem_branch):
+        for path in git("ls-tree", "-r", "--name-only", head_ref(stem_branch), "--", "openspec/changes", optional=True).stdout.splitlines():
+            match = re.match(r"openspec/changes/(?:archive/)?([^/]+)/", path)
+            if match:
+                names.add(match[1])
+    if "/" in target and not load_folder(change, branch_sources(stem_branch))[0]:
+        matching = []
+        for name in names:
+            canonical_name = name.replace("-", "/", 1)
+            verified, artifacts = load_folder(name, branch_sources(stem_branch))
+            on_branch = bool(verified)
+            if not verified and target.startswith(canonical_name + "-"):
+                # A declared layer branch may lack the folder (absent, or fresh
+                # from the default branch): verify the declaration on the
+                # first-layer branch, then the default ref. Never for ownership.
+                verified, artifacts = load_folder(name, branch_sources(canonical_name) + [(None, base)])
+            if not verified:
+                continue
+            declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", artifacts["tasks.md"] or "", re.M)
+            if (target in {canonical_name + "-" + layer for layer in declared}
+                    or (on_branch and name.partition("-")[2] == target.partition("/")[2]
+                        and owns_legacy_folder(name, stem_branch))):
+                matching.append(name)
+        if len(matching) > 1:
+            raise EvidenceError("ambiguous change folder")
+        if matching:
+            change = matching[0]
+    canonical = change.replace("-", "/", 1)
+    # Folder input can resolve a legacy fix branch only when that branch really
+    # contains this verified folder, rather than borrowing it from the caller.
+    if "/" not in target and not head_ref(canonical):
+        legacy = [b for b in branches if b.partition("/")[2] == change.partition("-")[2]
+                  and owns_legacy_folder(change, b)]
+        if len(legacy) > 1:
+            raise EvidenceError("ambiguous change branch")
+        if legacy:
+            stem_branch = legacy[0]
+    initial_sources = branch_sources(stem_branch)
+    for branch in branches:
+        if branch == stem_branch or not branch.startswith(canonical + "-"):
+            continue
+        verified, artifacts = load_folder(change, branch_sources(branch))
+        declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", artifacts.get("tasks.md") or "", re.M)
+        if verified and branch in {canonical + "-" + layer for layer in declared}:
+            initial_sources.extend(branch_sources(branch))
+    initial_sources += [(root, None), (None, base)]
+    folder, contents = load_folder(change, initial_sources)
+    declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents.get("tasks.md") or "", re.M)
+    allowed = {canonical, stem_branch} | {canonical + "-" + layer for layer in declared}
+    relevant = sorted(b for b in allowed if head_ref(b))
+    relevant_trees = [t for t in trees if t.get("branch") in allowed]
+
+    journal = common / "team/changes" / change / "sync-progress"
+    if journal.is_file() and not re.search(r"^handed-off\s+\S+", journal.read_text(), re.M):
+        raise EvidenceError("sync interrupted: unfinished journal")
+    for tree in relevant_trees:
+        if git("-C", tree["worktree"]["path"], "rev-parse", "-q", "--verify", "MERGE_HEAD", optional=True).returncode == 0:
+            raise EvidenceError("sync interrupted: merge in progress")
+
+    prs = [pr for branch in relevant or [stem_branch] for pr in branch_prs(branch)]
+    if target_pr and all(p["number"] != target_pr["number"] for p in prs):
+        prs.append(target_pr)
+    for branch in {p["headRefName"] for p in prs}:
+        if sum(p["state"] == "OPEN" and p["headRefName"] == branch for p in prs) > 1:
+            raise EvidenceError("ambiguous open PR evidence")
+
+    # Prefer the requested branch, then the other verified layer branches;
+    # invoking-checkout artifacts are only a fallback after branch snapshots.
+    ordered = [stem_branch] + [b for b in relevant if b != stem_branch]
+    sources = [source for branch in ordered for source in branch_sources(branch)]
+    folder, contents = load_folder(change, sources + [(root, None), (None, base)])
+
+    def resolve_playbook():
+        if not folder:
+            return "unresolved"
+        brief = contents["scope-brief.md"] or ""
+        # Capture every present field before validating its whole value. Requiring
+        # a valid-looking value here would silently turn malformed records into
+        # legacy briefs and select a different playbook from the branch prefix.
+        values = []
+        for line in brief.splitlines():
+            field = re.match(r"^[ \t]*(?:[-*+]\s+)?(?:\*\*)?Playbook(?:\*\*)?:(?:\*\*)?[ \t]*(.*)$", line)
+            if field:
+                values.append(field[1].strip())
+        if values and (len(set(values)) != 1 or values[0] not in ("bug-fix", "change")):
+            raise EvidenceError("unsupported or conflicting recorded playbook")
+        return values[0] if values else ("bug-fix" if stem_branch.startswith("fix/") else "change")
+
+    playbook = resolve_playbook()
+
+    def done(step):
+        print("Playbook: " + playbook)
+        print("Step: " + step)
+
+    def layer_mapping():
+        mappings = {}
+        for line in contents["issues.md"].splitlines():
+            # GitHub's producer writes layer: number; older fixtures and artifacts
+            # also use :layer: #number. Both identify the same GitHub issue.
+            match = re.match(r"^\s*:?([a-z0-9-]+):\s*#?(\d+)\s*$", line)
+            if match:
+                if match[1] in ("parent", "epic"):
+                    continue
+                if match[1] in mappings and mappings[match[1]] != match[2]:
+                    raise EvidenceError("conflicting layer issue mapping")
+                mappings[match[1]] = match[2]
+            elif re.match(r"^\s*:?[a-z0-9-]+:\s*", line) and not re.match(r"^\s*(?:parent|epic):", line):
+                raise EvidenceError("unavailable tracker evidence: only GitHub numeric issue mappings are supported")
+        layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents["tasks.md"] or "", re.M)
+        if not layers or any(layer not in mappings for layer in layers):
+            raise EvidenceError("unavailable layer issue mapping")
+        return mappings, layers
+
+    def layer_evidence():
+        mappings, layers = layer_mapping()
+        states = {}
+        for issue in set(mappings.values()):
+            state = read_json("gh", "issue", "view", issue, "--json", "state")["state"]
+            if state not in ("OPEN", "CLOSED"):
+                raise EvidenceError("unavailable tracker state")
+            states[issue] = state
+        return mappings, layers, states
+
+    def select_unit(mappings, layers, states):
+        selected = next((layer for layer in layers if states[mappings[layer]] == "OPEN"), None)
+        if selected is None:
+            return None, []
+        unit = [layer for layer in layers if mappings[layer] == mappings[selected]]
+        first = min(layers.index(layer) for layer in unit)
+        branch = canonical if first == 0 else canonical + "-" + layers[first]
+        if first == 0 and stem_branch in relevant and canonical not in relevant:
+            branch = stem_branch
+        return branch, unit
+
+    def load_selected(branch):
+        nonlocal folder, contents, playbook
+        # Discovery may use an older issue map, but evaluation belongs to the
+        # selected unit, including every section sharing its issue.
+        # Branch-scoped artifacts (handoff, contracts) come only from the
+        # selected branch's own snapshot or the default ref, never from the
+        # invoking checkout of another branch or an earlier layer. Without such
+        # a snapshot, keep the discovered folder and its shared setup artifacts.
+        own_root = [(root, None)] if root_branch == branch else []
+        selected_folder, selected_contents = load_folder(change, branch_sources(branch) + [(None, base)] + own_root)
+        if not selected_folder and folder:
+            selected_folder = folder
+            selected_contents = dict(contents, **{"handoff.md": None, "sprint-contract.md": None})
+        folder, contents = selected_folder, selected_contents
+        playbook = resolve_playbook()
+
+    def selected_evidence():
+        # Discovery identifies the next unit; its own snapshot then governs
+        # handoff, issue mapping and contracts. Re-select if that map changed.
+        visited = set()
+        while True:
+            mappings, layers, states = layer_evidence()
+            branch, unit = select_unit(mappings, layers, states)
+            if branch is None or branch in visited:
+                return mappings, layers, states, branch, unit
+            visited.add(branch)
+            load_selected(branch)
+            # Missing selected-unit setup artifacts are entry-table evidence,
+            # not permission to parse an earlier unit's issue map.
+            if not folder or contents.get("scope-brief.md") is None or contents.get("issues.md") is None:
+                return mappings, layers, states, branch, unit
+            selected_layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents.get("tasks.md") or "", re.M)
+            if contents.get("handoff.md") and len(selected_layers) <= 1:
+                return mappings, layers, states, branch, unit
+            fresh = layer_evidence()
+            selected, unit = select_unit(*fresh)
+            if selected == branch:
+                return *fresh, branch, unit
+            if selected in visited:
+                raise EvidenceError("unavailable consistent layer selection")
+
+    if args.reevaluate_head:
+        branch = stem_branch
+        if "/" not in target and contents.get("issues.md") is not None:
+            _, _, _, selected_branch, _ = selected_evidence()
+            if selected_branch is not None:
+                branch = selected_branch
+        ref = head_ref(branch)
+        head = git("rev-parse", ref, optional=True) if ref else None
+        if not head or head.returncode or head.stdout.strip() != args.reevaluate_head:
+            raise EvidenceError("head mismatch")
+        return done("Phase 3: Evaluation (fresh evaluator)")
+    if args.sync_pr:
+        pr = read_json("gh", "pr", "view", args.sync_pr, "--json", PR_FIELDS)
+        check_pr_repository(pr)
+        branch = pr["headRefName"]
+        ref = head_ref(branch) if branch in relevant else None
+        head = git("rev-parse", ref, optional=True) if ref else None
+        if (pr["state"] != "OPEN" or pr["baseRefName"] != default or pr["headRefOid"] != args.expected_head
+                or not head or head.returncode or head.stdout.strip() != args.expected_head):
+            raise EvidenceError("sync interrupted: PR or local head changed")
+        for tree in relevant_trees:
+            if tree.get("branch") == branch and git("-C", tree["worktree"]["path"], "status", "--porcelain").stdout.strip():
+                raise EvidenceError("sync needs a clean worktree")
+        return done("Requested sync")
+    def early_entry():
+        if contents.get("handoff.md"):
+            return "Handoff: " + contents["handoff.md"].strip().replace("\n", " ")
+        if not folder:
+            return "Reconstruct change folder" if relevant or prs or relevant_trees else "Phase 0: Scope Brief and OpenSpec setup"
+        if contents["scope-brief.md"] is None:
+            return "Reconstruct Scope Brief"
+        if contents["issues.md"] is None:
+            return "Phase 1: Issue creation"
+        if any(p["state"] == "MERGED" and p["headRefName"] in {t["branch"] for t in relevant_trees} for p in prs):
+            return "Phase 6: Close-out"
+
+    selected = None
+    # Handoff precedes every table row, but a retained earlier layer cannot
+    # supply the selected unit's handoff. A shared unit needs no tracker state
+    # to identify its branch; distinct units still require open-issue evidence.
+    handoff_present = contents.get("handoff.md") or any(
+        load_folder(change, branch_sources(branch))[1].get("handoff.md")
+        for branch in relevant
+    )
+    if (handoff_present and len(declared) > 1
+            and contents.get("issues.md") is not None and contents.get("tasks.md") is not None):
+        mappings, layers = layer_mapping()
+        if len({mappings[layer] for layer in layers}) == 1:
+            branch, _ = select_unit(mappings, layers, {issue: "OPEN" for issue in mappings.values()})
+            load_selected(branch)
+            if contents.get("issues.md") is not None and contents.get("tasks.md") is not None:
+                mappings, layers = layer_mapping()
+                if len({mappings[layer] for layer in layers}) != 1:
+                    selected = selected_evidence()
+        else:
+            selected = selected_evidence()
+    step = early_entry()
+    if step:
+        return done(step)
+
+    mappings, layers, states, branch, unit = selected or selected_evidence()
+    step = early_entry()
+    if step:
+        return done(step)
+    if all(states[mappings[layer]] == "CLOSED" for layer in layers):
+        return done("Phase 6: Cleanup")
+    ref = head_ref(branch) if branch else None
+    if not ref or not git("diff", "--stat", base + "..." + ref, "--", ".", ":!openspec/changes").stdout.strip():
+        return done("Phase 2: Implementation")
+    pr = next((p for p in prs if p["headRefName"] == branch and p["state"] == "OPEN"), None)
+    # One shared issue is evaluated as a unit across every layer section.
+    sections = [section(contents["sprint-contract.md"] or "", layer) for layer in unit]
+    if any(s is None for s in sections):
+        return done("Phase 3: Evaluation (start)")
+    checked = all(re.search(r"^- \[[xX]\]", s, re.M) and not re.search(r"^- \[ \]", s, re.M) for s in sections)
+    if not checked:
+        return done("Phase 3: Evaluation (fix pass)" if not pr or pr["isDraft"] else "Phase 5: Re-evaluation")
+    evaluated = []
+    for s in sections:
+        match = re.search(r"^Evaluated at:\s*([0-9a-f]{40})\s*$", s, re.M)
+        if not match:
+            return done("Phase 3: Evaluation (fresh evaluator)")
+        ancestry = git("merge-base", "--is-ancestor", match[1], ref, optional=True)
+        if ancestry.returncode == 1:
+            return done("Phase 3: Evaluation (fresh evaluator)")
+        if ancestry.returncode:
+            raise EvidenceError("unavailable evaluation ancestry")
+        evaluated.append(match[1])
+    if any(not re.search(r"^Cross-review:\s*\S", s, re.M) for s in sections):
+        return done("Phase 4: Cross-model review")
+    classify = "Phase 4 steps 4–5, then Phase 5"
+    if not pr or "/archive/" not in folder:
+        return done(classify)
+    ledger = Path(args.ledger).read_text() if args.ledger else ""
+    # Accept the continuity reference's inline record and section records,
+    # keyed by full or abbreviated (7+ hex) commit SHAs.
+    hex_token = r"(?<![0-9A-Za-z])([0-9a-f]{7,40})(?![0-9A-Za-z])"
+    ledger_records = []
+    for line in re.finditer(r"^(.*?)\bbehavioral:\s*(yes|no)\b", ledger, re.M):
+        ledger_records.extend((token, line[2]) for token in re.findall(hex_token, line[1]))
+    for block in re.finditer(r"^##\s+([0-9a-f]{7,40})\s*\n(.*?)(?=^## |\Z)", ledger, re.M | re.S):
+        ledger_records.extend((block[1], value) for value in re.findall(r"^behavioral:\s*(yes|no)\b", block[2], re.M))
+    resolved = {}
+
+    def unique_prefix(token, commit):
+        # An abbreviation counts only if it resolves to exactly this commit.
+        if len(token) == 40:
+            return True
+        if token not in resolved:
+            result = git("rev-parse", "--verify", "-q", token + "^{commit}", optional=True)
+            resolved[token] = result.stdout.strip() if result.returncode == 0 else None
+        return resolved[token] == commit
+
+    for sha in evaluated:
+        later = git("rev-list", sha + ".." + ref, "--not", base).stdout.splitlines()
+        for commit in later:
+            records = [value if unique_prefix(token, commit) else "ambiguous"
+                       for token, value in ledger_records if commit.startswith(token)]
+            if not records or any(record != "no" for record in records):
+                return done(classify)
+    return done("Phase 5: Completion")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("change", help="change name, branch, PR number or GitHub PR URL")
+    parser.add_argument("--reevaluate-head")
+    parser.add_argument("--sync-pr")
+    parser.add_argument("--expected-head")
+    parser.add_argument("--default-sha")
+    parser.add_argument("--ledger", help="existing durable review ledger (read only)")
+    args = parser.parse_args()
+    if any((args.sync_pr, args.expected_head, args.default_sha)) and not all((args.sync_pr, args.expected_head, args.default_sha)):
+        parser.error("sync requires --sync-pr, --expected-head and --default-sha")
+    for sha in (args.reevaluate_head, args.expected_head, args.default_sha):
+        if sha and not re.fullmatch(r"[0-9a-f]{40}", sha):
+            parser.error("heads must be full lowercase commit SHAs")
+    try:
+        inspect(args)
+    except (EvidenceError, OSError, KeyError, TypeError) as exc:
+        print("dev-state: " + str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
