@@ -109,6 +109,19 @@ def inspect(args):
         return ([(Path(t["worktree"]["path"]), None) for t in trees if t.get("branch") == branch]
                 + [(None, branch)])
 
+    def owns_legacy_folder(name, branch):
+        candidate, artifacts = load_folder(name, branch_sources(branch))
+        if not candidate:
+            return False
+        # Merely inheriting an archive from default does not associate an
+        # unrelated same-slug branch. Include uncommitted worktree artifacts.
+        for filename, value in artifacts.items():
+            previous = git("show", f"{base}:{candidate}/{filename}", optional=True)
+            before = previous.stdout if previous.returncode == 0 else None
+            if value != before:
+                return True
+        return False
+
     names = set()
     directories = {root} | {Path(t["worktree"]["path"]) for t in trees}
     for directory in directories:
@@ -138,7 +151,8 @@ def inspect(args):
                 continue
             declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", artifacts["tasks.md"] or "", re.M)
             if (target in {canonical_name + "-" + layer for layer in declared}
-                    or name.partition("-")[2] == target.partition("/")[2]):
+                    or (name.partition("-")[2] == target.partition("/")[2]
+                        and owns_legacy_folder(name, stem_branch))):
                 matching.append(name)
         if len(matching) > 1:
             raise EvidenceError("ambiguous change folder")
@@ -149,7 +163,7 @@ def inspect(args):
     # contains this verified folder, rather than borrowing it from the caller.
     if "/" not in target and canonical not in branches:
         legacy = [b for b in branches if b.partition("/")[2] == change.partition("-")[2]
-                  and load_folder(change, branch_sources(b))[0]]
+                  and owns_legacy_folder(change, b)]
         if len(legacy) > 1:
             raise EvidenceError("ambiguous change branch")
         if legacy:
@@ -183,8 +197,11 @@ def inspect(args):
         if len(found) >= 100:
             raise EvidenceError("unavailable complete PR evidence: result limit reached")
         for pr in found:
-            check_pr_repository(pr)
-        prs.extend(found)
+            try:
+                check_pr_repository(pr)
+            except EvidenceError:
+                continue  # --head also returns same-name heads in forks.
+            prs.append(pr)
     if target_pr and all(p["number"] != target_pr["number"] for p in prs):
         prs.append(target_pr)
     for branch in {p["headRefName"] for p in prs}:
@@ -197,8 +214,9 @@ def inspect(args):
     sources = [source for branch in ordered for source in branch_sources(branch)]
     folder, contents = load_folder(change, sources + [(root, None), (None, base)])
 
-    playbook = "unresolved"
-    if folder:
+    def resolve_playbook():
+        if not folder:
+            return "unresolved"
         brief = contents["scope-brief.md"] or ""
         # Capture every present field before validating its whole value. Requiring
         # a valid-looking value here would silently turn malformed records into
@@ -210,7 +228,9 @@ def inspect(args):
                 values.append(field[1].strip())
         if values and (len(set(values)) != 1 or values[0] not in ("bug-fix", "change")):
             raise EvidenceError("unsupported or conflicting recorded playbook")
-        playbook = values[0] if values else ("bug-fix" if stem_branch.startswith("fix/") else "change")
+        return values[0] if values else ("bug-fix" if stem_branch.startswith("fix/") else "change")
+
+    playbook = resolve_playbook()
 
     def done(step):
         print("Playbook: " + playbook)
@@ -241,15 +261,34 @@ def inspect(args):
             states[issue] = state
         return mappings, layers, states
 
+    def select_unit(mappings, layers, states):
+        selected = next((layer for layer in layers if states[mappings[layer]] == "OPEN"), None)
+        if selected is None:
+            return None, []
+        unit = [layer for layer in layers if mappings[layer] == mappings[selected]]
+        first = min(layers.index(layer) for layer in unit)
+        branch = canonical if first == 0 else canonical + "-" + layers[first]
+        if first == 0 and stem_branch in relevant and canonical not in relevant:
+            branch = stem_branch
+        return branch, unit
+
+    def load_selected(branch):
+        nonlocal folder, contents, playbook
+        # Discovery may use an older issue map, but evaluation belongs to the
+        # selected unit, including every section sharing its issue.
+        selected_folder, selected_contents = load_folder(change, branch_sources(branch))
+        if selected_folder:
+            folder, contents = selected_folder, selected_contents
+            playbook = resolve_playbook()
+
     if args.reevaluate_head:
         branch = stem_branch
         if "/" not in target and contents.get("issues.md") is not None:
             mappings, layers, states = layer_evidence()
-            selected = next((layer for layer in layers if states[mappings[layer]] == "OPEN"), None)
-            if selected is not None:
-                first = next(i for i, layer in enumerate(layers) if mappings[layer] == mappings[selected])
-                if first:
-                    branch = canonical + "-" + layers[first]
+            selected_branch, _ = select_unit(mappings, layers, states)
+            if selected_branch is not None:
+                branch = selected_branch
+                load_selected(branch)
         head = git("rev-parse", "refs/heads/" + branch, optional=True)
         if head.returncode or head.stdout.strip() != args.reevaluate_head:
             raise EvidenceError("head mismatch")
@@ -280,12 +319,8 @@ def inspect(args):
     mappings, layers, states = layer_evidence()
     if all(states[mappings[layer]] == "CLOSED" for layer in layers):
         return done("Phase 6: Cleanup")
-    selected = next(layer for layer in layers if states[mappings[layer]] == "OPEN")
-    unit = [layer for layer in layers if mappings[layer] == mappings[selected]]
-    first = min(layers.index(layer) for layer in unit)
-    branch = canonical if first == 0 else canonical + "-" + layers[first]
-    if first == 0 and stem_branch in relevant and canonical not in relevant:
-        branch = stem_branch
+    branch, unit = select_unit(mappings, layers, states)
+    load_selected(branch)
     if branch not in branches or not git("diff", "--stat", base + "..." + branch, "--", ".", ":!openspec/changes").stdout.strip():
         return done("Phase 2: Implementation")
     pr = next((p for p in prs if p["headRefName"] == branch and p["state"] == "OPEN"), None)
