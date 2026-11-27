@@ -380,6 +380,41 @@ def main(script):
         routed = f.inspect(script, ["feat-example"], CLASSIFY)
         assert routed == selected, "stale first-layer handoff displaced selected UI route"
 
+    @test("D1: missing brief reconstructs before unavailable tracker evidence")
+    def missing_brief_before_tracker(f):
+        f.implementation()
+        (f.root / "openspec/changes/feat-example/scope-brief.md").unlink()
+        f.state["issue_unavailable"] = True
+        f.inspect(script, ["feat-example"], "Reconstruct Scope Brief")
+
+    @test("D1: missing issue map enters issue creation with unavailable tracker")
+    def missing_issues_before_tracker(f):
+        f.implementation()
+        (f.root / "openspec/changes/feat-example/issues.md").unlink()
+        f.state["issue_unavailable"] = True
+        f.inspect(script, ["feat-example"], "Phase 1: Issue creation")
+
+    @test("D1: merged branch closes out before unavailable tracker evidence")
+    def merged_before_tracker(f):
+        f.implementation()
+        f.pr(state="MERGED")
+        f.state["issue_unavailable"] = True
+        f.inspect(script, ["feat-example"], "Phase 6: Close-out")
+
+    @test("D1: unambiguous unit handoff precedes unavailable tracker evidence")
+    def single_unit_handoff_before_tracker(f):
+        f.implementation()
+        f.write("openspec/changes/feat-example/handoff.md", "Resume requested check\n")
+        f.state["issue_unavailable"] = True
+        f.inspect(script, ["feat-example"], "Handoff: Resume requested check")
+
+    @test("D1: unavailable tracker cannot select among distinct layer handoffs")
+    def ambiguous_unit_handoff_needs_tracker(f):
+        later_layer(f)
+        f.write("openspec/changes/feat-example/handoff.md", "Resume UI check\n")
+        f.state["issue_unavailable"] = True
+        f.inspect(script, ["feat-example"], error="gh issue")
+
     failed = 0
     for name, function in tests:
         try:
