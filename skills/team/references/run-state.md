@@ -38,7 +38,7 @@ Write a hold, and stop that change, whenever its state can't be proven clean:
 - **A worker or any role it started that the host can't show as stopped**, after a stop was requested.
 - **A merge intent that isn't retired** (below).
 - **A sync that is pending, conflicted, or doesn't match its record.**
-- **A permission prompt left unanswered** past its deadline.
+- **A verified waiting permission prompt left unanswered** past its deadline; an actually observed pending prompt verifies waiting for that request on the current delegation path (dev's host adapter, Background permission results). An immediate rejection follows the worker's `BLOCKED` handoff and normal finalization checks without a prompt timeout; write a hold if worker/role termination or cleanup remains unverified. Unknown host behavior proves no waiting prompt.
 
 ## Merge intent
 
