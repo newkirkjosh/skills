@@ -8,7 +8,11 @@ bash <skill-dir>/scripts/dev-state.sh <change|branch|PR-number|PR-URL>
 
 The helper prints `Playbook: change|bug-fix|unresolved` and `Step: <entry label>`. It follows `playbook-pickup.md` and `lifecycle.md` in order, including interrupted sync, explicit team requests and handoff precedence. It reports reconstruction without doing it. A missing verified folder leaves the playbook unresolved until reconstruction. A recorded playbook wins over the branch prefix; blank, unsupported or conflicting records stop with a nonzero exit, including fields in Markdown bullets or bold labels. Branch-prefix fallback applies only when the field is absent.
 
+Results are independent of the invoking subdirectory. The requested branch's worktree and committed artifacts precede artifacts in the invoking checkout. A shared name prefix does not associate sibling changes: layer suffixes must name a declared task layer, and a legacy folder with a different type prefix must be verified in the selected branch or its worktree. Folder input also discovers such verified legacy branches, so its branch-prefix fallback matches branch input. PR URLs and head repository metadata must identify the inspected repository.
+
 To inspect an explicit team re-invocation, add `--reevaluate-head <full-sha>` or `--sync-pr <number> --expected-head <full-sha> --default-sha <full-sha>`. These only report the selected entry. Re-evaluation takes precedence over sync. A missing worktree is never recreated; sync cleanliness cannot be inspected there until the lifecycle recreates it.
+
+For folder input, re-evaluation checks the first open layer unit's branch head. Layers sharing an issue use one branch, with every layer's contract section included in evaluation detection; a missing section starts evaluation and an unchecked section selects the fix or re-evaluation entry.
 
 Supply `--ledger <existing-path>` to read the durable review ledger from the location recorded at handoff (`cross-review`'s review-continuity reference). The helper does not assume a machine-specific ledger layout. Missing classifications select Phase 4 steps 4–5. `Phase 5: Completion` means the entry table selected completion; it does not certify merge readiness or converged review.
 

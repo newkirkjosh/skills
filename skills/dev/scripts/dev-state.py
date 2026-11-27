@@ -35,22 +35,43 @@ def section(text, layer):
     return None
 
 
-PR_FIELDS = "number,state,isDraft,headRefName,headRefOid,baseRefName,url"
+PR_FIELDS = "number,state,isDraft,headRefName,headRefOid,baseRefName,url,isCrossRepository,headRepository,headRepositoryOwner"
 
 
 def inspect(args):
     root = Path(run("git", "rev-parse", "--show-toplevel").stdout.strip())
-    common = Path(run("git", "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+
+    def git(*args, optional=False):
+        return run("git", *args, optional=optional, cwd=root)
+
+    common = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
     repo = read_json("gh", "repo", "view", "--json", "nameWithOwner,defaultBranchRef")
     default = repo["defaultBranchRef"]["name"]
     base = "origin/" + default
     trees = read_json("wt", "list", "--format=json")
     trees = trees["items"] if isinstance(trees, dict) else trees
-    branches = run("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/").stdout.splitlines()
+    branches = git("for-each-ref", "--format=%(refname:short)", "refs/heads/").stdout.splitlines()
     target = args.change
     explicit_pr = target.isdigit() or bool(re.fullmatch(r"https://github\.com/[^/]+/[^/]+/pull/\d+", target))
+
+    def check_pr_repository(pr):
+        match = re.fullmatch(r"https://github\.com/([^/]+/[^/]+)/pull/\d+", pr["url"])
+        head_repo = pr.get("headRepository") or {}
+        owner = pr.get("headRepositoryOwner") or {}
+        identity = head_repo.get("nameWithOwner")
+        if not identity and owner.get("login") and head_repo.get("name"):
+            identity = owner["login"] + "/" + head_repo["name"]
+        if (not match or match[1].lower() != repo["nameWithOwner"].lower()
+                or pr.get("isCrossRepository")
+                or (identity and identity.lower() != repo["nameWithOwner"].lower())):
+            raise EvidenceError("PR repository does not match the inspected repository")
+
+    if target.startswith("https://") and explicit_pr:
+        if target.split("/pull/")[0].removeprefix("https://github.com/").lower() != repo["nameWithOwner"].lower():
+            raise EvidenceError("PR URL repository does not match the inspected repository")
     target_pr = read_json("gh", "pr", "view", target, "--json", PR_FIELDS) if explicit_pr else None
     if target_pr:
+        check_pr_repository(target_pr)
         target = target_pr["headRefName"]
     if "/" in target:
         if not re.fullmatch(r"[a-z0-9-]+/[a-z0-9-]+", target):
@@ -63,7 +84,31 @@ def inspect(args):
         change = target
         stem_branch = target.replace("-", "/", 1)
 
-    # A layer branch may name a folder whose first layer uses the unsuffixed branch.
+    # A folder is associated with a branch by an exact name, a declared layer,
+    # or verified legacy artifacts on that branch itself. Prefixes alone are
+    # insufficient: feat/example-extra may be an entirely separate change.
+    files = ("scope-brief.md", "proposal.md", "tasks.md", "issues.md", "sprint-contract.md", "handoff.md")
+
+    def load_folder(name, sources):
+        for directory, ref in sources:
+            for prefix in ("openspec/changes/", "openspec/changes/archive/"):
+                candidate = prefix + name
+                loaded = {}
+                for filename in files:
+                    if directory is not None:
+                        path = directory / candidate / filename
+                        loaded[filename] = path.read_text() if path.is_file() else None
+                    else:
+                        result = git("show", f"{ref}:{candidate}/{filename}", optional=True)
+                        loaded[filename] = result.stdout if result.returncode == 0 else None
+                if loaded["scope-brief.md"] is not None or (loaded["proposal.md"] is not None and loaded["tasks.md"] is not None):
+                    return candidate, loaded
+        return None, {}
+
+    def branch_sources(branch):
+        return ([(Path(t["worktree"]["path"]), None) for t in trees if t.get("branch") == branch]
+                + [(None, branch)])
+
     names = set()
     directories = {root} | {Path(t["worktree"]["path"]) for t in trees}
     for directory in directories:
@@ -73,33 +118,62 @@ def inspect(args):
             if (path / "archive").is_dir():
                 names.update(p.name for p in (path / "archive").iterdir() if p.is_dir())
     # Discover archived folders on the existing default ref; never fetch.
-    remote_paths = run("git", "ls-tree", "-r", "--name-only", base, "--", "openspec/changes").stdout.splitlines()
+    remote_paths = git("ls-tree", "-r", "--name-only", base, "--", "openspec/changes").stdout.splitlines()
     for path in remote_paths:
         match = re.match(r"openspec/changes/(?:archive/)?([^/]+)/", path)
         if match:
             names.add(match[1])
-    matching = [name for name in names if target == name or target == name.replace("-", "/", 1)
-                or target.startswith(name.replace("-", "/", 1) + "-")]
-    # A legacy folder may retain its type prefix after the branch type changed.
-    if len(matching) == 1:
-        change = matching[0]
-    elif len(matching) > 1:
-        change = max(matching, key=len)
-    elif "/" in target:
-        legacy = [name for name in names if name.partition("-")[2] == target.partition("/")[2]]
-        if len(legacy) > 1:
+    # Include branch snapshots when the worktree and default archive are absent.
+    if "/" in target:
+        for path in git("ls-tree", "-r", "--name-only", stem_branch, "--", "openspec/changes", optional=True).stdout.splitlines():
+            match = re.match(r"openspec/changes/(?:archive/)?([^/]+)/", path)
+            if match:
+                names.add(match[1])
+    if "/" in target and not load_folder(change, branch_sources(stem_branch))[0]:
+        matching = []
+        for name in names:
+            canonical_name = name.replace("-", "/", 1)
+            verified, artifacts = load_folder(name, branch_sources(stem_branch))
+            if not verified:
+                continue
+            declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", artifacts["tasks.md"] or "", re.M)
+            if (target in {canonical_name + "-" + layer for layer in declared}
+                    or name.partition("-")[2] == target.partition("/")[2]):
+                matching.append(name)
+        if len(matching) > 1:
             raise EvidenceError("ambiguous change folder")
-        if legacy:
-            change = legacy[0]
+        if matching:
+            change = matching[0]
     canonical = change.replace("-", "/", 1)
-    relevant = sorted({b for b in branches if b == canonical or b.startswith(canonical + "-") or b == stem_branch})
-    relevant_trees = [t for t in trees if t.get("branch") in relevant or t.get("branch") == stem_branch]
+    # Folder input can resolve a legacy fix branch only when that branch really
+    # contains this verified folder, rather than borrowing it from the caller.
+    if "/" not in target and canonical not in branches:
+        legacy = [b for b in branches if b.partition("/")[2] == change.partition("-")[2]
+                  and load_folder(change, branch_sources(b))[0]]
+        if len(legacy) > 1:
+            raise EvidenceError("ambiguous change branch")
+        if legacy:
+            stem_branch = legacy[0]
+    initial_sources = branch_sources(stem_branch)
+    for branch in branches:
+        if branch == stem_branch or not branch.startswith(canonical + "-"):
+            continue
+        verified, artifacts = load_folder(change, branch_sources(branch))
+        declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", artifacts.get("tasks.md") or "", re.M)
+        if verified and branch in {canonical + "-" + layer for layer in declared}:
+            initial_sources.extend(branch_sources(branch))
+    initial_sources += [(root, None), (None, base)]
+    folder, contents = load_folder(change, initial_sources)
+    declared = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents.get("tasks.md") or "", re.M)
+    allowed = {canonical, stem_branch} | {canonical + "-" + layer for layer in declared}
+    relevant = sorted(b for b in branches if b in allowed)
+    relevant_trees = [t for t in trees if t.get("branch") in allowed]
 
     journal = common / "team/changes" / change / "sync-progress"
     if journal.is_file() and not re.search(r"^handed-off\s+\S+", journal.read_text(), re.M):
         raise EvidenceError("sync interrupted: unfinished journal")
     for tree in relevant_trees:
-        if run("git", "-C", tree["worktree"]["path"], "rev-parse", "-q", "--verify", "MERGE_HEAD", optional=True).returncode == 0:
+        if git("-C", tree["worktree"]["path"], "rev-parse", "-q", "--verify", "MERGE_HEAD", optional=True).returncode == 0:
             raise EvidenceError("sync interrupted: merge in progress")
 
     # Query per branch so pagination cannot silently hide a matching PR.
@@ -108,6 +182,8 @@ def inspect(args):
         found = read_json("gh", "pr", "list", "--head", branch, "--state", "all", "--limit", "100", "--json", PR_FIELDS)
         if len(found) >= 100:
             raise EvidenceError("unavailable complete PR evidence: result limit reached")
+        for pr in found:
+            check_pr_repository(pr)
         prs.extend(found)
     if target_pr and all(p["number"] != target_pr["number"] for p in prs):
         prs.append(target_pr)
@@ -115,30 +191,11 @@ def inspect(args):
         if sum(p["state"] == "OPEN" and p["headRefName"] == branch for p in prs) > 1:
             raise EvidenceError("ambiguous open PR evidence")
 
-    # Read from worktrees, then branch snapshots, then the default branch archive.
-    sources = [(Path(t["worktree"]["path"]), None) for t in relevant_trees]
-    sources.append((root, None))
-    sources.extend((None, branch) for branch in relevant)
-    sources.append((None, base))
-    folder = None
-    contents = {}
-    for directory, ref in sources:
-        for prefix in ("openspec/changes/", "openspec/changes/archive/"):
-            candidate = prefix + change
-
-            def read(name):
-                if directory is not None:
-                    path = directory / candidate / name
-                    return path.read_text() if path.is_file() else None
-                result = run("git", "show", f"{ref}:{candidate}/{name}", optional=True)
-                return result.stdout if result.returncode == 0 else None
-
-            loaded = {name: read(name) for name in ("scope-brief.md", "proposal.md", "tasks.md", "issues.md", "sprint-contract.md", "handoff.md")}
-            if loaded["scope-brief.md"] is not None or (loaded["proposal.md"] is not None and loaded["tasks.md"] is not None):
-                folder, contents = candidate, loaded
-                break
-        if folder:
-            break
+    # Prefer the requested branch, then the other verified layer branches;
+    # invoking-checkout artifacts are only a fallback after branch snapshots.
+    ordered = [stem_branch] + [b for b in relevant if b != stem_branch]
+    sources = [source for branch in ordered for source in branch_sources(branch)]
+    folder, contents = load_folder(change, sources + [(root, None), (None, base)])
 
     playbook = "unresolved"
     if folder:
@@ -159,20 +216,54 @@ def inspect(args):
         print("Playbook: " + playbook)
         print("Step: " + step)
 
+    def layer_evidence():
+        mappings = {}
+        for line in contents["issues.md"].splitlines():
+            # GitHub's producer writes layer: number; older fixtures and artifacts
+            # also use :layer: #number. Both identify the same GitHub issue.
+            match = re.match(r"^\s*:?([a-z0-9-]+):\s*#?(\d+)\s*$", line)
+            if match:
+                if match[1] in ("parent", "epic"):
+                    continue
+                if match[1] in mappings and mappings[match[1]] != match[2]:
+                    raise EvidenceError("conflicting layer issue mapping")
+                mappings[match[1]] = match[2]
+            elif re.match(r"^\s*:?[a-z0-9-]+:\s*", line) and not re.match(r"^\s*(?:parent|epic):", line):
+                raise EvidenceError("unavailable tracker evidence: only GitHub numeric issue mappings are supported")
+        layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents["tasks.md"] or "", re.M)
+        if not layers or any(layer not in mappings for layer in layers):
+            raise EvidenceError("unavailable layer issue mapping")
+        states = {}
+        for issue in set(mappings.values()):
+            state = read_json("gh", "issue", "view", issue, "--json", "state")["state"]
+            if state not in ("OPEN", "CLOSED"):
+                raise EvidenceError("unavailable tracker state")
+            states[issue] = state
+        return mappings, layers, states
+
     if args.reevaluate_head:
-        head = run("git", "rev-parse", "refs/heads/" + stem_branch, optional=True)
+        branch = stem_branch
+        if "/" not in target and contents.get("issues.md") is not None:
+            mappings, layers, states = layer_evidence()
+            selected = next((layer for layer in layers if states[mappings[layer]] == "OPEN"), None)
+            if selected is not None:
+                first = next(i for i, layer in enumerate(layers) if mappings[layer] == mappings[selected])
+                if first:
+                    branch = canonical + "-" + layers[first]
+        head = git("rev-parse", "refs/heads/" + branch, optional=True)
         if head.returncode or head.stdout.strip() != args.reevaluate_head:
             raise EvidenceError("head mismatch")
         return done("Phase 3: Evaluation (fresh evaluator)")
     if args.sync_pr:
         pr = read_json("gh", "pr", "view", args.sync_pr, "--json", PR_FIELDS)
+        check_pr_repository(pr)
         branch = pr["headRefName"]
-        head = run("git", "rev-parse", "refs/heads/" + branch, optional=True)
+        head = git("rev-parse", "refs/heads/" + branch, optional=True)
         if (pr["state"] != "OPEN" or pr["baseRefName"] != default or pr["headRefOid"] != args.expected_head
                 or head.returncode or head.stdout.strip() != args.expected_head or branch not in relevant):
             raise EvidenceError("sync interrupted: PR or local head changed")
         for tree in relevant_trees:
-            if tree["branch"] == branch and run("git", "-C", tree["worktree"]["path"], "status", "--porcelain").stdout.strip():
+            if tree["branch"] == branch and git("-C", tree["worktree"]["path"], "status", "--porcelain").stdout.strip():
                 raise EvidenceError("sync needs a clean worktree")
         return done("Requested sync")
     if contents.get("handoff.md"):
@@ -186,28 +277,7 @@ def inspect(args):
     if any(p["state"] == "MERGED" and p["headRefName"] in {t["branch"] for t in relevant_trees} for p in prs):
         return done("Phase 6: Close-out")
 
-    mappings = {}
-    for line in contents["issues.md"].splitlines():
-        # GitHub's producer writes layer: number; older fixtures and artifacts
-        # also use :layer: #number. Both identify the same GitHub issue.
-        match = re.match(r"^\s*:?([a-z0-9-]+):\s*#?(\d+)\s*$", line)
-        if match:
-            if match[1] in ("parent", "epic"):
-                continue
-            if match[1] in mappings and mappings[match[1]] != match[2]:
-                raise EvidenceError("conflicting layer issue mapping")
-            mappings[match[1]] = match[2]
-        elif re.match(r"^\s*:?[a-z0-9-]+:\s*", line) and not re.match(r"^\s*(?:parent|epic):", line):
-            raise EvidenceError("unavailable tracker evidence: only GitHub numeric issue mappings are supported")
-    layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents["tasks.md"] or "", re.M)
-    if not layers or any(layer not in mappings for layer in layers):
-        raise EvidenceError("unavailable layer issue mapping")
-    states = {}
-    for issue in set(mappings.values()):
-        state = read_json("gh", "issue", "view", issue, "--json", "state")["state"]
-        if state not in ("OPEN", "CLOSED"):
-            raise EvidenceError("unavailable tracker state")
-        states[issue] = state
+    mappings, layers, states = layer_evidence()
     if all(states[mappings[layer]] == "CLOSED" for layer in layers):
         return done("Phase 6: Cleanup")
     selected = next(layer for layer in layers if states[mappings[layer]] == "OPEN")
@@ -216,12 +286,11 @@ def inspect(args):
     branch = canonical if first == 0 else canonical + "-" + layers[first]
     if first == 0 and stem_branch in relevant and canonical not in relevant:
         branch = stem_branch
-    if branch not in branches or not run("git", "diff", "--stat", base + "..." + branch, "--", ".", ":!openspec/changes").stdout.strip():
+    if branch not in branches or not git("diff", "--stat", base + "..." + branch, "--", ".", ":!openspec/changes").stdout.strip():
         return done("Phase 2: Implementation")
     pr = next((p for p in prs if p["headRefName"] == branch and p["state"] == "OPEN"), None)
-    # Shared issues have one branch and one evaluation pass, recorded under the
-    # first layer of the unit, just as branch selection uses that first layer.
-    sections = [section(contents["sprint-contract.md"] or "", layers[first])]
+    # One shared issue is evaluated as a unit across every layer section.
+    sections = [section(contents["sprint-contract.md"] or "", layer) for layer in unit]
     if any(s is None for s in sections):
         return done("Phase 3: Evaluation (start)")
     checked = all(re.search(r"^- \[[xX]\]", s, re.M) and not re.search(r"^- \[ \]", s, re.M) for s in sections)
@@ -232,7 +301,7 @@ def inspect(args):
         match = re.search(r"^Evaluated at:\s*([0-9a-f]{40})\s*$", s, re.M)
         if not match:
             return done("Phase 3: Evaluation (fresh evaluator)")
-        ancestry = run("git", "merge-base", "--is-ancestor", match[1], branch, optional=True)
+        ancestry = git("merge-base", "--is-ancestor", match[1], branch, optional=True)
         if ancestry.returncode == 1:
             return done("Phase 3: Evaluation (fresh evaluator)")
         if ancestry.returncode:
@@ -245,7 +314,7 @@ def inspect(args):
         return done(classify)
     ledger = Path(args.ledger).read_text() if args.ledger else ""
     for sha in evaluated:
-        later = run("git", "rev-list", sha + ".." + branch, "--not", base).stdout.splitlines()
+        later = git("rev-list", sha + ".." + branch, "--not", base).stdout.splitlines()
         for commit in later:
             # Accept the continuity reference's inline record and section records.
             records = re.findall(r"^.*?" + re.escape(commit) + r"[^\n]*\bbehavioral:\s*(yes|no)\b", ledger, re.M)
