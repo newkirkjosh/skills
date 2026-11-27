@@ -1,6 +1,6 @@
 # OpenSpec change → GitHub issues
 
-The workflow `dev` runs in its Phase 1 when GitHub is the tracker. Read the main `SKILL.md` first for its rules: docs before commands, bodies through files, and every write read back.
+The workflow `dev` runs in Phase 1 of its `../dev/references/lifecycle.md` when GitHub is the tracker. Read the main `SKILL.md` first for its rules: docs before commands, bodies through files, and every write read back.
 
 **Entry detection:**
 - `issues.md` exists in the change folder → issues already created; output existing numbers and stop

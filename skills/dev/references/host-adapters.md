@@ -1,6 +1,6 @@
 # Host adapters
 
-Read this before the first spawn when the coordinator runs on a host other than Claude Code, or in a headless session; `completion.md`, `team` and `cross-review` point here for the same waits. `dev`'s steps are written as operations; the example syntax in `SKILL.md` is Claude Code's. Adapted from fx/skills `dev/references/host-adapters.md` (see `LICENSE.txt`); Codex lifecycle behavior depends on the session’s supplied tools, not the CLI version alone. Inspect and probe those tools before relying on stop or capacity semantics. The current hosted interface is documented at https://developers.openai.com/api/docs/guides/responses-multi-agent; a different backend must prove its own lifecycle.
+Read this before the first spawn when the coordinator runs on a host other than Claude Code, or in a headless session; `completion.md`, `team` and `cross-review` point here for the same waits. `dev`'s lifecycle steps in `lifecycle.md` are written as operations; the example syntax in `SKILL.md` is Claude Code's. Adapted from fx/skills `dev/references/host-adapters.md` (see `LICENSE.txt`); Codex lifecycle behavior depends on the session’s supplied tools, not the CLI version alone. Inspect and probe those tools before relying on stop or capacity semantics. The current hosted interface is documented at https://developers.openai.com/api/docs/guides/responses-multi-agent; a different backend must prove its own lifecycle.
 
 ## Operations
 

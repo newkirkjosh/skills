@@ -62,6 +62,8 @@ For an archive instruction from `dev`, use Archive action below instead of setup
 
 Check that each story’s outcome has acceptance criteria, tasks stay within the scope and cover the applicable layers, and every file follows its source rule. Report the change folder path, created/reused files and any missing input, then return to the caller. Do not start implementation or mark work evaluated.
 
+Dev's Phase 0 lives in `../dev/references/playbook-change.md` within the dev skill; Phases 1–6 (including evaluation and the archive move) live in its `../dev/references/lifecycle.md`. Phase references below use those owners.
+
 ## Archive action: Move only when dev instructs it
 
 Receives an explicit archive instruction from `dev` (never self-triggers). Moves `openspec/changes/<feat-name>/` → `openspec/changes/archive/<feat-name>/` with `git mv`, as the last commit before `dev`'s completion phase. Does not verify issue state: the issues close when that PR merges. Later edits (a re-evaluation) go to the archived folder in place; it never moves back.

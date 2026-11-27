@@ -4,6 +4,8 @@ A `TEAM: MERGE-READY` line is a claim, never evidence. `team` checks every gate 
 
 `<owner>/<repo>`, the PR number `<n>` and the handoff head come from the `TEAM:` line and the change record. `<next>` is the change's next invocation number, recorded before sending (`run-state.md`); it is unrelated to the PR number. `<state>` is the run-state directory (`run-state.md`).
 
+Lifecycle entry detection, requested re-evaluation, requested sync and Phase 6 cleanup belong to `dev`'s `../dev/references/lifecycle.md`; each re-invocation enters through dev's pickup route and runs that reference from its top. Layer-branch naming stays in dev's `SKILL.md`.
+
 ## Gates
 
 Start each pass with `git fetch origin` and pin `origin/<default>` to a SHA, recorded in the change record. It must equal the PR base repository's own branch tip (`gh api repos/<owner>/<repo>/git/ref/heads/<default> --jq .object.sha`), since a narrow fetch refspec can leave the ref stale and `origin` may be a fork. A failed fetch or read, or a mismatch, ends the pass as unknown (gate 0), before any other gate. Then, in this order: the PR identity and state checks of gate 0 and gate 1; gate 2 against the pinned SHA, so a policy refusal ends the attempt before anything can request a sync; gate 0's stale-base check; gates 3 to 5.
