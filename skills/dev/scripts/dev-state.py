@@ -285,10 +285,10 @@ def inspect(args):
         nonlocal folder, contents, playbook
         # Discovery may use an older issue map, but evaluation belongs to the
         # selected unit, including every section sharing its issue.
-        selected_folder, selected_contents = load_folder(change, branch_sources(branch))
-        if selected_folder:
-            folder, contents = selected_folder, selected_contents
-            playbook = resolve_playbook()
+        selected_folder, selected_contents = load_folder(
+            change, branch_sources(branch) + [(None, base), (root, None)])
+        folder, contents = selected_folder, selected_contents
+        playbook = resolve_playbook()
 
     def selected_evidence():
         # Discovery identifies the next unit; its own snapshot then governs
@@ -301,6 +301,13 @@ def inspect(args):
                 return mappings, layers, states, branch, unit
             visited.add(branch)
             load_selected(branch)
+            # Missing selected-unit setup artifacts are entry-table evidence,
+            # not permission to parse an earlier unit's issue map.
+            if not folder or contents.get("scope-brief.md") is None or contents.get("issues.md") is None:
+                return mappings, layers, states, branch, unit
+            selected_layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents.get("tasks.md") or "", re.M)
+            if contents.get("handoff.md") and len(selected_layers) <= 1:
+                return mappings, layers, states, branch, unit
             fresh = layer_evidence()
             selected, unit = select_unit(*fresh)
             if selected == branch:
@@ -350,7 +357,8 @@ def inspect(args):
         load_folder(change, branch_sources(branch))[1].get("handoff.md")
         for branch in relevant
     )
-    if handoff_present and contents.get("issues.md") is not None and contents.get("tasks.md") is not None:
+    if (handoff_present and len(declared) > 1
+            and contents.get("issues.md") is not None and contents.get("tasks.md") is not None):
         mappings, layers = layer_mapping()
         if len({mappings[layer] for layer in layers}) == 1:
             branch, _ = select_unit(mappings, layers, {issue: "OPEN" for issue in mappings.values()})
