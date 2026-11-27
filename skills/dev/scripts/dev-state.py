@@ -241,7 +241,7 @@ def inspect(args):
         print("Playbook: " + playbook)
         print("Step: " + step)
 
-    def layer_evidence():
+    def layer_mapping():
         mappings = {}
         for line in contents["issues.md"].splitlines():
             # GitHub's producer writes layer: number; older fixtures and artifacts
@@ -258,6 +258,10 @@ def inspect(args):
         layers = re.findall(r"^##\s+:([a-z0-9-]+)\s*$", contents["tasks.md"] or "", re.M)
         if not layers or any(layer not in mappings for layer in layers):
             raise EvidenceError("unavailable layer issue mapping")
+        return mappings, layers
+
+    def layer_evidence():
+        mappings, layers = layer_mapping()
         states = {}
         for issue in set(mappings.values()):
             state = read_json("gh", "issue", "view", issue, "--json", "state")["state"]
@@ -326,21 +330,45 @@ def inspect(args):
             if tree["branch"] == branch and git("-C", tree["worktree"]["path"], "status", "--porcelain").stdout.strip():
                 raise EvidenceError("sync needs a clean worktree")
         return done("Requested sync")
+    def early_entry():
+        if contents.get("handoff.md"):
+            return "Handoff: " + contents["handoff.md"].strip().replace("\n", " ")
+        if not folder:
+            return "Reconstruct change folder" if relevant or prs or relevant_trees else "Phase 0: Scope Brief and OpenSpec setup"
+        if contents["scope-brief.md"] is None:
+            return "Reconstruct Scope Brief"
+        if contents["issues.md"] is None:
+            return "Phase 1: Issue creation"
+        if any(p["state"] == "MERGED" and p["headRefName"] in {t["branch"] for t in relevant_trees} for p in prs):
+            return "Phase 6: Close-out"
+
     selected = None
-    if contents.get("issues.md") is not None and contents.get("tasks.md") is not None:
-        selected = selected_evidence()
-    if contents.get("handoff.md"):
-        return done("Handoff: " + contents["handoff.md"].strip().replace("\n", " "))
-    if not folder:
-        return done("Reconstruct change folder" if relevant or prs or relevant_trees else "Phase 0: Scope Brief and OpenSpec setup")
-    if contents["scope-brief.md"] is None:
-        return done("Reconstruct Scope Brief")
-    if contents["issues.md"] is None:
-        return done("Phase 1: Issue creation")
-    if any(p["state"] == "MERGED" and p["headRefName"] in {t["branch"] for t in relevant_trees} for p in prs):
-        return done("Phase 6: Close-out")
+    # Handoff precedes every table row, but a retained earlier layer cannot
+    # supply the selected unit's handoff. A shared unit needs no tracker state
+    # to identify its branch; distinct units still require open-issue evidence.
+    handoff_present = contents.get("handoff.md") or any(
+        load_folder(change, branch_sources(branch))[1].get("handoff.md")
+        for branch in relevant
+    )
+    if handoff_present and contents.get("issues.md") is not None and contents.get("tasks.md") is not None:
+        mappings, layers = layer_mapping()
+        if len({mappings[layer] for layer in layers}) == 1:
+            branch, _ = select_unit(mappings, layers, {issue: "OPEN" for issue in mappings.values()})
+            load_selected(branch)
+            if contents.get("issues.md") is not None and contents.get("tasks.md") is not None:
+                mappings, layers = layer_mapping()
+                if len({mappings[layer] for layer in layers}) != 1:
+                    selected = selected_evidence()
+        else:
+            selected = selected_evidence()
+    step = early_entry()
+    if step:
+        return done(step)
 
     mappings, layers, states, branch, unit = selected or selected_evidence()
+    step = early_entry()
+    if step:
+        return done(step)
     if all(states[mappings[layer]] == "CLOSED" for layer in layers):
         return done("Phase 6: Cleanup")
     if branch not in branches or not git("diff", "--stat", base + "..." + branch, "--", ".", ":!openspec/changes").stdout.strip():
