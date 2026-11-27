@@ -88,6 +88,16 @@ def fake():
         return emit(value)
     if name != "git":
         return reject()
+    if os.environ.get("DEV_STATE_REAL_GIT"):
+        # Keep cwd and pathspec semantics real while rejecting lifecycle writes.
+        read_args = list(args)
+        while read_args and read_args[0] in ("-C", "-c"):
+            read_args = read_args[2:]
+        if not read_args or read_args[0] not in {
+                "rev-parse", "for-each-ref", "show", "ls-tree", "diff",
+                "merge-base", "rev-list", "status", "symbolic-ref", "show-ref"}:
+            return reject()
+        return subprocess.run([os.environ["DEV_STATE_REAL_GIT"]] + args).returncode
     while args and args[0] in ("-C", "-c"):
         args = args[2:]
     if not args:
@@ -341,7 +351,9 @@ def run_tests(script):
                             + "\n## :other\n- [ ] Another layer is incomplete\n"))
     case("duplicate issue mappings share the first branch", "Phase 4 steps 4–5, then Phase 5",
          mutate=combine(two_layers, update(issues={"10": "OPEN", "11": "OPEN", "12": "OPEN"}),
-                        change_file("issues.md", "parent: #10\n:catalog: #11\n:docs: #11\n")))
+                        change_file("issues.md", "parent: #10\n:catalog: #11\n:docs: #11\n"),
+                        change_file("sprint-contract.md", files[folder + "/sprint-contract.md"]
+                                    + files[folder + "/sprint-contract.md"].replace(":catalog", ":docs"))))
 
     # Playbook and discovery are independent of lifecycle routing.
     case("branch input", "Phase 4 steps 4–5, then Phase 5", args=[BRANCH])
