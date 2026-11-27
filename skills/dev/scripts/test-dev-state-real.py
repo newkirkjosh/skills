@@ -300,6 +300,86 @@ def main(script):
         folder_result = f.inspect(script, ["feat-example"], CLASSIFY)
         assert folder_result == branch_result, "folder input selected stale first-layer artifacts"
 
+    def inherited_archive_with_default_drift(f, branches):
+        inherited_archive(f, branches)
+        default_tree = f.temp / "default-worktree"
+        f.git("worktree", "add", "-q", str(default_tree), "main")
+        f.write("openspec/changes/archive/feat-onboarding/sprint-contract.md",
+                "# Contract\n" + f.contract() + "\nDefault-only correction\n", root=default_tree)
+        updated = f.commit("correct archived contract on default branch", default_tree)
+        f.git("update-ref", "refs/remotes/origin/main", updated)
+
+    @test("B1: default archive edits do not confer ownership on an unrelated fix branch")
+    def inherited_branch_after_default_drift(f):
+        inherited_archive_with_default_drift(f, ["fix/onboarding"])
+        f.inspect(script, ["fix/onboarding"], "Reconstruct change folder", "unresolved")
+
+    @test("B1: legacy folder keeps change fallback after default archive edits")
+    def inherited_folder_after_default_drift(f):
+        inherited_archive_with_default_drift(f, ["fix/onboarding"])
+        f.inspect(script, ["feat-onboarding"], "Phase 6: Cleanup", "change")
+
+    @test("B1: default archive edits do not make inherited fix and chore branches ambiguous")
+    def inherited_ambiguity_after_default_drift(f):
+        inherited_archive_with_default_drift(f, ["fix/onboarding", "chore/onboarding"])
+        f.inspect(script, ["feat-onboarding"], "Phase 6: Cleanup", "change")
+
+    def squash_merged_legacy_fix(f, archived, issue_state):
+        prefix = "openspec/changes/archive/" if archived else "openspec/changes/"
+        f.implementation(branch="fix/example", playbook=None, prefix=prefix)
+        default_tree = f.temp / "default-worktree"
+        f.git("worktree", "add", "-q", str(default_tree), "main")
+        f.git("merge", "--squash", "fix/example", cwd=default_tree)
+        merged = f.commit("squash completed legacy fix", default_tree)
+        f.git("update-ref", "refs/remotes/origin/main", merged)
+        # The retained fix branch owns these artifacts even though squash made
+        # their contents equal to the current default branch.
+        f.state["issues"] = {"11": issue_state}
+        f.pr("fix/example", "MERGED")
+
+    for archived in (False, True):
+        for issue_state in ("OPEN", "CLOSED"):
+            for target in ("fix/example", "23", "feat-example"):
+                @test("C1: squash-merged legacy fix retains close-out for "
+                      + ("archived" if archived else "active") + " artifacts, "
+                      + issue_state.lower() + " issue and " + target + " input")
+                def merged_legacy_owner(f, archived=archived, issue_state=issue_state,
+                                        target=target):
+                    squash_merged_legacy_fix(f, archived, issue_state)
+                    f.inspect(script, [target], "Phase 6: Close-out", "bug-fix")
+
+    def assert_selected_overrides(f, head):
+        f.pr("feat/example-ui")
+        for target in ("feat-example", "feat/example-ui"):
+            f.inspect(script, [target, "--reevaluate-head", head],
+                      "Phase 3: Evaluation (fresh evaluator)")
+            f.inspect(script, [target, "--sync-pr", "23", "--expected-head", head,
+                               "--default-sha", f.base], "Requested sync")
+
+    for target in ("feat-example", "feat/example"):
+        @test("B3: selected UI handoff preempts table for " + target + " input")
+        def selected_handoff(f, target=target):
+            later_layer(f)
+            f.write("openspec/changes/feat-example/handoff.md", "Resume UI check\n")
+            head = f.commit("record next layer handoff")
+            assert_selected_overrides(f, head)
+            selected = f.inspect(script, ["feat/example-ui"], "Handoff: Resume UI check")
+            routed = f.inspect(script, [target], "Handoff: Resume UI check")
+            assert routed == selected, "input changed selected layer handoff"
+
+    @test("B3: stale first-layer handoff does not preempt selected UI normal route")
+    def stale_first_handoff(f):
+        head = later_layer(f)
+        first_tree = f.temp / "first-worktree"
+        f.git("worktree", "add", "-q", str(first_tree), "feat/example")
+        f.write("openspec/changes/feat-example/handoff.md", "Stale core check\n", root=first_tree)
+        f.commit("record retained first layer handoff", first_tree)
+        f.tree("feat/example", first_tree)
+        assert_selected_overrides(f, head)
+        selected = f.inspect(script, ["feat/example-ui"], CLASSIFY)
+        routed = f.inspect(script, ["feat-example"], CLASSIFY)
+        assert routed == selected, "stale first-layer handoff displaced selected UI route"
+
     failed = 0
     for name, function in tests:
         try:
